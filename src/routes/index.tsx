@@ -40,7 +40,7 @@ function greet(): string {
   return "Boa noite";
 }
 
-function levelFor(correct: number): { label: string; idx: number; next: number } {
+function areaLevelFor(correct: number): { label: string; idx: number; next: number } {
   const tiers = [
     { label: "Iniciante", min: 0 },
     { label: "Aprendiz", min: 5 },
@@ -91,7 +91,7 @@ function Dashboard() {
   const areaCards = AREAS.map((a, i) => {
     const s = areaStats(progress, a.id, QUESTION_AREA_MAP);
     const total = QUESTIONS.filter((q) => q.area === a.id).length;
-    const lvl = levelFor(s.correct);
+    const lvl = areaLevelFor(s.correct);
     return {
       ...a,
       idx: i,
@@ -108,7 +108,7 @@ function Dashboard() {
   });
 
   const essaysDone = progress.essays.length;
-  const essayLvl = levelFor(essaysDone * 5); // each essay weighs more
+  const essayLvl = areaLevelFor(essaysDone * 5); // each essay weighs more
   const redacaoCard = {
     label: "Redação",
     short: "Redação",
