@@ -12,11 +12,25 @@ export const AREAS: { id: Area; label: string; short: string }[] = [
   { id: "matematica", label: "Matemática", short: "Matemática" },
 ];
 
+export interface SimuladoRecord {
+  id: string;
+  score: number;
+  total: number;
+  at: number;
+  mode?: string;
+  durationSec?: number;
+  spentSec?: number;
+  byArea?: Record<string, { correct: number; total: number }>;
+  bySubject?: Record<string, { correct: number; total: number }>;
+  wrongIds?: string[];
+  unansweredIds?: string[];
+}
+
 export interface Progress {
   answers: Record<string, { correct: boolean; answer: string; at: number }>;
   streakDays: number;
   lastStudyDate: string | null;
-  simulados: { id: string; score: number; total: number; at: number }[];
+  simulados: SimuladoRecord[];
   essays: { id: string; theme: string; text: string; feedback?: string; at: number }[];
   dailyGoal: number;
   examDate: string; // ISO
