@@ -119,19 +119,7 @@ export function CurrentStageCard() {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-border p-2.5">
-              <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                <Target size={10} /> Questões
-              </div>
-              <div className="text-sm font-bold tabular-nums mt-0.5">
-                {active.questoesRespondidas}
-                {active.etapaAtual >= 3 && (
-                  <span className="text-[11px] font-normal text-muted-foreground">
-                    {" "}/ {STAGE_TARGETS.questoesMinimas}
-                  </span>
-                )}
-              </div>
-            </div>
+            <StageCounter active={active} />
             <div className="rounded-lg border border-border p-2.5">
               <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 <TrendingUp size={10} /> Acerto
@@ -140,11 +128,28 @@ export function CurrentStageCard() {
             </div>
           </div>
 
+          <StageActions subjectId={active.subjectId} stage={active.etapaAtual} />
+
           <div className="rounded-lg bg-muted/50 border border-border p-2.5">
             <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1">
               O que falta para avançar
             </div>
-            <p className="text-xs leading-relaxed">{nextStepHint(active)}</p>
+            {(() => {
+              const crit = evaluateAdvance(active);
+              if (crit.faltam.length === 0) {
+                return <p className="text-xs leading-relaxed">{crit.proximoPasso}</p>;
+              }
+              return (
+                <ul className="text-xs leading-relaxed space-y-1">
+                  {crit.faltam.map((f) => (
+                    <li key={f} className="flex gap-1.5">
+                      <span className="text-muted-foreground">•</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </div>
 
           <div className="flex items-center justify-between gap-2">
@@ -167,7 +172,12 @@ export function CurrentStageCard() {
             {proximaEtapa && (
               <button
                 type="button"
-                onClick={() => advanceStage(active.subjectId)}
+                onClick={() => {
+                  const r = advanceStage(active.subjectId);
+                  if (!r.ok) {
+                    alert("Ainda não é possível avançar:\n\n• " + r.faltam.join("\n• "));
+                  }
+                }}
                 disabled={!active.prontoParaAvancar}
                 className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md bg-foreground text-background disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary transition-colors"
               >
