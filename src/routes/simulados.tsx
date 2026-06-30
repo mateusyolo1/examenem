@@ -146,8 +146,12 @@ function Simulados() {
     submittedRef.current = true;
     setConfirmFinish(false);
 
-    const byArea: Record<string, { correct: number; total: number }> = {};
-    const bySubject: Record<string, { correct: number; total: number }> = {};
+    const mk = (): BucketStat => ({ correct: 0, total: 0, wrong: 0 });
+    const byArea: Record<string, BucketStat> = {};
+    const bySubject: Record<string, BucketStat> = {};
+    const byDifficulty: Record<Difficulty, BucketStat> = {
+      "Fácil": mk(), "Médio": mk(), "Difícil": mk(),
+    };
     const wrongIds: string[] = [];
     let score = 0;
 
@@ -158,16 +162,19 @@ function Simulados() {
       if (given && !ok) wrongIds.push(q.id);
 
       const a = q.area;
-      byArea[a] ??= { correct: 0, total: 0 };
+      byArea[a] ??= mk();
       byArea[a].total++;
-      if (ok) byArea[a].correct++;
+      if (ok) byArea[a].correct++; else if (given) byArea[a].wrong++;
 
       const s = questionMateria(q);
-      bySubject[s] ??= { correct: 0, total: 0 };
+      bySubject[s] ??= mk();
       bySubject[s].total++;
-      if (ok) bySubject[s].correct++;
+      if (ok) bySubject[s].correct++; else if (given) bySubject[s].wrong++;
 
-      // Persist answer for global stats; only when the student actually answered.
+      const d = questionDifficulty(q);
+      byDifficulty[d].total++;
+      if (ok) byDifficulty[d].correct++; else if (given) byDifficulty[d].wrong++;
+
       if (given) {
         recordAnswer(q.id, given, ok);
         recordReviewAnswer(q.id, ok);
@@ -176,7 +183,7 @@ function Simulados() {
 
     const spentSec = startedAt ? Math.round((Date.now() - startedAt) / 1000) : 0;
 
-    const record = {
+    const record: SimuladoRecord = {
       id: crypto.randomUUID(),
       score,
       total: questions.length,
@@ -191,7 +198,13 @@ function Simulados() {
     };
 
     update((p) => ({ ...p, simulados: [...p.simulados, record] }));
-    setResult({ score, total: questions.length, spentSec, byArea, bySubject, wrongIds, unansweredIds });
+    setResult({
+      score, total: questions.length, spentSec,
+      byArea, bySubject, byDifficulty,
+      wrongIds, unansweredIds,
+      questions, answers: { ...answers },
+    });
+  }
   }
 
   function reset() {
