@@ -9,6 +9,8 @@ import {
   areaStats,
 } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
+import { Nav } from "@/components/Nav";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Download,
   RotateCcw,
@@ -47,6 +49,7 @@ function PerfilPage() {
   const [minutes, setMinutes] = useState(progress.dailyMinutes ?? 120);
   const [exam, setExam] = useState(progress.examDate.slice(0, 10));
   const [saved, setSaved] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Sync local form when underlying progress changes (e.g. reset).
   useMemo(() => {
@@ -134,29 +137,28 @@ function PerfilPage() {
   }
 
   function handleReset() {
-    const ok = window.confirm(
-      "Resetar todo o progresso? Esta ação apaga respostas, simulados e redações. Não pode ser desfeita.",
-    );
-    if (!ok) return;
-    resetProgress();
+    setConfirmReset(true);
   }
+
 
   const examDays = daysUntilExam(progress.examDate);
   const displayName = progress.studentName?.trim() || "Aluno";
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10 animate-reveal">
+    <>
+      <Nav />
+      <main id="main" className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 animate-reveal">
       {/* Header */}
-      <header className="flex items-center gap-5 mb-10">
-        <div className="h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold border border-primary/20">
+      <header className="flex items-center gap-4 sm:gap-5 mb-8 sm:mb-10">
+        <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold border border-primary/20">
           {initial}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
             Perfil
           </p>
-          <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{displayName}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Meta: <span className="font-semibold text-foreground">{progress.targetScore ?? 700}</span>{" "}
             · Prova em{" "}
@@ -166,7 +168,9 @@ function PerfilPage() {
       </header>
 
       {/* Stats grid */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+      <section aria-labelledby="stats-h" className="mb-8 sm:mb-10">
+        <h2 id="stats-h" className="sr-only">Estatísticas</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={<Target size={16} />}
           label="Objetivo"
@@ -209,10 +213,11 @@ function PerfilPage() {
           label="Streak atual"
           value={`${progress.streakDays}d`}
         />
+        </div>
       </section>
 
       {/* Best / Worst */}
-      <section className="grid md:grid-cols-2 gap-4 mb-10">
+      <section className="grid md:grid-cols-2 gap-4 mb-8 sm:mb-10">
         <AreaCard
           tone="success"
           icon={<TrendingUp size={18} />}
@@ -228,7 +233,7 @@ function PerfilPage() {
       </section>
 
       {/* Evolution */}
-      <section className="mb-10">
+      <section className="mb-8 sm:mb-10">
         <h2 className="text-lg font-bold tracking-tight mb-3">Evolução</h2>
         <div className="bg-card border border-border rounded-lg p-5">
           {evolution.length === 0 ? (
@@ -245,8 +250,9 @@ function PerfilPage() {
       <section className="mb-10">
         <h2 className="text-lg font-bold tracking-tight mb-3">Configurações</h2>
         <div className="bg-card border border-border rounded-lg p-5 grid md:grid-cols-2 gap-4">
-          <Field label="Nome">
+          <Field label="Nome" htmlFor="f-name">
             <input
+              id="f-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -254,8 +260,9 @@ function PerfilPage() {
               className="input"
             />
           </Field>
-          <Field label="Objetivo de nota (0–1000)">
+          <Field label="Objetivo de nota (0–1000)" htmlFor="f-target">
             <input
+              id="f-target"
               type="number"
               min={0}
               max={1000}
@@ -264,8 +271,9 @@ function PerfilPage() {
               className="input"
             />
           </Field>
-          <Field label="Meta diária de questões">
+          <Field label="Meta diária de questões" htmlFor="f-goal">
             <input
+              id="f-goal"
               type="number"
               min={1}
               max={200}
@@ -274,8 +282,9 @@ function PerfilPage() {
               className="input"
             />
           </Field>
-          <Field label="Tempo disponível por dia (min)">
+          <Field label="Tempo disponível por dia (min)" htmlFor="f-min">
             <input
+              id="f-min"
               type="number"
               min={15}
               max={720}
@@ -285,8 +294,9 @@ function PerfilPage() {
               className="input"
             />
           </Field>
-          <Field label="Data da prova">
+          <Field label="Data da prova" htmlFor="f-exam">
             <input
+              id="f-exam"
               type="date"
               value={exam}
               onChange={(e) => setExam(e.target.value)}
@@ -294,32 +304,50 @@ function PerfilPage() {
             />
           </Field>
 
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2 pt-2 border-t border-border">
+          <div className="md:col-span-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pt-3 border-t border-border">
             <button
               onClick={handleSave}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-semibold hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground min-h-11 px-4 rounded-md text-sm font-semibold hover:opacity-90 transition-opacity"
             >
-              <Save size={14} /> Salvar alterações
+              <Save size={14} aria-hidden /> Salvar alterações
             </button>
-            {saved && (
-              <span className="text-xs font-mono text-success">Salvo ✓</span>
-            )}
-            <span className="flex-1" />
+            <span
+              className="text-xs font-mono text-success min-h-5"
+              role="status"
+              aria-live="polite"
+            >
+              {saved ? "Salvo ✓" : ""}
+            </span>
+            <span className="hidden sm:block flex-1" />
             <button
               onClick={handleExport}
-              className="inline-flex items-center gap-2 border border-border px-4 py-2 rounded-md text-sm font-medium hover:border-foreground/30 hover:bg-accent transition-colors"
+              className="inline-flex items-center justify-center gap-2 border border-border min-h-11 px-4 rounded-md text-sm font-medium hover:border-foreground/30 hover:bg-accent transition-colors"
             >
-              <Download size={14} /> Exportar dados
+              <Download size={14} aria-hidden /> Exportar dados
             </button>
             <button
               onClick={handleReset}
-              className="inline-flex items-center gap-2 border border-destructive/40 text-destructive px-4 py-2 rounded-md text-sm font-medium hover:bg-destructive/10 transition-colors"
+              className="inline-flex items-center justify-center gap-2 border border-destructive/40 text-destructive min-h-11 px-4 rounded-md text-sm font-medium hover:bg-destructive/10 transition-colors"
             >
-              <RotateCcw size={14} /> Resetar progresso
+              <RotateCcw size={14} aria-hidden /> Resetar progresso
             </button>
           </div>
         </div>
       </section>
+
+      <ConfirmDialog
+        open={confirmReset}
+        destructive
+        title="Resetar todo o progresso?"
+        description="Esta ação apaga respostas, simulados, redações e configurações. Não pode ser desfeita."
+        confirmLabel="Sim, resetar"
+        cancelLabel="Manter dados"
+        onConfirm={() => {
+          resetProgress();
+          setConfirmReset(false);
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
 
       <style>{`
         .input {
@@ -327,15 +355,17 @@ function PerfilPage() {
           background: transparent;
           border: 1px solid var(--color-border);
           border-radius: 0.375rem;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
+          padding: 0.625rem 0.75rem;
+          font-size: 0.9375rem;
           color: var(--color-foreground);
           outline: none;
           transition: border-color 0.15s;
+          min-height: 2.75rem;
         }
-        .input:focus { border-color: var(--color-ring); box-shadow: 0 0 0 3px var(--color-ring); }
+        .input:focus { border-color: var(--color-ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 30%, transparent); }
       `}</style>
-    </div>
+      </main>
+    </>
   );
 }
 
@@ -409,9 +439,9 @@ function AreaCard({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label htmlFor={htmlFor} className="block">
       <span className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
         {label}
       </span>

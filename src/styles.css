@@ -162,8 +162,18 @@
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Clear the fixed mobile bottom nav (h-14 + safe area). */
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    body { padding-bottom: 0; }
   }
   ::selection {
     background-color: color-mix(in oklab, var(--color-primary) 25%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
