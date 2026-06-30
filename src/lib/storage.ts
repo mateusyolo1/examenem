@@ -139,3 +139,13 @@ export function areaStats(p: Progress, area: Area, questionAreaMap: Record<strin
   const correct = entries.filter(([, a]) => a.correct).length;
   return { total, correct, accuracy: total ? Math.round((correct / total) * 100) : 0 };
 }
+
+export function resetProgress() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(KEY);
+  window.dispatchEvent(new Event("exame:progress"));
+}
+
+export function exportProgress(): string {
+  return JSON.stringify(read(), null, 2);
+}
