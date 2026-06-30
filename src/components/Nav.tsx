@@ -17,34 +17,52 @@ import {
   BookOpen,
   Lightbulb,
   Trophy,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ size?: number }> };
 
-// Primary quick-access (shown in mobile bottom bar — 5 slots — and as icons in desktop)
+// Mobile bottom bar (5 slots + Mais)
 const PRIMARY: NavItem[] = [
   { to: "/", label: "Início", icon: Home },
+  { to: "/plano", label: "Plano", icon: Calendar },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/redacao", label: "Redação", icon: PenLine },
 ];
 
-// Also surfaced as quick access on desktop
-const SECONDARY: NavItem[] = [
+// Desktop top bar (primary)
+const DESKTOP_MAIN: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
+  { to: "/questoes", label: "Questões", icon: ListChecks },
+  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
+  { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/redacao", label: "Redação", icon: PenLine },
   { to: "/tutor", label: "Tutor IA", icon: Bot },
   { to: "/perfil", label: "Perfil", icon: User },
 ];
 
-// Shown only in the "Mais" menu
-const EXTRA: NavItem[] = [
-  { to: "/plano", label: "Plano", icon: Calendar },
+// Grouped under "Mais"
+const MORE: NavItem[] = [
+  { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
   { to: "/materias", label: "Matérias", icon: BookOpen },
   { to: "/temas-redacao", label: "Temas de Redação", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
 ];
 
-const ALL: NavItem[] = [...PRIMARY, ...SECONDARY, ...EXTRA];
+// Full list for slide-up sheet
+const ALL: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
+  { to: "/questoes", label: "Questões", icon: ListChecks },
+  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
+  { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/redacao", label: "Redação", icon: PenLine },
+  { to: "/tutor", label: "Tutor IA", icon: Bot },
+  { to: "/perfil", label: "Perfil", icon: User },
+  ...MORE,
+];
 
 export function Nav() {
   const { progress } = useProgress();
