@@ -112,6 +112,51 @@ export const askTutor = createServerFn({ method: "POST" })
     const ctx = data.context?.trim()
       ? `\n\nContexto do(a) aluno(a) (use quando relevante):\n${data.context.trim()}`
       : "";
+
+    let stageInstr = "";
+    let stageCtx = "";
+    let closingInstr =
+      "\n\nENCERRAMENTO OBRIGATÓRIO: toda resposta DEVE terminar com a seção " +
+      "`### Próximo passo recomendado` contendo, em bullets:\n" +
+      "- **Etapa atual:** <número e nome>\n" +
+      "- **Pode avançar?** Sim/Não\n" +
+      "- **Falta para avançar:** <itens ou 'nada — pronto para avançar'>\n" +
+      "- **Ação recomendada agora:** <uma frase prática>";
+
+    if (data.stage) {
+      const s = data.stage;
+      const proxima =
+        s.proximaEtapaLabel ??
+        (s.etapaAtual < 7 ? STAGE_LABELS[s.etapaAtual + 1] : "—");
+      stageInstr =
+        "\n\nADAPTAÇÃO POR ETAPA DE APRENDIZADO (obrigatório seguir):\n" +
+        (STAGE_BEHAVIOR[s.etapaAtual] ?? "");
+      stageCtx =
+        `\n\nEtapa de aprendizado do(a) aluno(a) neste assunto:\n` +
+        `- Assunto: ${s.assunto}\n` +
+        `- Etapa atual: ${s.etapaAtual}/7 — ${s.etapaAtualLabel}\n` +
+        `- Próxima etapa: ${proxima}\n` +
+        `- Pronto para avançar: ${s.prontoParaAvancar ? "Sim" : "Não"}\n` +
+        (s.faltam.length
+          ? `- Falta: ${s.faltam.map((f) => `(${f})`).join(" ")}\n`
+          : "- Falta: nada — critérios cumpridos.\n") +
+        (typeof s.taxaDeAcerto === "number"
+          ? `- Taxa de acerto: ${s.taxaDeAcerto}%\n`
+          : "") +
+        (typeof s.questoesRespondidas === "number"
+          ? `- Questões respondidas: ${s.questoesRespondidas}\n`
+          : "") +
+        (typeof s.revisoesPendentes === "number"
+          ? `- Revisões pendentes: ${s.revisoesPendentes}\n`
+          : "");
+      closingInstr +=
+        `\n\nUse EXATAMENTE estes dados na seção final: etapa ${s.etapaAtual} (${s.etapaAtualLabel}); ` +
+        `pode avançar = ${s.prontoParaAvancar ? "Sim" : "Não"}; ` +
+        (s.faltam.length
+          ? `falta = ${s.faltam.join("; ")}.`
+          : "falta = nada (pronto para avançar).");
+    }
+
     const { text } = await generateText({
       model: gateway(CHAT_MODEL),
       system:
@@ -127,7 +172,10 @@ export const askTutor = createServerFn({ method: "POST" })
         "- Não invente símbolos estranhos (✦, ❖, ►, etc.). Use apenas markdown padrão.\n" +
         "- Para subscritos/sobrescritos fora de fórmula, use $x_1$, $x^2$ — nunca x_1 ou x^2 em texto puro.\n\n" +
         modeInstr +
-        ctx,
+        stageInstr +
+        ctx +
+        stageCtx +
+        closingInstr,
       messages: data.messages,
     });
     return { text };
