@@ -11,7 +11,46 @@ const tutorInput = z.object({
     )
     .min(1)
     .max(40),
+  mode: z
+    .enum([
+      "explicar",
+      "resolver",
+      "plano",
+      "redacao",
+      "revisao",
+      "questoes",
+      "erro",
+      "livre",
+    ])
+    .optional(),
+  context: z.string().max(2000).optional(),
 });
+
+const MODE_SYSTEM: Record<string, string> = {
+  livre:
+    "Modo livre: responda a dúvida do(a) aluno(a) de forma didática e objetiva.",
+  explicar:
+    "Modo EXPLICAR CONTEÚDO: explique o tema solicitado de forma estruturada — definição, " +
+    "intuição, exemplo prático do ENEM e mini-resumo final. Use linguagem acessível.",
+  resolver:
+    "Modo RESOLVER QUESTÃO PASSO A PASSO: identifique o que a questão pede, liste os dados, " +
+    "mostre o raciocínio em passos numerados, justifique cada alternativa e conclua com a letra correta.",
+  plano:
+    "Modo PLANO DE ESTUDOS: monte um plano realista (por dias) considerando a meta diária e o " +
+    "tempo disponível do(a) aluno(a). Para cada dia liste área, assunto, atividade e tempo estimado.",
+  redacao:
+    "Modo CORREÇÃO DE REDAÇÃO: avalie segundo as 5 competências do ENEM, dê nota 0-200 em cada, " +
+    "comente pontos fortes/fracos e sugira reescritas. Tom educativo.",
+  revisao:
+    "Modo REVISÃO RÁPIDA: produza um resumo enxuto com bullets, fórmulas, mnemônicos e 3 perguntas " +
+    "rápidas de autoavaliação ao final.",
+  questoes:
+    "Modo CRIAR QUESTÕES PARECIDAS: gere 3-5 questões inéditas no estilo ENEM sobre o tema, com " +
+    "5 alternativas (A-E), gabarito e explicação curta de cada resposta.",
+  erro:
+    "Modo EXPLICAR ERRO: analise por que a resposta do(a) aluno(a) está errada, mostre o caminho " +
+    "correto passo a passo, aponte a confusão conceitual típica e dê 1 dica para não errar de novo.",
+};
 
 export const askTutor = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tutorInput.parse(data))
@@ -19,13 +58,19 @@ export const askTutor = createServerFn({ method: "POST" })
     const { generateText } = await import("ai");
     const { createGateway, CHAT_MODEL } = await import("./ai-gateway.server");
     const gateway = createGateway();
+    const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
+    const ctx = data.context?.trim()
+      ? `\n\nContexto do(a) aluno(a) (use quando relevante):\n${data.context.trim()}`
+      : "";
     const { text } = await generateText({
       model: gateway(CHAT_MODEL),
       system:
-        "Você é um(a) tutor(a) brasileiro(a) experiente em preparação para o ENEM. " +
-        "Responda em português brasileiro, de forma clara, didática e direta. " +
-        "Quando relevante, mostre o raciocínio passo a passo e cite a área (Linguagens, " +
-        "Humanas, Natureza ou Matemática). Use exemplos curtos. Evite respostas longas demais.",
+        "Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM, " +
+        "paciente e didático(a). Responda sempre em português brasileiro, com clareza " +
+        "e exemplos curtos. Cite a área (Linguagens, Humanas, Natureza ou Matemática) " +
+        "quando fizer sentido. Use markdown leve (negritos, listas) quando ajudar.\n\n" +
+        modeInstr +
+        ctx,
       messages: data.messages,
     });
     return { text };
