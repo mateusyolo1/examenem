@@ -105,7 +105,7 @@ function safeRead(): StoreShape {
     const raw = window.localStorage.getItem(LP_KEY);
     if (!raw) return empty;
     const parsed = JSON.parse(raw) as StoreShape;
-    return parsed && typeof parsed === "object" && parsed.bySubject ? parsed : empty;
+    return normalizeStore(parsed);
   } catch {
     return empty;
   }
@@ -191,6 +191,95 @@ function emptyStageStats(): StageStats {
     simuladoFeito: false,
     simuladoTotal: 0,
     simuladoAcertos: 0,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function nonNegativeInt(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}
+
+function normalizeStageId(value: unknown): LearningStageId {
+  const n = Number(value);
+  return n >= 1 && n <= 7 ? (Math.round(n) as LearningStageId) : 1;
+}
+
+function normalizeStageStats(value: unknown): StageStats {
+  const raw = isRecord(value) ? value : {};
+  return {
+    introConcluida: Boolean(raw.introConcluida),
+    teoriaConcluida: Boolean(raw.teoriaConcluida),
+    perguntasRapidas: nonNegativeInt(raw.perguntasRapidas),
+    guidedTotal: nonNegativeInt(raw.guidedTotal),
+    guidedAcertos: nonNegativeInt(raw.guidedAcertos),
+    indepTotal: nonNegativeInt(raw.indepTotal),
+    indepAcertos: nonNegativeInt(raw.indepAcertos),
+    revisaoTotal: nonNegativeInt(raw.revisaoTotal),
+    revisaoAcertos: nonNegativeInt(raw.revisaoAcertos),
+    simuladoFeito: Boolean(raw.simuladoFeito),
+    simuladoTotal: nonNegativeInt(raw.simuladoTotal),
+    simuladoAcertos: nonNegativeInt(raw.simuladoAcertos),
+  };
+}
+
+function normalizeProgress(value: unknown, fallbackSubjectId: string): SubjectLearningProgress {
+  const raw = isRecord(value) ? value : {};
+  const subjectId = typeof raw.subjectId === "string" && raw.subjectId ? raw.subjectId : fallbackSubjectId;
+  const subj = findSubject(subjectId);
+  const etapaAtual = normalizeStageId(raw.etapaAtual);
+  const etapasConcluidas = Array.isArray(raw.etapasConcluidas)
+    ? Array.from(new Set(raw.etapasConcluidas.map(normalizeStageId))).filter((id) => id < etapaAtual)
+    : [];
+  const questoesRespondidas = nonNegativeInt(raw.questoesRespondidas);
+  const acertos = Math.min(nonNegativeInt(raw.acertos), questoesRespondidas || nonNegativeInt(raw.acertos));
+  const erros = Math.max(0, nonNegativeInt(raw.erros));
+  const revisoesPendentes = nonNegativeInt(raw.revisoesPendentes);
+  const ultimaAtividade = Number(raw.ultimaAtividade);
+  const area = subj?.area ?? (typeof raw.area === "string" ? raw.area : "linguagens");
+
+  return recompute({
+    subjectId,
+    area: area as Area | "redacao",
+    materia: typeof raw.materia === "string" && raw.materia ? raw.materia : subj ? areaLabel(subj.area) : "",
+    assunto: typeof raw.assunto === "string" && raw.assunto ? raw.assunto : subj?.name ?? subjectId,
+    etapaAtual,
+    progressoPercentual: nonNegativeInt(raw.progressoPercentual),
+    questoesRespondidas,
+    acertos,
+    erros,
+    taxaDeAcerto: nonNegativeInt(raw.taxaDeAcerto),
+    revisoesPendentes,
+    ultimaAtividade: Number.isFinite(ultimaAtividade) ? ultimaAtividade : null,
+    prontoParaAvancar: Boolean(raw.prontoParaAvancar),
+    etapasConcluidas,
+    stageStats: normalizeStageStats(raw.stageStats),
+  });
+}
+
+function normalizeStore(value: unknown): StoreShape {
+  if (!isRecord(value) || !isRecord(value.bySubject)) return empty;
+
+  const bySubject: Record<string, SubjectLearningProgress> = {};
+  for (const [subjectId, progress] of Object.entries(value.bySubject)) {
+    bySubject[subjectId] = normalizeProgress(progress, subjectId);
+  }
+
+  const activeSubjectId =
+    typeof value.activeSubjectId === "string" && value.activeSubjectId
+      ? value.activeSubjectId
+      : null;
+
+  if (activeSubjectId && !bySubject[activeSubjectId]) {
+    bySubject[activeSubjectId] = normalizeProgress({ subjectId: activeSubjectId }, activeSubjectId);
+  }
+
+  return {
+    bySubject,
+    activeSubjectId: activeSubjectId && bySubject[activeSubjectId] ? activeSubjectId : null,
   };
 }
 
@@ -300,11 +389,9 @@ function computeProntoParaAvancar(p: SubjectLearningProgress): boolean {
 function ensure(subjectId: string, s: StoreShape): SubjectLearningProgress {
   const existing = s.bySubject[subjectId];
   if (existing) {
-    // Migração suave: garantir stageStats em registros antigos.
-    if (!existing.stageStats) {
-      existing.stageStats = emptyStageStats();
-    }
-    return existing;
+    const normalized = normalizeProgress(existing, subjectId);
+    s.bySubject[subjectId] = normalized;
+    return normalized;
   }
   const subj = findSubject(subjectId);
   const created: SubjectLearningProgress = {
