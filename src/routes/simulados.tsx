@@ -205,7 +205,6 @@ function Simulados() {
       questions, answers: { ...answers },
     });
   }
-  }
 
   function reset() {
     setMode(null);
