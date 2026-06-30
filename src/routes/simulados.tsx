@@ -43,6 +43,20 @@ const PRESETS: ModeConfig[] = [
   { id: "completo", label: "Completo", questions: 90, minutes: 270, description: "Resistência ENEM." },
 ];
 
+interface BucketStat { correct: number; total: number; wrong: number }
+interface ResultData {
+  score: number;
+  total: number;
+  spentSec: number;
+  byArea: Record<string, BucketStat>;
+  bySubject: Record<string, BucketStat>;
+  byDifficulty: Record<Difficulty, BucketStat>;
+  wrongIds: string[];
+  unansweredIds: string[];
+  questions: Question[];
+  answers: Record<string, string>;
+}
+
 // -------- Helpers --------
 function pickQuestions(count: number, areas: Area[]): Question[] {
   const pool = areas.length ? QUESTIONS.filter((q) => areas.includes(q.area)) : QUESTIONS;
