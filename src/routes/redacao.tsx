@@ -135,7 +135,7 @@ function Redacao() {
               )}
             </div>
             <Link
-              to="/temas-redacao"
+              to="/temas"
               className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-border hover:border-foreground transition-all"
             >
               Trocar tema

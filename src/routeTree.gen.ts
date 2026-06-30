@@ -9,16 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TutorIaRouteImport } from './routes/tutor-ia'
 import { Route as TutorRouteImport } from './routes/tutor'
-import { Route as TemasRedacaoRouteImport } from './routes/temas-redacao'
 import { Route as TemasRouteImport } from './routes/temas'
 import { Route as SimuladosRouteImport } from './routes/simulados'
-import { Route as RevisarErrosRouteImport } from './routes/revisar-erros'
 import { Route as RevisarRouteImport } from './routes/revisar'
 import { Route as RedacaoRouteImport } from './routes/redacao'
 import { Route as QuestoesRouteImport } from './routes/questoes'
-import { Route as PlanoEstudosRouteImport } from './routes/plano-estudos'
 import { Route as PlanoRouteImport } from './routes/plano'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as MateriasRouteImport } from './routes/materias'
@@ -26,19 +22,9 @@ import { Route as ConquistasRouteImport } from './routes/conquistas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
 
-const TutorIaRoute = TutorIaRouteImport.update({
-  id: '/tutor-ia',
-  path: '/tutor-ia',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TutorRoute = TutorRouteImport.update({
   id: '/tutor',
   path: '/tutor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TemasRedacaoRoute = TemasRedacaoRouteImport.update({
-  id: '/temas-redacao',
-  path: '/temas-redacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemasRoute = TemasRouteImport.update({
@@ -49,11 +35,6 @@ const TemasRoute = TemasRouteImport.update({
 const SimuladosRoute = SimuladosRouteImport.update({
   id: '/simulados',
   path: '/simulados',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RevisarErrosRoute = RevisarErrosRouteImport.update({
-  id: '/revisar-erros',
-  path: '/revisar-erros',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevisarRoute = RevisarRouteImport.update({
@@ -69,11 +50,6 @@ const RedacaoRoute = RedacaoRouteImport.update({
 const QuestoesRoute = QuestoesRouteImport.update({
   id: '/questoes',
   path: '/questoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlanoEstudosRoute = PlanoEstudosRouteImport.update({
-  id: '/plano-estudos',
-  path: '/plano-estudos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanoRoute = PlanoRouteImport.update({
@@ -114,16 +90,12 @@ export interface FileRoutesByFullPath {
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
-  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
-  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
   '/temas': typeof TemasRoute
-  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
-  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,16 +104,12 @@ export interface FileRoutesByTo {
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
-  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
-  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
   '/temas': typeof TemasRoute
-  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
-  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,16 +119,12 @@ export interface FileRoutesById {
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
-  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
-  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
   '/temas': typeof TemasRoute
-  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
-  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,16 +135,12 @@ export interface FileRouteTypes {
     | '/materias'
     | '/perfil'
     | '/plano'
-    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
-    | '/revisar-erros'
     | '/simulados'
     | '/temas'
-    | '/temas-redacao'
     | '/tutor'
-    | '/tutor-ia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -189,16 +149,12 @@ export interface FileRouteTypes {
     | '/materias'
     | '/perfil'
     | '/plano'
-    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
-    | '/revisar-erros'
     | '/simulados'
     | '/temas'
-    | '/temas-redacao'
     | '/tutor'
-    | '/tutor-ia'
   id:
     | '__root__'
     | '/'
@@ -207,16 +163,12 @@ export interface FileRouteTypes {
     | '/materias'
     | '/perfil'
     | '/plano'
-    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
-    | '/revisar-erros'
     | '/simulados'
     | '/temas'
-    | '/temas-redacao'
     | '/tutor'
-    | '/tutor-ia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,39 +178,21 @@ export interface RootRouteChildren {
   MateriasRoute: typeof MateriasRoute
   PerfilRoute: typeof PerfilRoute
   PlanoRoute: typeof PlanoRoute
-  PlanoEstudosRoute: typeof PlanoEstudosRoute
   QuestoesRoute: typeof QuestoesRoute
   RedacaoRoute: typeof RedacaoRoute
   RevisarRoute: typeof RevisarRoute
-  RevisarErrosRoute: typeof RevisarErrosRoute
   SimuladosRoute: typeof SimuladosRoute
   TemasRoute: typeof TemasRoute
-  TemasRedacaoRoute: typeof TemasRedacaoRoute
   TutorRoute: typeof TutorRoute
-  TutorIaRoute: typeof TutorIaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tutor-ia': {
-      id: '/tutor-ia'
-      path: '/tutor-ia'
-      fullPath: '/tutor-ia'
-      preLoaderRoute: typeof TutorIaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/tutor': {
       id: '/tutor'
       path: '/tutor'
       fullPath: '/tutor'
       preLoaderRoute: typeof TutorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/temas-redacao': {
-      id: '/temas-redacao'
-      path: '/temas-redacao'
-      fullPath: '/temas-redacao'
-      preLoaderRoute: typeof TemasRedacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/temas': {
@@ -273,13 +207,6 @@ declare module '@tanstack/react-router' {
       path: '/simulados'
       fullPath: '/simulados'
       preLoaderRoute: typeof SimuladosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/revisar-erros': {
-      id: '/revisar-erros'
-      path: '/revisar-erros'
-      fullPath: '/revisar-erros'
-      preLoaderRoute: typeof RevisarErrosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revisar': {
@@ -301,13 +228,6 @@ declare module '@tanstack/react-router' {
       path: '/questoes'
       fullPath: '/questoes'
       preLoaderRoute: typeof QuestoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plano-estudos': {
-      id: '/plano-estudos'
-      path: '/plano-estudos'
-      fullPath: '/plano-estudos'
-      preLoaderRoute: typeof PlanoEstudosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plano': {
@@ -362,16 +282,12 @@ const rootRouteChildren: RootRouteChildren = {
   MateriasRoute: MateriasRoute,
   PerfilRoute: PerfilRoute,
   PlanoRoute: PlanoRoute,
-  PlanoEstudosRoute: PlanoEstudosRoute,
   QuestoesRoute: QuestoesRoute,
   RedacaoRoute: RedacaoRoute,
   RevisarRoute: RevisarRoute,
-  RevisarErrosRoute: RevisarErrosRoute,
   SimuladosRoute: SimuladosRoute,
   TemasRoute: TemasRoute,
-  TemasRedacaoRoute: TemasRedacaoRoute,
   TutorRoute: TutorRoute,
-  TutorIaRoute: TutorIaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
