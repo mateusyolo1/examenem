@@ -66,9 +66,15 @@ export function ConfirmDialog({
               {title}
             </h2>
             {description && (
-              <p id="confirm-desc" className="mt-1 text-sm text-muted-foreground">
-                {description}
-              </p>
+              typeof description === "string" ? (
+                <p id="confirm-desc" className="mt-1 text-sm text-muted-foreground">
+                  {description}
+                </p>
+              ) : (
+                <div id="confirm-desc" className="mt-1 text-sm text-muted-foreground">
+                  {description}
+                </div>
+              )
             )}
           </div>
         </div>
@@ -84,8 +90,9 @@ export function ConfirmDialog({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
+            disabled={confirmDisabled}
             className={
-              "inline-flex items-center justify-center min-h-11 px-4 rounded-md text-sm font-semibold " +
+              "inline-flex items-center justify-center min-h-11 px-4 rounded-md text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed " +
               (destructive
                 ? "bg-destructive text-destructive-foreground hover:opacity-90"
                 : "bg-primary text-primary-foreground hover:opacity-90")
