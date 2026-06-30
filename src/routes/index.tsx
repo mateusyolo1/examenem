@@ -11,6 +11,7 @@ import {
   type Area,
 } from "@/lib/storage";
 import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
+import { useReviews } from "@/lib/review";
 
 export const Route = createFileRoute("/")({
   head: () => ({
