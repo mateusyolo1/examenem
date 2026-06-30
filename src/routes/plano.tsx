@@ -39,6 +39,7 @@ import {
   areaLabel,
   typeLabel,
 } from "@/lib/study-plan";
+import { StageTasksSection } from "@/components/StageTasksSection";
 
 export const Route = createFileRoute("/plano")({
   head: () => ({
