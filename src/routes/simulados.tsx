@@ -5,9 +5,11 @@ import { Footer } from "@/components/Footer";
 import {
   QUESTIONS,
   questionMateria,
+  questionDifficulty,
+  type Difficulty,
   type Question,
 } from "@/lib/questions-data";
-import { AREAS, recordAnswer, useProgress, type Area } from "@/lib/storage";
+import { AREAS, recordAnswer, useProgress, type Area, type SimuladoRecord } from "@/lib/storage";
 import { recordReviewAnswer } from "@/lib/review";
 
 export const Route = createFileRoute("/simulados")({
