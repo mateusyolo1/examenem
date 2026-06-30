@@ -57,6 +57,8 @@ function Dashboard() {
   const { progress } = useProgress();
   const { pendingToday } = useReviews();
   const pendingReviews = pendingToday().length;
+  const { plan } = useStudyPlan();
+  const topTask = topTaskFor(plan);
 
   const dias = daysUntilExam(progress.examDate);
   const hoje = answersToday(progress);
