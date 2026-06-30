@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
+import { computeXP, levelFor } from "@/lib/gamification";
 
 const LINKS = [
   { to: "/", label: "Dashboard" },
@@ -11,6 +12,7 @@ const LINKS = [
   { to: "/redacao", label: "Redação" },
   { to: "/temas-redacao", label: "Temas" },
   { to: "/tutor", label: "Tutor IA" },
+  { to: "/conquistas", label: "Conquistas" },
 ] as const;
 
 export function Nav() {

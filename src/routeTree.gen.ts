@@ -17,6 +17,7 @@ import { Route as RedacaoRouteImport } from './routes/redacao'
 import { Route as QuestoesRouteImport } from './routes/questoes'
 import { Route as PlanoRouteImport } from './routes/plano'
 import { Route as MateriasRouteImport } from './routes/materias'
+import { Route as ConquistasRouteImport } from './routes/conquistas'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TutorRoute = TutorRouteImport.update({
@@ -59,6 +60,11 @@ const MateriasRoute = MateriasRouteImport.update({
   path: '/materias',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConquistasRoute = ConquistasRouteImport.update({
+  id: '/conquistas',
+  path: '/conquistas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -67,6 +73,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/conquistas'
     | '/materias'
     | '/plano'
     | '/questoes'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/conquistas'
     | '/materias'
     | '/plano'
     | '/questoes'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/conquistas'
     | '/materias'
     | '/plano'
     | '/questoes'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConquistasRoute: typeof ConquistasRoute
   MateriasRoute: typeof MateriasRoute
   PlanoRoute: typeof PlanoRoute
   QuestoesRoute: typeof QuestoesRoute
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MateriasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/conquistas': {
+      id: '/conquistas'
+      path: '/conquistas'
+      fullPath: '/conquistas'
+      preLoaderRoute: typeof ConquistasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -217,6 +237,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConquistasRoute: ConquistasRoute,
   MateriasRoute: MateriasRoute,
   PlanoRoute: PlanoRoute,
   QuestoesRoute: QuestoesRoute,
