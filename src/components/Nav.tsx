@@ -96,7 +96,7 @@ export function Nav() {
               Exame.
             </Link>
             <div className="hidden lg:flex items-center gap-1 text-sm font-medium">
-              {[...PRIMARY, ...SECONDARY].map((l) => {
+              {DESKTOP_MAIN.map((l) => {
                 const active = isActive(l.to);
                 const Icon = l.icon;
                 return (
