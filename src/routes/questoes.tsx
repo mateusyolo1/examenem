@@ -53,7 +53,7 @@ function Questoes() {
   const { isSaved, toggle: toggleSaved, saved } = useSavedQuestions();
 
   function update(patch: Partial<typeof search>) {
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+    navigate({ search: (prev: typeof search) => ({ ...prev, ...patch }) });
     setIndex(0);
     reset();
   }
@@ -145,7 +145,7 @@ function Questoes() {
       setIndex(idx);
     } else {
       // Reset filters minimally so the suggested question is reachable
-      navigate({ search: (prev) => ({ ...prev, status: "todos", q: "" }) });
+      navigate({ search: (prev: typeof search) => ({ ...prev, status: "todos", q: "" }) });
       // After re-filter, the question may still not be in list; user can refilter
     }
     reset();
