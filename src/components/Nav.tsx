@@ -3,6 +3,7 @@ import { useProgress } from "@/lib/storage";
 
 const LINKS = [
   { to: "/", label: "Dashboard" },
+  { to: "/plano", label: "Plano" },
   { to: "/materias", label: "Matérias" },
   { to: "/questoes", label: "Questões" },
   { to: "/revisar", label: "Revisar" },
