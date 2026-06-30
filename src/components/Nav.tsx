@@ -49,6 +49,7 @@ export function Nav() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link
             to="/conquistas"
             className="hidden sm:flex items-center gap-2 border border-border px-3 py-1.5 hover:border-foreground transition-colors"
