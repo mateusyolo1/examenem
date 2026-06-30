@@ -721,14 +721,14 @@ function TaskCard({
       <div className="flex items-center justify-between gap-2">
         <span
           className={
-            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide " +
+            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide min-w-0 truncate " +
             style.chip
           }
         >
           <Icon size={10} aria-hidden />
-          {typeLabel(task.type)}
+          <span className="truncate">{typeLabel(task.type)}</span>
         </span>
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
           <Clock size={11} aria-hidden />
           {task.minutes}min
         </span>
@@ -736,13 +736,13 @@ function TaskCard({
 
       <h3
         className={
-          "mt-2 text-sm font-semibold leading-snug text-foreground " +
+          "mt-2 text-sm font-semibold leading-snug text-foreground break-words " +
           (done ? "line-through text-muted-foreground" : "")
         }
       >
         {task.title}
       </h3>
-      <p className="mt-0.5 text-xs text-muted-foreground capitalize">
+      <p className="mt-0.5 text-xs text-muted-foreground capitalize truncate">
         {areaLabel(task.area)}
       </p>
 
@@ -752,27 +752,12 @@ function TaskCard({
         </p>
       )}
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        {cta && !done ? (
-          <Link
-            to={cta.to}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-          >
-            {cta.label}
-            <ArrowRight size={12} aria-hidden />
-          </Link>
-        ) : done ? (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 size={12} aria-hidden /> Concluída
-          </span>
-        ) : (
-          <span />
-        )}
+      <div className="mt-3 flex flex-col gap-1.5">
         <button
           onClick={onToggle}
           aria-label={done ? "Desfazer conclusão" : "Marcar tarefa como concluída"}
           className={
-            "inline-flex items-center gap-1 min-h-8 px-2.5 rounded-md text-xs font-semibold transition " +
+            "inline-flex items-center justify-center gap-1.5 w-full min-h-9 px-3 rounded-md text-xs font-semibold transition " +
             (done
               ? "border border-border bg-background text-foreground/70 hover:bg-accent"
               : "bg-foreground text-background hover:opacity-90")
@@ -790,6 +775,19 @@ function TaskCard({
             </>
           )}
         </button>
+        {cta && !done ? (
+          <Link
+            to={cta.to}
+            className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline"
+          >
+            {cta.label}
+            <ArrowRight size={12} aria-hidden />
+          </Link>
+        ) : done ? (
+          <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={12} aria-hidden /> Concluída
+          </span>
+        ) : null}
       </div>
       {/* keep variable referenced for future highlight rules */}
       <span className="sr-only">{isPastDay ? "Dia passado" : ""}</span>
