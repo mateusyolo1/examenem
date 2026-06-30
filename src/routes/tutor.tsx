@@ -236,6 +236,7 @@ function Tutor() {
         <div className="grid lg:grid-cols-[260px_1fr] gap-6 flex-1">
           {/* Sidebar */}
           <aside className="space-y-6">
+            <CurrentStageCard />
             <section>
               <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
                 Modos
