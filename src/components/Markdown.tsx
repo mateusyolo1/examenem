@@ -41,7 +41,8 @@ export function Markdown({ children, className }: Props) {
       )}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: "ignore", output: "html" }]]}
         components={{
           h1: ({ node, ...p }) => (
             <h1 className="text-2xl font-extrabold tracking-tight mt-4 mb-3 first:mt-0" {...p} />
