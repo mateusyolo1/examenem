@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { Markdown } from "@/components/Markdown";
 import { correctEssay, type EssayFeedback } from "@/lib/ai.functions";
 import { useProgress } from "@/lib/storage";
 import { findTheme } from "@/lib/essay-themes";
