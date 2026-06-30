@@ -8,6 +8,11 @@ import { CurrentStageCard } from "@/components/CurrentStageCard";
 import { askTutor } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
+import {
+  useActiveLearning,
+  evaluateAdvance,
+  LEARNING_STAGES,
+} from "@/lib/learning-progress";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Mode =
