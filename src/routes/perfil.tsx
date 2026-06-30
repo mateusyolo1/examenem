@@ -49,6 +49,7 @@ function PerfilPage() {
   const [minutes, setMinutes] = useState(progress.dailyMinutes ?? 120);
   const [exam, setExam] = useState(progress.examDate.slice(0, 10));
   const [saved, setSaved] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Sync local form when underlying progress changes (e.g. reset).
   useMemo(() => {
