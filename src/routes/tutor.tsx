@@ -332,13 +332,13 @@ function Tutor() {
                 >
                   <div
                     className={
-                      "max-w-[85%] p-4 text-sm leading-relaxed whitespace-pre-wrap " +
+                      "max-w-[85%] p-4 rounded-lg " +
                       (m.role === "user"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
                         : "bg-background border border-border")
                     }
                   >
-                    {m.content}
+                    {m.role === "user" ? m.content : <Markdown>{m.content}</Markdown>}
                   </div>
                 </div>
               ))}
