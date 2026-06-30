@@ -36,6 +36,28 @@ const essayInput = z.object({
   text: z.string().min(50).max(8000),
 });
 
+export interface EssayCompetency {
+  numero: number;
+  titulo: string;
+  nota: number;
+  comentario: string;
+  pontosFortes: string[];
+  pontosMelhorar: string[];
+  sugestaoReescrita: string;
+}
+export interface EssayRepertorio {
+  titulo: string;
+  descricao: string;
+}
+export interface EssayFeedback {
+  notaFinal?: number;
+  diagnosticoGeral?: string;
+  competencias?: EssayCompetency[];
+  repertorios?: EssayRepertorio[];
+  novaVersao?: string;
+  raw?: string;
+}
+
 export const correctEssay = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => essayInput.parse(data))
   .handler(async ({ data }) => {
