@@ -235,3 +235,29 @@ export function questionsByArea(area: Area | "todas", year?: number) {
 }
 
 export const YEARS = Array.from(new Set(QUESTIONS.map((q) => q.year))).sort((a, b) => b - a);
+
+export type Difficulty = "Fácil" | "Médio" | "Difícil";
+
+const HARD_HINTS = ["Estequiometria", "Trabalho", "Iluminismo", "Modernismo", "Função"];
+const EASY_HINTS = ["Porcentagem", "Geometria", "Reading", "Globalização", "Ecologia"];
+
+export function questionDifficulty(q: Question): Difficulty {
+  const s = q.subject;
+  if (HARD_HINTS.some((h) => s.includes(h))) return "Difícil";
+  if (EASY_HINTS.some((h) => s.includes(h))) return "Fácil";
+  return "Médio";
+}
+
+export function questionMateria(q: Question): string {
+  // "Física — Trabalho e Potência" → "Física"
+  const parts = q.subject.split(/\s[—–-]\s/);
+  return parts[0]?.trim() || q.subject;
+}
+
+export function questionTopic(q: Question): string {
+  const parts = q.subject.split(/\s[—–-]\s/);
+  return (parts[1] || parts[0] || "").trim();
+}
+
+export const MATERIAS = Array.from(new Set(QUESTIONS.map(questionMateria))).sort();
+
