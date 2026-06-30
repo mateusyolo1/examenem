@@ -60,6 +60,15 @@ function Dashboard() {
   const pendingReviews = pendingToday().length;
   const { plan } = useStudyPlan();
   const topTask = topTaskFor(plan);
+  const xp = useMemo(() => computeXP(progress), [progress]);
+  const lvlInfo = useMemo(() => levelFor(xp.total), [xp.total]);
+  const recentUnlocks = useMemo(
+    () =>
+      ACHIEVEMENTS.map((a) => ({ ...a, ...a.check({ progress, reviewsCompleted: 0 }) }))
+        .filter((a) => a.unlocked)
+        .slice(0, 3),
+    [progress],
+  );
 
   const dias = daysUntilExam(progress.examDate);
   const hoje = answersToday(progress);
