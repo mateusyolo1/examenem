@@ -122,10 +122,25 @@ function Redacao() {
 
         {/* Tema da semana */}
         <div className="mb-6 p-6 bg-card border-l-2 border-primary border border-border">
-          <span className="text-[10px] font-mono uppercase text-muted-foreground block mb-2">
-            Tema da semana
-          </span>
-          <p className="font-bold text-lg leading-tight tracking-tight">{TEMA}</p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <span className="text-[10px] font-mono uppercase text-muted-foreground block mb-2">
+                {temaSel ? `Tema · ${temaSel.categoria}` : "Tema da semana"}
+              </span>
+              <p className="font-bold text-lg leading-tight tracking-tight">{TEMA}</p>
+              {temaSel && (
+                <p className="text-[11px] font-mono uppercase text-muted-foreground mt-2">
+                  Eixo · {temaSel.eixo}
+                </p>
+              )}
+            </div>
+            <Link
+              to="/temas-redacao"
+              className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-border hover:border-foreground transition-all"
+            >
+              Trocar tema
+            </Link>
+          </div>
         </div>
 
         {/* Editor */}
