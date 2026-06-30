@@ -12,6 +12,7 @@ import {
 } from "@/lib/storage";
 import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
 import { useReviews } from "@/lib/review";
+import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
 
 export const Route = createFileRoute("/")({
   head: () => ({
