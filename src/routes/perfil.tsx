@@ -9,6 +9,8 @@ import {
   areaStats,
 } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
+import { Nav } from "@/components/Nav";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Download,
   RotateCcw,
