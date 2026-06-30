@@ -1,18 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { correctEssay, type EssayFeedback } from "@/lib/ai.functions";
 import { useProgress } from "@/lib/storage";
+import { findTheme } from "@/lib/essay-themes";
 
-const TEMA =
+const TEMA_PADRAO =
   "Caminhos para combater a insegurança alimentar no cenário brasileiro contemporâneo.";
 
 const DRAFT_KEY = "exame:redacao:draft";
 const CHARS_PER_LINE = 70; // aprox. linhas da folha oficial
 
+const searchSchema = z.object({ tema: z.string().optional() });
+
 export const Route = createFileRoute("/redacao")({
+  validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [
       { title: "Oficina de Redação — Exame ENEM" },
