@@ -220,7 +220,7 @@ function Simulados() {
 
   // -------- Render --------
   if (result) {
-    return <ResultView result={result} mode={mode!} onReset={reset} />;
+    return <ResultView result={result} mode={mode!} history={progress.simulados} onReset={reset} />;
   }
 
   if (mode) {
