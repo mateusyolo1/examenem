@@ -8,6 +8,11 @@ import { CurrentStageCard } from "@/components/CurrentStageCard";
 import { askTutor } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
+import {
+  useActiveLearning,
+  evaluateAdvance,
+  LEARNING_STAGES,
+} from "@/lib/learning-progress";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Mode =
@@ -114,6 +119,7 @@ function Tutor() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { progress } = useProgress();
+  const activeLearning = useActiveLearning();
 
   useEffect(() => {
     setMessages(loadHistory());
@@ -185,11 +191,30 @@ function Tutor() {
     setInput("");
     setLoading(true);
     try {
+      const stagePayload = activeLearning
+        ? (() => {
+            const crit = evaluateAdvance(activeLearning);
+            const atual = LEARNING_STAGES.find((s) => s.id === activeLearning.etapaAtual);
+            const prox = LEARNING_STAGES.find((s) => s.id === activeLearning.etapaAtual + 1);
+            return {
+              assunto: activeLearning.assunto,
+              etapaAtual: activeLearning.etapaAtual,
+              etapaAtualLabel: atual?.label ?? String(activeLearning.etapaAtual),
+              proximaEtapaLabel: prox?.label,
+              prontoParaAvancar: activeLearning.prontoParaAvancar,
+              faltam: crit.faltam,
+              taxaDeAcerto: activeLearning.taxaDeAcerto,
+              questoesRespondidas: activeLearning.questoesRespondidas,
+              revisoesPendentes: activeLearning.revisoesPendentes,
+            };
+          })()
+        : undefined;
       const res = await ask({
         data: {
           messages: next.slice(-20),
           mode,
           context: useContext ? studentContext : undefined,
+          stage: stagePayload,
         },
       });
       setMessages([...next, { role: "assistant", content: res.text }]);
