@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { Markdown } from "@/components/Markdown";
 import { askTutor } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
@@ -332,13 +333,13 @@ function Tutor() {
                 >
                   <div
                     className={
-                      "max-w-[85%] p-4 text-sm leading-relaxed whitespace-pre-wrap " +
+                      "max-w-[85%] p-4 rounded-lg " +
                       (m.role === "user"
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
                         : "bg-background border border-border")
                     }
                   >
-                    {m.content}
+                    {m.role === "user" ? m.content : <Markdown>{m.content}</Markdown>}
                   </div>
                 </div>
               ))}

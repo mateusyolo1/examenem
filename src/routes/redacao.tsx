@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { Markdown } from "@/components/Markdown";
 import { correctEssay, type EssayFeedback } from "@/lib/ai.functions";
 import { useProgress } from "@/lib/storage";
 import { findTheme } from "@/lib/essay-themes";
@@ -258,7 +259,7 @@ function FeedbackView({ fb, compact = false }: { fb: EssayFeedback; compact?: bo
         <div className="text-xs font-mono uppercase text-muted-foreground mb-3">
           Feedback da IA
         </div>
-        <p className="text-sm whitespace-pre-wrap leading-relaxed">{fb.raw}</p>
+        <Markdown>{fb.raw}</Markdown>
       </section>
     );
   }
