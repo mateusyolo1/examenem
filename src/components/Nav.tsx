@@ -156,7 +156,7 @@ export function Nav() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Navegação rápida"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="grid grid-cols-6 max-w-2xl mx-auto">
           {PRIMARY.map((l) => {
