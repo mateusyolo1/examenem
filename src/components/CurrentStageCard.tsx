@@ -4,14 +4,21 @@ import {
   LEARNING_STAGES,
   STAGE_TARGETS,
   advanceStage,
-  nextStepHint,
+  evaluateAdvance,
+  markIntroConcluida,
+  markTeoriaConcluida,
+  recordGuidedAnswer,
+  recordIndepAnswer,
+  recordMiniSimuladoResult,
+  recordQuickQuestion,
+  recordReviewAnswer,
   setActiveSubject,
   stageById,
   startSubject,
   studentStatus,
   useActiveLearning,
 } from "@/lib/learning-progress";
-import { ArrowRight, BookOpen, Sparkles, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Sparkles, Target, TrendingUp, X } from "lucide-react";
 
 /**
  * Card "Etapa atual do aluno" — exibido na sidebar do Tutor IA.
