@@ -13,6 +13,7 @@ import {
 import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
 import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
+import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
 
 export const Route = createFileRoute("/")({
   head: () => ({
