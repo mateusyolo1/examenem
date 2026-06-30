@@ -37,6 +37,27 @@ export const LEARNING_STAGES: LearningStage[] = [
   { id: 7, label: "Assunto dominado", short: "Dominado", description: "Pronto para revisão espaçada de longo prazo." },
 ];
 
+export interface StageStats {
+  /** Etapa 1: explicação inicial concluída. */
+  introConcluida: boolean;
+  /** Etapa 2: teoria concluída + perguntas rápidas. */
+  teoriaConcluida: boolean;
+  perguntasRapidas: number;
+  /** Etapa 3: questões guiadas. */
+  guidedTotal: number;
+  guidedAcertos: number;
+  /** Etapa 4: questões independentes. */
+  indepTotal: number;
+  indepAcertos: number;
+  /** Etapa 5: revisão de erros. */
+  revisaoTotal: number;
+  revisaoAcertos: number;
+  /** Etapa 6: mini simulado. */
+  simuladoFeito: boolean;
+  simuladoTotal: number;
+  simuladoAcertos: number;
+}
+
 export interface SubjectLearningProgress {
   /** id do assunto (mesmo de SUBJECTS) */
   subjectId: string;
@@ -57,6 +78,16 @@ export interface SubjectLearningProgress {
   prontoParaAvancar: boolean;
   /** etapas concluídas (em ordem). */
   etapasConcluidas: LearningStageId[];
+  /** Contadores por etapa usados pelas regras de avanço. */
+  stageStats: StageStats;
+}
+
+export interface AdvanceCriteria {
+  ready: boolean;
+  /** Lista de critérios faltantes em linguagem natural. Vazio = pronto. */
+  faltam: string[];
+  /** Texto curto: a próxima exigência mais relevante. */
+  proximoPasso: string;
 }
 
 interface StoreShape {
