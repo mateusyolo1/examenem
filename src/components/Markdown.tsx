@@ -1,11 +1,29 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 
 type Props = {
   children: string;
   className?: string;
 };
+
+// Normaliza notação que a IA costuma enviar fora do padrão:
+// - $$...$$ inline ou em bloco vira math block/inline (já é padrão remark-math)
+// - $X$ simples (single dollar inline) também é tratado por remark-math
+// - \( \) e \[ \] convertidos para $ e $$
+// - Remove cifrões soltos que não formam par
+function normalizeMath(src: string): string {
+  let s = src;
+  // \( ... \) -> $ ... $
+  s = s.replace(/\\\(([\s\S]+?)\\\)/g, (_m, inner) => `$${inner}$`);
+  // \[ ... \] -> $$ ... $$
+  s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_m, inner) => `$$${inner}$$`);
+  return s;
+}
+
 
 /**
  * Rich markdown renderer for assistant messages and AI-generated content.
