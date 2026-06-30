@@ -61,11 +61,12 @@ export interface SubjectLearningProgress {
 
 interface StoreShape {
   bySubject: Record<string, SubjectLearningProgress>;
+  activeSubjectId?: string | null;
 }
 
 const LP_KEY = "exame:learning-progress:v1";
 
-const empty: StoreShape = { bySubject: {} };
+const empty: StoreShape = { bySubject: {}, activeSubjectId: null };
 
 function safeRead(): StoreShape {
   if (typeof window === "undefined") return empty;
