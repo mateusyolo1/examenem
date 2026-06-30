@@ -121,7 +121,7 @@ export function Markdown({ children, className }: Props) {
           ),
         }}
       >
-        {children}
+        {normalizeMath(children)}
       </ReactMarkdown>
     </div>
   );
