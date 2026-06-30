@@ -42,6 +42,9 @@ export interface Progress {
   essays: EssayRecord[];
   dailyGoal: number;
   examDate: string; // ISO
+  studentName?: string;
+  targetScore?: number; // 0-1000
+  dailyMinutes?: number; // available study minutes/day
 }
 
 const DEFAULT: Progress = {
@@ -51,8 +54,10 @@ const DEFAULT: Progress = {
   simulados: [],
   essays: [],
   dailyGoal: 18,
-  // Default: Nov 9 of current or next year
   examDate: defaultExamDate(),
+  studentName: "",
+  targetScore: 700,
+  dailyMinutes: 120,
 };
 
 function defaultExamDate(): string {
