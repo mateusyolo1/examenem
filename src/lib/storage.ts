@@ -31,7 +31,7 @@ export interface Progress {
   streakDays: number;
   lastStudyDate: string | null;
   simulados: SimuladoRecord[];
-  essays: { id: string; theme: string; text: string; feedback?: string; at: number }[];
+  essays: EssayRecord[];
   dailyGoal: number;
   examDate: string; // ISO
 }
