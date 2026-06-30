@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TutorRouteImport } from './routes/tutor'
+import { Route as TemasRedacaoRouteImport } from './routes/temas-redacao'
 import { Route as SimuladosRouteImport } from './routes/simulados'
 import { Route as RevisarRouteImport } from './routes/revisar'
 import { Route as RedacaoRouteImport } from './routes/redacao'
@@ -20,6 +21,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TutorRoute = TutorRouteImport.update({
   id: '/tutor',
   path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemasRedacaoRoute = TemasRedacaoRouteImport.update({
+  id: '/temas-redacao',
+  path: '/temas-redacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SimuladosRoute = SimuladosRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
   '/simulados': typeof SimuladosRoute
+  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
   '/simulados': typeof SimuladosRoute
+  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
   '/simulados': typeof SimuladosRoute
+  '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/redacao'
     | '/revisar'
     | '/simulados'
+    | '/temas-redacao'
     | '/tutor'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/redacao'
     | '/revisar'
     | '/simulados'
+    | '/temas-redacao'
     | '/tutor'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/redacao'
     | '/revisar'
     | '/simulados'
+    | '/temas-redacao'
     | '/tutor'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   RedacaoRoute: typeof RedacaoRoute
   RevisarRoute: typeof RevisarRoute
   SimuladosRoute: typeof SimuladosRoute
+  TemasRedacaoRoute: typeof TemasRedacaoRoute
   TutorRoute: typeof TutorRoute
 }
 
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/tutor'
       fullPath: '/tutor'
       preLoaderRoute: typeof TutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/temas-redacao': {
+      id: '/temas-redacao'
+      path: '/temas-redacao'
+      fullPath: '/temas-redacao'
+      preLoaderRoute: typeof TemasRedacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/simulados': {
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   RedacaoRoute: RedacaoRoute,
   RevisarRoute: RevisarRoute,
   SimuladosRoute: SimuladosRoute,
+  TemasRedacaoRoute: TemasRedacaoRoute,
   TutorRoute: TutorRoute,
 }
 export const routeTree = rootRouteImport
