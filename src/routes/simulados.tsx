@@ -83,15 +83,7 @@ function Simulados() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
-  const [result, setResult] = useState<{
-    score: number;
-    total: number;
-    spentSec: number;
-    byArea: Record<string, { correct: number; total: number }>;
-    bySubject: Record<string, { correct: number; total: number }>;
-    wrongIds: string[];
-    unansweredIds: string[];
-  } | null>(null);
+  const [result, setResult] = useState<ResultData | null>(null);
 
   // Custom mode form state
   const [customCount, setCustomCount] = useState(15);
