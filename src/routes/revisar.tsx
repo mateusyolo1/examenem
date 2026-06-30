@@ -18,6 +18,8 @@ import {
   type ReviewEntry,
   INTERVALS_DAYS,
 } from "@/lib/review";
+import { subjectIdForQuestion } from "@/lib/subjects";
+import { recordReviewAnswer as recordLearningReview } from "@/lib/learning-progress";
 
 export const Route = createFileRoute("/revisar")({
   head: () => ({
