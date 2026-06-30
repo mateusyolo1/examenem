@@ -91,6 +91,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Exame — Estude para o ENEM" },
+      { name: "description", content: "Remix of Code Compass is a web application for code exploration and management." },
+      { property: "og:description", content: "Remix of Code Compass is a web application for code exploration and management." },
+      { name: "twitter:description", content: "Remix of Code Compass is a web application for code exploration and management." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7d061d27-58bc-4446-b622-c02d8a824613/id-preview-01d4b9e6--eb692907-5c2b-4009-93b3-5f10a719e2fe.lovable.app-1782843160454.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7d061d27-58bc-4446-b622-c02d8a824613/id-preview-01d4b9e6--eb692907-5c2b-4009-93b3-5f10a719e2fe.lovable.app-1782843160454.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
