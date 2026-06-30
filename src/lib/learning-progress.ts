@@ -162,18 +162,150 @@ function computeProgressoPercentual(etapaAtual: LearningStageId, etapasConcluida
   return clamp01(((done + partial) / total) * 100);
 }
 
+// Metas/regras por etapa (parametrizadas para fácil ajuste).
+export const STAGE_TARGETS = {
+  /** Etapa 2 → 3: perguntas rápidas mínimas após a teoria. */
+  perguntasRapidasMin: 3,
+  /** Etapa 3 → 4 */
+  guiadasMin: 5,
+  guiadasTaxaMin: 60,
+  /** Etapa 4 → 5 */
+  indepMin: 10,
+  /** Etapa 5 → 6 */
+  revisaoTaxaMin: 70,
+  /** Etapa 6 → 7 */
+  simuladoTaxaMin: 75,
+} as const;
+
+function emptyStageStats(): StageStats {
+  return {
+    introConcluida: false,
+    teoriaConcluida: false,
+    perguntasRapidas: 0,
+    guidedTotal: 0,
+    guidedAcertos: 0,
+    indepTotal: 0,
+    indepAcertos: 0,
+    revisaoTotal: 0,
+    revisaoAcertos: 0,
+    simuladoFeito: false,
+    simuladoTotal: 0,
+    simuladoAcertos: 0,
+  };
+}
+
+function pct(acertos: number, total: number): number {
+  return total > 0 ? clamp01((acertos / total) * 100) : 0;
+}
+
+/**
+ * Avalia as regras de avanço da etapa atual e devolve o que falta.
+ * Implementa exatamente as regras 1→2 … 6→7.
+ */
+export function evaluateAdvance(p: SubjectLearningProgress): AdvanceCriteria {
+  const ss = p.stageStats;
+  const faltam: string[] = [];
+
+  switch (p.etapaAtual) {
+    case 1: {
+      if (!ss.introConcluida) faltam.push("Concluir a explicação inicial do assunto.");
+      break;
+    }
+    case 2: {
+      if (!ss.teoriaConcluida) faltam.push("Concluir a teoria do assunto.");
+      const faltamQ = Math.max(0, STAGE_TARGETS.perguntasRapidasMin - ss.perguntasRapidas);
+      if (faltamQ > 0) {
+        faltam.push(
+          `Responder mais ${faltamQ} ${faltamQ === 1 ? "pergunta rápida" : "perguntas rápidas"} (mínimo ${STAGE_TARGETS.perguntasRapidasMin}).`,
+        );
+      }
+      break;
+    }
+    case 3: {
+      const faltamQ = Math.max(0, STAGE_TARGETS.guiadasMin - ss.guidedTotal);
+      if (faltamQ > 0) {
+        faltam.push(
+          `Fazer mais ${faltamQ} ${faltamQ === 1 ? "questão guiada" : "questões guiadas"} (mínimo ${STAGE_TARGETS.guiadasMin}).`,
+        );
+      }
+      const taxa = pct(ss.guidedAcertos, ss.guidedTotal);
+      if (ss.guidedTotal >= STAGE_TARGETS.guiadasMin && taxa < STAGE_TARGETS.guiadasTaxaMin) {
+        faltam.push(
+          `Elevar a taxa de acerto nas guiadas para ${STAGE_TARGETS.guiadasTaxaMin}% (atual: ${taxa}%).`,
+        );
+      }
+      break;
+    }
+    case 4: {
+      const faltamQ = Math.max(0, STAGE_TARGETS.indepMin - ss.indepTotal);
+      if (faltamQ > 0) {
+        faltam.push(
+          `Fazer mais ${faltamQ} ${faltamQ === 1 ? "questão independente" : "questões independentes"} (mínimo ${STAGE_TARGETS.indepMin}).`,
+        );
+      }
+      // Erros são enviados para Revisar Erros automaticamente (revisoesPendentes++).
+      // Não bloqueia o avanço aqui — o bloqueio acontece na etapa 5.
+      break;
+    }
+    case 5: {
+      if (p.revisoesPendentes > 0) {
+        faltam.push(
+          `Revisar ${p.revisoesPendentes} ${p.revisoesPendentes === 1 ? "erro pendente" : "erros pendentes"} deste assunto.`,
+        );
+      }
+      const taxa = pct(ss.revisaoAcertos, ss.revisaoTotal);
+      if (ss.revisaoTotal === 0) {
+        faltam.push("Fazer ao menos uma rodada de revisão dos erros.");
+      } else if (taxa < STAGE_TARGETS.revisaoTaxaMin) {
+        faltam.push(
+          `Atingir ${STAGE_TARGETS.revisaoTaxaMin}% de acerto nas revisões (atual: ${taxa}%).`,
+        );
+      }
+      break;
+    }
+    case 6: {
+      if (!ss.simuladoFeito || ss.simuladoTotal === 0) {
+        faltam.push("Fazer um mini simulado deste assunto.");
+      } else {
+        const taxa = pct(ss.simuladoAcertos, ss.simuladoTotal);
+        if (taxa < STAGE_TARGETS.simuladoTaxaMin) {
+          faltam.push(
+            `Atingir ${STAGE_TARGETS.simuladoTaxaMin}% de acerto no mini simulado (atual: ${taxa}%).`,
+          );
+        }
+      }
+      break;
+    }
+    case 7:
+    default:
+      // Já dominado — não há mais o que avançar.
+      break;
+  }
+
+  const ready = p.etapaAtual < 7 && faltam.length === 0;
+  const proximoPasso =
+    p.etapaAtual >= 7
+      ? "Assunto dominado. Mantenha com revisões espaçadas."
+      : ready
+      ? "Pronto para avançar para a próxima etapa."
+      : faltam[0];
+
+  return { ready, faltam, proximoPasso };
+}
+
 function computeProntoParaAvancar(p: SubjectLearningProgress): boolean {
-  const minQuestoes = p.etapaAtual >= 3 ? 5 : 0;
-  const taxaOk = p.taxaDeAcerto >= 70;
-  const semRevisoes = p.revisoesPendentes === 0;
-  if (p.etapaAtual >= 7) return false;
-  if (p.etapaAtual <= 2) return p.ultimaAtividade !== null; // basta ter iniciado
-  return p.questoesRespondidas >= minQuestoes && taxaOk && semRevisoes;
+  return evaluateAdvance(p).ready;
 }
 
 function ensure(subjectId: string, s: StoreShape): SubjectLearningProgress {
   const existing = s.bySubject[subjectId];
-  if (existing) return existing;
+  if (existing) {
+    // Migração suave: garantir stageStats em registros antigos.
+    if (!existing.stageStats) {
+      existing.stageStats = emptyStageStats();
+    }
+    return existing;
+  }
   const subj = findSubject(subjectId);
   const created: SubjectLearningProgress = {
     subjectId,
@@ -190,6 +322,7 @@ function ensure(subjectId: string, s: StoreShape): SubjectLearningProgress {
     ultimaAtividade: null,
     prontoParaAvancar: false,
     etapasConcluidas: [],
+    stageStats: emptyStageStats(),
   };
   s.bySubject[subjectId] = created;
   return created;
@@ -217,7 +350,6 @@ function recompute(p: SubjectLearningProgress): SubjectLearningProgress {
 
 function mutate(fn: (s: StoreShape) => void) {
   const s = safeRead();
-  // shallow clone só do necessário
   const next: StoreShape = {
     bySubject: { ...s.bySubject },
     activeSubjectId: s.activeSubjectId ?? null,
@@ -227,32 +359,9 @@ function mutate(fn: (s: StoreShape) => void) {
   emit();
 }
 
-// Metas usadas para o cálculo de "o que falta para avançar"
-export const STAGE_TARGETS = {
-  questoesMinimas: 5,
-  taxaMinima: 70,
-} as const;
-
-/** Texto curto descrevendo o que falta para avançar a etapa atual. */
+/** Texto curto descrevendo o próximo passo (primeiro item de `faltam`). */
 export function nextStepHint(p: SubjectLearningProgress): string {
-  if (p.etapaAtual >= 7) return "Assunto dominado. Mantenha com revisões espaçadas.";
-  const stage = stageById(p.etapaAtual);
-  if (p.etapaAtual <= 2) {
-    return p.ultimaAtividade
-      ? `Conclua a etapa “${stage.label}” para avançar.`
-      : `Comece a etapa “${stage.label}”.`;
-  }
-  const faltamQ = Math.max(0, STAGE_TARGETS.questoesMinimas - p.questoesRespondidas);
-  if (faltamQ > 0) {
-    return `Falta responder mais ${faltamQ} ${faltamQ === 1 ? "questão" : "questões"} para avançar.`;
-  }
-  if (p.taxaDeAcerto < STAGE_TARGETS.taxaMinima) {
-    return `Eleve a taxa de acerto para ${STAGE_TARGETS.taxaMinima}% (atual: ${p.taxaDeAcerto}%).`;
-  }
-  if (p.revisoesPendentes > 0) {
-    return `Resolva ${p.revisoesPendentes} ${p.revisoesPendentes === 1 ? "revisão pendente" : "revisões pendentes"}.`;
-  }
-  return "Pronto para avançar para a próxima etapa.";
+  return evaluateAdvance(p).proximoPasso;
 }
 
 /** Status curto e amigável. */
