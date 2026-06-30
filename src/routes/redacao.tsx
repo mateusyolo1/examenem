@@ -1,18 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { correctEssay, type EssayFeedback } from "@/lib/ai.functions";
 import { useProgress } from "@/lib/storage";
+import { findTheme } from "@/lib/essay-themes";
 
-const TEMA =
+const TEMA_PADRAO =
   "Caminhos para combater a insegurança alimentar no cenário brasileiro contemporâneo.";
 
 const DRAFT_KEY = "exame:redacao:draft";
 const CHARS_PER_LINE = 70; // aprox. linhas da folha oficial
 
+const searchSchema = z.object({ tema: z.string().optional() });
+
 export const Route = createFileRoute("/redacao")({
+  validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [
       { title: "Oficina de Redação — Exame ENEM" },
@@ -27,6 +32,9 @@ export const Route = createFileRoute("/redacao")({
 });
 
 function Redacao() {
+  const { tema: temaId } = Route.useSearch();
+  const temaSel = temaId ? findTheme(temaId) : undefined;
+  const TEMA = temaSel?.titulo ?? TEMA_PADRAO;
   const { progress, update } = useProgress();
   const [text, setText] = useState("");
   const [feedback, setFeedback] = useState<EssayFeedback | null>(null);
@@ -114,10 +122,25 @@ function Redacao() {
 
         {/* Tema da semana */}
         <div className="mb-6 p-6 bg-card border-l-2 border-primary border border-border">
-          <span className="text-[10px] font-mono uppercase text-muted-foreground block mb-2">
-            Tema da semana
-          </span>
-          <p className="font-bold text-lg leading-tight tracking-tight">{TEMA}</p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <span className="text-[10px] font-mono uppercase text-muted-foreground block mb-2">
+                {temaSel ? `Tema · ${temaSel.categoria}` : "Tema da semana"}
+              </span>
+              <p className="font-bold text-lg leading-tight tracking-tight">{TEMA}</p>
+              {temaSel && (
+                <p className="text-[11px] font-mono uppercase text-muted-foreground mt-2">
+                  Eixo · {temaSel.eixo}
+                </p>
+              )}
+            </div>
+            <Link
+              to="/temas-redacao"
+              className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-border hover:border-foreground transition-all"
+            >
+              Trocar tema
+            </Link>
+          </div>
         </div>
 
         {/* Editor */}

@@ -8,6 +8,7 @@ const LINKS = [
   { to: "/revisar", label: "Revisar" },
   { to: "/simulados", label: "Simulados" },
   { to: "/redacao", label: "Redação" },
+  { to: "/temas-redacao", label: "Temas" },
   { to: "/tutor", label: "Tutor IA" },
 ] as const;
 
