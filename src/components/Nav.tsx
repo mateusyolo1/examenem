@@ -17,34 +17,52 @@ import {
   BookOpen,
   Lightbulb,
   Trophy,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ size?: number }> };
 
-// Primary quick-access (shown in mobile bottom bar — 5 slots — and as icons in desktop)
+// Mobile bottom bar (5 slots + Mais)
 const PRIMARY: NavItem[] = [
   { to: "/", label: "Início", icon: Home },
+  { to: "/plano", label: "Plano", icon: Calendar },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/redacao", label: "Redação", icon: PenLine },
 ];
 
-// Also surfaced as quick access on desktop
-const SECONDARY: NavItem[] = [
+// Desktop top bar (primary)
+const DESKTOP_MAIN: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
+  { to: "/questoes", label: "Questões", icon: ListChecks },
+  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
+  { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/redacao", label: "Redação", icon: PenLine },
   { to: "/tutor", label: "Tutor IA", icon: Bot },
   { to: "/perfil", label: "Perfil", icon: User },
 ];
 
-// Shown only in the "Mais" menu
-const EXTRA: NavItem[] = [
-  { to: "/plano", label: "Plano", icon: Calendar },
+// Grouped under "Mais"
+const MORE: NavItem[] = [
+  { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
   { to: "/materias", label: "Matérias", icon: BookOpen },
   { to: "/temas-redacao", label: "Temas de Redação", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
 ];
 
-const ALL: NavItem[] = [...PRIMARY, ...SECONDARY, ...EXTRA];
+// Full list for slide-up sheet
+const ALL: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
+  { to: "/questoes", label: "Questões", icon: ListChecks },
+  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
+  { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/redacao", label: "Redação", icon: PenLine },
+  { to: "/tutor", label: "Tutor IA", icon: Bot },
+  { to: "/perfil", label: "Perfil", icon: User },
+  ...MORE,
+];
 
 export function Nav() {
   const { progress } = useProgress();
@@ -77,8 +95,8 @@ export function Nav() {
             >
               Exame.
             </Link>
-            <div className="hidden lg:flex items-center gap-1 text-sm font-medium">
-              {[...PRIMARY, ...SECONDARY].map((l) => {
+            <div className="hidden xl:flex items-center gap-1 text-sm font-medium">
+              {DESKTOP_MAIN.map((l) => {
                 const active = isActive(l.to);
                 const Icon = l.icon;
                 return (
@@ -127,7 +145,7 @@ export function Nav() {
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label="Abrir menu"
-              className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
+              className="xl:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
             >
               <Menu size={16} />
             </button>
@@ -138,7 +156,7 @@ export function Nav() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Navegação rápida"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="grid grid-cols-6 max-w-2xl mx-auto">
           {PRIMARY.map((l) => {
