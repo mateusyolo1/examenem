@@ -14,6 +14,7 @@ const LINKS = [
   { to: "/temas-redacao", label: "Temas" },
   { to: "/tutor", label: "Tutor IA" },
   { to: "/conquistas", label: "Conquistas" },
+  { to: "/perfil", label: "Perfil" },
 ] as const;
 
 export function Nav() {

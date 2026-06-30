@@ -16,6 +16,7 @@ import { Route as RevisarRouteImport } from './routes/revisar'
 import { Route as RedacaoRouteImport } from './routes/redacao'
 import { Route as QuestoesRouteImport } from './routes/questoes'
 import { Route as PlanoRouteImport } from './routes/plano'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as MateriasRouteImport } from './routes/materias'
 import { Route as ConquistasRouteImport } from './routes/conquistas'
 import { Route as IndexRouteImport } from './routes/index'
@@ -55,6 +56,11 @@ const PlanoRoute = PlanoRouteImport.update({
   path: '/plano',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MateriasRoute = MateriasRouteImport.update({
   id: '/materias',
   path: '/materias',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
+  '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
+  '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
+  '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/conquistas'
     | '/materias'
+    | '/perfil'
     | '/plano'
     | '/questoes'
     | '/redacao'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/conquistas'
     | '/materias'
+    | '/perfil'
     | '/plano'
     | '/questoes'
     | '/redacao'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/conquistas'
     | '/materias'
+    | '/perfil'
     | '/plano'
     | '/questoes'
     | '/redacao'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConquistasRoute: typeof ConquistasRoute
   MateriasRoute: typeof MateriasRoute
+  PerfilRoute: typeof PerfilRoute
   PlanoRoute: typeof PlanoRoute
   QuestoesRoute: typeof QuestoesRoute
   RedacaoRoute: typeof RedacaoRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/materias': {
       id: '/materias'
       path: '/materias'
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConquistasRoute: ConquistasRoute,
   MateriasRoute: MateriasRoute,
+  PerfilRoute: PerfilRoute,
   PlanoRoute: PlanoRoute,
   QuestoesRoute: QuestoesRoute,
   RedacaoRoute: RedacaoRoute,

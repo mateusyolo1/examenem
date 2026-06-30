@@ -42,6 +42,9 @@ export interface Progress {
   essays: EssayRecord[];
   dailyGoal: number;
   examDate: string; // ISO
+  studentName?: string;
+  targetScore?: number; // 0-1000
+  dailyMinutes?: number; // available study minutes/day
 }
 
 const DEFAULT: Progress = {
@@ -51,8 +54,10 @@ const DEFAULT: Progress = {
   simulados: [],
   essays: [],
   dailyGoal: 18,
-  // Default: Nov 9 of current or next year
   examDate: defaultExamDate(),
+  studentName: "",
+  targetScore: 700,
+  dailyMinutes: 120,
 };
 
 function defaultExamDate(): string {
@@ -133,4 +138,14 @@ export function areaStats(p: Progress, area: Area, questionAreaMap: Record<strin
   const total = entries.length;
   const correct = entries.filter(([, a]) => a.correct).length;
   return { total, correct, accuracy: total ? Math.round((correct / total) * 100) : 0 };
+}
+
+export function resetProgress() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(KEY);
+  window.dispatchEvent(new Event("exame:progress"));
+}
+
+export function exportProgress(): string {
+  return JSON.stringify(read(), null, 2);
 }
