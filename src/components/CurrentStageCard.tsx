@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useState } from "react";
 import { SUBJECTS } from "@/lib/subjects";
 import {
   LEARNING_STAGES,
@@ -28,7 +28,7 @@ import { ArrowRight, BookOpen, Check, Sparkles, Target, TrendingUp, X } from "lu
 export function CurrentStageCard() {
   const active = useActiveLearning();
   const [picking, setPicking] = useState(false);
-  const selectId = useMemo(() => `stage-card-subject-${Math.random().toString(36).slice(2, 7)}`, []);
+  const selectId = `stage-card-subject-${useId()}`;
 
   const stage = active ? stageById(active.etapaAtual) : null;
   const proximaEtapa =
