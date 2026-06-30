@@ -324,7 +324,6 @@ export function resetAllLearningProgress() {
 
 export function useLearningProgress(): SubjectLearningProgress[] {
   const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  // garante reidratação no client se SSR retornou vazio
   useEffect(() => {
     emit();
   }, []);
@@ -339,3 +338,27 @@ export function useSubjectLearning(subjectId: string): SubjectLearningProgress |
 export function stageById(id: LearningStageId): LearningStage {
   return LEARNING_STAGES.find((s) => s.id === id) ?? LEARNING_STAGES[0];
 }
+
+// --- Assunto ativo ---------------------------------------------------
+
+export function getActiveSubjectId(): string | null {
+  return safeRead().activeSubjectId ?? null;
+}
+
+export function setActiveSubject(subjectId: string | null) {
+  mutate((s) => {
+    s.activeSubjectId = subjectId;
+    if (subjectId) ensure(subjectId, s);
+  });
+}
+
+export function useActiveLearning(): SubjectLearningProgress | null {
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  useEffect(() => {
+    emit();
+  }, []);
+  const id = snap.activeSubjectId;
+  if (!id) return null;
+  return snap.bySubject[id] ?? null;
+}
+
