@@ -227,12 +227,12 @@ function ConfiguracoesPage() {
 
       <ConfirmDialog
         open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        onCancel={() => setConfirmOpen(false)}
         onConfirm={handleReset}
         title="Resetar progresso?"
-        message="Esta ação apaga todo o seu histórico, respostas, redações e simulados. Não dá para desfazer."
+        description="Esta ação apaga todo o seu histórico, respostas, redações e simulados. Não dá para desfazer."
         confirmLabel="Apagar tudo"
-        variant="destructive"
+        destructive
       />
     </div>
   );
