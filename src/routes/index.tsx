@@ -253,6 +253,66 @@ function Dashboard() {
           )}
         </section>
 
+        {/* Level + recent achievements */}
+        <section className="animate-reveal mb-10">
+          <Link
+            to="/conquistas"
+            className="block border border-border bg-card p-6 hover:border-foreground transition-colors"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="min-w-[220px]">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Nível {lvlInfo.level} · {lvlInfo.title}
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-extrabold tracking-tighter">
+                    {xp.total.toLocaleString("pt-BR")}
+                  </span>
+                  <span className="text-[10px] font-mono uppercase text-muted-foreground">XP</span>
+                </div>
+                <div className="mt-2 w-56">
+                  <div className="flex justify-between text-[9px] font-mono uppercase text-muted-foreground mb-1">
+                    <span>Nv {lvlInfo.level + 1}</span>
+                    <span>{lvlInfo.xpToNext} XP</span>
+                  </div>
+                  <div className="h-1.5 bg-border">
+                    <div
+                      className="h-full bg-foreground transition-all"
+                      style={{ width: `${lvlInfo.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 min-w-[220px]">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Conquistas recentes
+                </span>
+                {recentUnlocks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Nenhuma medalha ainda. Responda sua primeira questão para começar.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {recentUnlocks.map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex items-center gap-1.5 border border-foreground px-2.5 py-1 text-xs font-bold"
+                      >
+                        <span className="text-primary">✓</span> {a.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Ver todas →
+              </span>
+            </div>
+          </Link>
+        </section>
+
+
+
 
         {/* Recommendation + Quick actions */}
         <section className="animate-reveal mb-10 grid lg:grid-cols-3 gap-4">
