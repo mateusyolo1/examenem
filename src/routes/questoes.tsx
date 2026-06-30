@@ -17,6 +17,8 @@ import {
 } from "@/lib/questions-data";
 import { useSavedQuestions } from "@/lib/saved-questions";
 import { recordReviewAnswer } from "@/lib/review";
+import { subjectIdForQuestion } from "@/lib/subjects";
+import { recordSubjectAnswer } from "@/lib/learning-progress";
 
 const AREA_VALUES = ["todas", "linguagens", "humanas", "natureza", "matematica"] as const;
 const DIFF_VALUES = ["todas", "Fácil", "Médio", "Difícil"] as const;
@@ -121,6 +123,8 @@ function Questoes() {
     const correct = selected === q.correct;
     recordAnswer(q.id, selected, correct);
     recordReviewAnswer(q.id, correct);
+    const subjectId = subjectIdForQuestion(q.area, questionMateria(q), questionTopic(q));
+    if (subjectId) recordSubjectAnswer(subjectId, correct);
     setRevealed(true);
   }
 

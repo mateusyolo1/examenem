@@ -18,6 +18,8 @@ import {
   type ReviewEntry,
   INTERVALS_DAYS,
 } from "@/lib/review";
+import { subjectIdForQuestion } from "@/lib/subjects";
+import { recordReviewAnswer as recordLearningReview } from "@/lib/learning-progress";
 
 export const Route = createFileRoute("/revisar")({
   head: () => ({
@@ -72,6 +74,8 @@ function RevisarPage() {
     const ok = retrySel === q.correct;
     recordAnswer(q.id, retrySel, ok);
     recordReviewAnswer(q.id, ok);
+    const subjectId = subjectIdForQuestion(q.area, questionMateria(q), questionTopic(q));
+    if (subjectId) recordLearningReview(subjectId, ok);
     setRetryDone(true);
   }
 
