@@ -62,3 +62,39 @@ export const SUBJECTS: Subject[] = [
 export function subjectsByArea(area: Subject["area"]) {
   return SUBJECTS.filter((s) => s.area === area);
 }
+
+/**
+ * Mapeia uma questão (área + matéria + tópico) para o id do Subject
+ * correspondente, usado pelo sistema de Etapas de Aprendizado.
+ * Estratégia: filtra subjects pela área e tenta casar o nome do subject
+ * com o tópico ou a matéria da questão. Fallback: primeiro subject da área.
+ */
+export function subjectIdForQuestion(
+  area: Area | "redacao",
+  materia: string,
+  topico: string,
+): string | null {
+  const pool = SUBJECTS.filter((s) => s.area === area);
+  if (pool.length === 0) return null;
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  const t = norm(topico);
+  const m = norm(materia);
+  // 1) match exato/contém pelo tópico
+  let hit = pool.find((s) => {
+    const n = norm(s.name);
+    return n === t || t.includes(n) || n.includes(t);
+  });
+  if (hit) return hit.id;
+  // 2) match pela matéria
+  hit = pool.find((s) => {
+    const n = norm(s.name);
+    return n === m || m.includes(n) || n.includes(m);
+  });
+  if (hit) return hit.id;
+  // 3) fallback: primeiro subject da área
+  return pool[0].id;
+}
