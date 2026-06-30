@@ -263,8 +263,22 @@ function PlanForm({
           focus,
         });
       }}
-      className="bg-card border border-border rounded-2xl shadow-sm p-6 sm:p-8 space-y-8"
+      className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
     >
+      <div className="relative px-6 sm:px-8 pt-7 pb-6 border-b border-border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-background/80 backdrop-blur text-foreground/80 text-[11px] font-semibold tracking-wide ring-1 ring-inset ring-border">
+          <Sparkles size={11} className="text-primary" aria-hidden />
+          Configurar plano
+        </div>
+        <h2 className="mt-3 text-xl sm:text-2xl font-bold tracking-tight">
+          Conte como é a sua rotina
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-xl">
+          Vamos montar um cronograma semanal sob medida — com teoria, questões,
+          revisões, redações e simulados distribuídos até o dia da prova.
+        </p>
+      </div>
+      <div className="p-6 sm:p-8 space-y-8">
       <Field label="Data da prova">
         <input
           type="date"
