@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
@@ -18,60 +18,80 @@ import {
   Lightbulb,
   Trophy,
   Settings as SettingsIcon,
+  MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ size?: number }> };
+type NavItem = {
+  to: string;
+  label: string;
+  shortLabel?: string;
+  icon: React.ComponentType<{ size?: number }>;
+};
 
-// Mobile bottom bar (5 slots + Mais)
-const PRIMARY: NavItem[] = [
-  { to: "/", label: "Início", icon: Home },
+// Desktop primary menu (always visible on lg+)
+const DESKTOP_MAIN: NavItem[] = [
+  { to: "/", label: "Dashboard", shortLabel: "Dashboard", icon: Home },
+  { to: "/plano", label: "Plano de Estudos", shortLabel: "Plano", icon: Calendar },
+  { to: "/questoes", label: "Questões", icon: ListChecks },
+  { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },
+  { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/redacao", label: "Redação", icon: PenLine },
+  { to: "/tutor", label: "Tutor IA", icon: Bot },
+  { to: "/perfil", label: "Perfil", icon: User },
+];
+
+// Items inside the "Mais" dropdown / sheet
+const MORE: NavItem[] = [
+  { to: "/materias", label: "Matérias", icon: BookOpen },
+  { to: "/temas-redacao", label: "Temas", icon: Lightbulb },
+  { to: "/conquistas", label: "Conquistas", icon: Trophy },
+  { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
+];
+
+// Mobile bottom bar — 5 priority + Mais
+const MOBILE_PRIMARY: NavItem[] = [
+  { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/plano", label: "Plano", icon: Calendar },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
 ];
 
-// Desktop top bar (primary)
-const DESKTOP_MAIN: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
-  { to: "/questoes", label: "Questões", icon: ListChecks },
-  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
-  { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/redacao", label: "Redação", icon: PenLine },
-  { to: "/tutor", label: "Tutor IA", icon: Bot },
-  { to: "/perfil", label: "Perfil", icon: User },
-];
-
-// Grouped under "Mais"
-const MORE: NavItem[] = [
-  { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
-  { to: "/materias", label: "Matérias", icon: BookOpen },
-  { to: "/temas-redacao", label: "Temas de Redação", icon: Lightbulb },
-  { to: "/conquistas", label: "Conquistas", icon: Trophy },
-];
-
-// Full list for slide-up sheet
-const ALL: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/plano", label: "Plano de Estudos", icon: Calendar },
-  { to: "/questoes", label: "Questões", icon: ListChecks },
-  { to: "/revisar", label: "Revisar Erros", icon: RotateCw },
-  { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/redacao", label: "Redação", icon: PenLine },
-  { to: "/tutor", label: "Tutor IA", icon: Bot },
-  { to: "/perfil", label: "Perfil", icon: User },
-  ...MORE,
-];
+// Full list for mobile sheet
+const ALL: NavItem[] = [...DESKTOP_MAIN, ...MORE];
 
 export function Nav() {
   const { progress } = useProgress();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const xp = computeXP(progress);
   const lvl = levelFor(xp.total);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
+  const moreActive = MORE.some((m) => isActive(m.to));
+
+  // Close desktop "Mais" dropdown on outside click / esc / route change
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    setMoreOpen(false);
+    setSheetOpen(false);
+  }, [pathname]);
 
   return (
     <>
@@ -88,14 +108,14 @@ export function Nav() {
         className="sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-6 min-w-0">
+          <div className="flex items-center gap-4 min-w-0">
             <Link
               to="/"
               className="font-extrabold text-xl sm:text-2xl tracking-tighter uppercase shrink-0"
             >
               Exame.
             </Link>
-            <div className="hidden xl:flex items-center gap-1 text-sm font-medium">
+            <div className="hidden lg:flex items-center gap-0.5 text-sm font-medium">
               {DESKTOP_MAIN.map((l) => {
                 const active = isActive(l.to);
                 const Icon = l.icon;
@@ -103,18 +123,68 @@ export function Nav() {
                   <Link
                     key={l.to}
                     to={l.to}
+                    aria-current={active ? "page" : undefined}
                     className={
-                      "inline-flex items-center gap-1.5 px-3 py-2 rounded-md transition-colors " +
+                      "inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md transition-colors whitespace-nowrap " +
                       (active
                         ? "bg-accent text-foreground"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50")
                     }
                   >
                     <Icon size={14} />
-                    {l.label}
+                    <span className="hidden xl:inline">{l.label}</span>
+                    <span className="xl:hidden">{l.shortLabel ?? l.label}</span>
                   </Link>
                 );
               })}
+
+              {/* Desktop "Mais" dropdown */}
+              <div className="relative" ref={moreRef}>
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={moreOpen}
+                  className={
+                    "inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md transition-colors " +
+                    (moreActive || moreOpen
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50")
+                  }
+                >
+                  <MoreHorizontal size={14} />
+                  Mais
+                  <ChevronDown size={12} className={moreOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+                </button>
+                {moreOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
+                  >
+                    {MORE.map((l) => {
+                      const active = isActive(l.to);
+                      const Icon = l.icon;
+                      return (
+                        <Link
+                          key={l.to}
+                          to={l.to}
+                          role="menuitem"
+                          aria-current={active ? "page" : undefined}
+                          className={
+                            "flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors " +
+                            (active
+                              ? "bg-accent text-foreground"
+                              : "text-foreground hover:bg-accent")
+                          }
+                        >
+                          <Icon size={16} />
+                          {l.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -143,9 +213,9 @@ export function Nav() {
             <ThemeToggle />
             <button
               type="button"
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setSheetOpen(true)}
               aria-label="Abrir menu"
-              className="xl:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
+              className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
             >
               <Menu size={16} />
             </button>
@@ -156,10 +226,10 @@ export function Nav() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Navegação rápida"
-        className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="grid grid-cols-6 max-w-2xl mx-auto">
-          {PRIMARY.map((l) => {
+          {MOBILE_PRIMARY.map((l) => {
             const active = isActive(l.to);
             const Icon = l.icon;
             return (
@@ -169,13 +239,11 @@ export function Nav() {
                   aria-current={active ? "page" : undefined}
                   className={
                     "flex flex-col items-center justify-center gap-0.5 min-h-14 py-2 text-[10px] font-medium tracking-wide transition-colors " +
-                    (active
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground")
+                    (active ? "text-primary" : "text-muted-foreground hover:text-foreground")
                   }
                 >
                   <Icon size={20} />
-                  <span>{l.label}</span>
+                  <span>{l.shortLabel ?? l.label}</span>
                 </Link>
               </li>
             );
@@ -183,19 +251,22 @@ export function Nav() {
           <li>
             <button
               type="button"
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setSheetOpen(true)}
               aria-label="Mais opções"
-              className="w-full flex flex-col items-center justify-center gap-0.5 min-h-14 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className={
+                "w-full flex flex-col items-center justify-center gap-0.5 min-h-14 py-2 text-[10px] font-medium transition-colors " +
+                (moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground")
+              }
             >
-              <Menu size={20} />
+              <MoreHorizontal size={20} />
               <span>Mais</span>
             </button>
           </li>
         </ul>
       </nav>
 
-      {/* Slide-up menu */}
-      {menuOpen && (
+      {/* Slide-up / side sheet */}
+      {sheetOpen && (
         <div
           className="fixed inset-0 z-[60]"
           role="dialog"
@@ -204,7 +275,7 @@ export function Nav() {
         >
           <div
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => setSheetOpen(false)}
           />
           <div className="absolute bottom-0 inset-x-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-80 bg-card border-t lg:border-l border-border rounded-t-2xl lg:rounded-none shadow-2xl pb-[env(safe-area-inset-bottom)] animate-reveal">
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
@@ -213,7 +284,7 @@ export function Nav() {
               </span>
               <button
                 type="button"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => setSheetOpen(false)}
                 aria-label="Fechar menu"
                 className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
               >
@@ -228,13 +299,11 @@ export function Nav() {
                   <li key={l.to}>
                     <Link
                       to={l.to}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => setSheetOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={
                         "flex items-center gap-3 px-3 py-3 min-h-11 rounded-md text-sm font-medium transition-colors " +
-                        (active
-                          ? "bg-accent text-foreground"
-                          : "text-foreground hover:bg-accent")
+                        (active ? "bg-accent text-foreground" : "text-foreground hover:bg-accent")
                       }
                     >
                       <Icon size={18} />
