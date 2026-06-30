@@ -388,7 +388,7 @@ function Action({
   title,
   sub,
 }: {
-  to: "/questoes" | "/simulados" | "/redacao";
+  to: "/questoes" | "/simulados" | "/redacao" | "/revisar";
   kicker: string;
   title: string;
   sub: string;
