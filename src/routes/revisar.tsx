@@ -74,6 +74,8 @@ function RevisarPage() {
     const ok = retrySel === q.correct;
     recordAnswer(q.id, retrySel, ok);
     recordReviewAnswer(q.id, ok);
+    const subjectId = subjectIdForQuestion(q.area, questionMateria(q), questionTopic(q));
+    if (subjectId) recordLearningReview(subjectId, ok);
     setRetryDone(true);
   }
 
