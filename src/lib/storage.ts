@@ -147,5 +147,57 @@ export function resetProgress() {
 }
 
 export function exportProgress(): string {
-  return JSON.stringify(read(), null, 2);
+  if (typeof window === "undefined") return JSON.stringify(read(), null, 2);
+  const bundle: Record<string, unknown> = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    progress: read(),
+  };
+  try {
+    const plan = localStorage.getItem("exame:study-plan:v1");
+    if (plan) bundle.studyPlan = JSON.parse(plan);
+  } catch {
+    /* ignore */
+  }
+  return JSON.stringify(bundle, null, 2);
 }
+
+export function importProgress(json: string): { ok: true } | { ok: false; error: string } {
+  if (typeof window === "undefined") return { ok: false, error: "Indisponível" };
+  try {
+    const parsed = JSON.parse(json);
+    // Accept either { progress, studyPlan } bundle or a raw Progress object.
+    const prog =
+      parsed && typeof parsed === "object" && "progress" in parsed
+        ? (parsed as { progress: Progress }).progress
+        : (parsed as Progress);
+    if (!prog || typeof prog !== "object" || !("answers" in prog)) {
+      return { ok: false, error: "Arquivo inválido." };
+    }
+    write({ ...DEFAULT, ...prog });
+    if (parsed && typeof parsed === "object" && "studyPlan" in parsed) {
+      localStorage.setItem(
+        "exame:study-plan:v1",
+        JSON.stringify((parsed as { studyPlan: unknown }).studyPlan),
+      );
+      window.dispatchEvent(new Event("exame:study-plan"));
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Erro ao importar." };
+  }
+}
+
+export function wipeAllData() {
+  if (typeof window === "undefined") return;
+  // Remove every Exame namespace key (progress, study plan, saved questions, theme, etc.)
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("exame:")) keys.push(k);
+  }
+  keys.forEach((k) => localStorage.removeItem(k));
+  window.dispatchEvent(new Event("exame:progress"));
+  window.dispatchEvent(new Event("exame:study-plan"));
+}
+
