@@ -170,27 +170,13 @@ export function CurrentStageCard() {
               {studentStatus(active)}
             </span>
             {proximaEtapa && (
-              <button
-                type="button"
-                onClick={() => {
-                  const r = advanceStage(active.subjectId);
-                  if (!r.ok) {
-                    alert("Ainda não é possível avançar:\n\n• " + r.faltam.join("\n• "));
-                  }
-                }}
-                disabled={!active.prontoParaAvancar}
-                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md bg-foreground text-background disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary transition-colors"
-              >
-                Avançar <ArrowRight size={11} />
-              </button>
+              <div className="text-[10px] text-muted-foreground">
+                Próxima: <span className="font-medium text-foreground">{proximaEtapa.label}</span>
+              </div>
             )}
           </div>
 
-          {proximaEtapa && (
-            <div className="text-[10px] text-muted-foreground">
-              Próxima: <span className="font-medium text-foreground">{proximaEtapa.label}</span>
-            </div>
-          )}
+          <NextStageButtons active={active} />
         </div>
       )}
 
