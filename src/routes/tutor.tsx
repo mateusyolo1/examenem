@@ -119,6 +119,7 @@ function Tutor() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { progress } = useProgress();
+  const activeLearning = useActiveLearning();
 
   useEffect(() => {
     setMessages(loadHistory());
