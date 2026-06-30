@@ -1,7 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  AlertCircle,
+  Target,
+  Clock,
+  Sparkles,
+  Trash2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  CalendarCheck,
+  BookOpen,
+  ListChecks,
+  Repeat,
+  PenLine,
+  FileText,
+  Coffee,
+  ArrowRight,
+  Undo2,
+  Check,
+} from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AREAS, useProgress, type Area } from "@/lib/storage";
 import {
   WEEKDAYS,
@@ -38,22 +61,57 @@ function isoDateInput(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-const TYPE_BADGE: Record<TaskType, string> = {
-  teoria: "border-blue-500/40 text-blue-600 dark:text-blue-400",
-  questoes: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
-  revisao: "border-amber-500/40 text-amber-600 dark:text-amber-400",
-  simulado: "border-purple-500/40 text-purple-600 dark:text-purple-400",
-  redacao: "border-pink-500/40 text-pink-600 dark:text-pink-400",
+// Premium soft palette per task type — surface tones for cards + dot accents.
+const TYPE_STYLES: Record<
+  TaskType,
+  { dot: string; chip: string; ring: string; icon: typeof BookOpen }
+> = {
+  teoria: {
+    dot: "bg-sky-500",
+    chip:
+      "bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-500/20",
+    ring: "ring-sky-500/30",
+    icon: BookOpen,
+  },
+  questoes: {
+    dot: "bg-emerald-500",
+    chip:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/20",
+    ring: "ring-emerald-500/30",
+    icon: ListChecks,
+  },
+  revisao: {
+    dot: "bg-amber-500",
+    chip:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-500/25",
+    ring: "ring-amber-500/30",
+    icon: Repeat,
+  },
+  redacao: {
+    dot: "bg-violet-500",
+    chip:
+      "bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-1 ring-inset ring-violet-500/20",
+    ring: "ring-violet-500/30",
+    icon: PenLine,
+  },
+  simulado: {
+    dot: "bg-rose-500",
+    chip:
+      "bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-inset ring-rose-500/20",
+    ring: "ring-rose-500/30",
+    icon: FileText,
+  },
 };
 
 function Plano() {
   const { plan, savePlan, clearPlan, toggleDone } = useStudyPlan();
   const { progress } = useProgress();
   const [editing, setEditing] = useState(false);
+  const [askClear, setAskClear] = useState(false);
 
   if (!plan || editing) {
     return (
-      <Shell>
+      <Shell plan={plan}>
         <PlanForm
           initial={plan?.config}
           defaultExamDate={progress.examDate}
@@ -68,34 +126,85 @@ function Plano() {
   }
 
   return (
-    <Shell>
+    <Shell plan={plan}>
       <PlanView
         plan={plan}
         onToggleDone={toggleDone}
         onEdit={() => setEditing(true)}
-        onClear={() => {
-          if (confirm("Apagar o plano atual?")) clearPlan();
+        onClear={() => setAskClear(true)}
+      />
+      <ConfirmDialog
+        open={askClear}
+        title="Apagar plano de estudos?"
+        description="Essa ação remove todas as tarefas do cronograma. Você pode gerar um novo plano depois."
+        confirmLabel="Apagar plano"
+        destructive
+        onConfirm={() => {
+          clearPlan();
+          setAskClear(false);
         }}
+        onCancel={() => setAskClear(false)}
       />
     </Shell>
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({
+  plan,
+  children,
+}: {
+  plan: ReturnType<typeof useStudyPlan>["plan"];
+  children: React.ReactNode;
+}) {
+  const daysToExam = plan
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(plan.config.examDate).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
+  const examLabel = plan
+    ? new Date(plan.config.examDate).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
+    <div className="min-h-screen flex flex-col font-sans bg-gradient-to-b from-muted/30 via-background to-background text-foreground">
       <Nav />
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10">
-        <header className="mb-8 border-b border-border pb-6">
-          <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <header className="mb-8 sm:mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide ring-1 ring-inset ring-primary/20">
+            <Sparkles size={12} aria-hidden />
             Plano de Estudos
-          </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter mt-2">
-            Seu cronograma pessoal até a prova.
+          </div>
+          <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+            Seu cronograma pessoal até a prova
           </h1>
-          <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-            Geramos tarefas diárias balanceadas com teoria, questões, revisões, simulados e redação.
+          <p className="mt-3 text-base text-muted-foreground max-w-2xl leading-relaxed">
+            Tarefas diárias balanceadas com teoria, questões, revisões, simulados
+            e redação — adaptadas ao seu tempo disponível e às suas áreas mais
+            difíceis.
           </p>
+          {plan && examLabel && (
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-foreground/80">
+                <CalendarDays size={14} aria-hidden className="text-primary" />
+                Prova em <strong className="font-semibold">{examLabel}</strong>
+              </span>
+              {daysToExam !== null && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-foreground/80">
+                  <Clock size={14} aria-hidden className="text-primary" />
+                  <strong className="font-semibold">{daysToExam}</strong> dias
+                  restantes
+                </span>
+              )}
+            </div>
+          )}
         </header>
         {children}
       </main>
@@ -154,7 +263,7 @@ function PlanForm({
           focus,
         });
       }}
-      className="space-y-8"
+      className="bg-card border border-border rounded-2xl shadow-sm p-6 sm:p-8 space-y-8"
     >
       <Field label="Data da prova">
         <input
@@ -163,7 +272,7 @@ function PlanForm({
           min={isoDateInput(new Date())}
           onChange={(e) => setExamDate(e.target.value)}
           required
-          className="w-full md:w-64 px-3 py-2 border border-border bg-background text-sm"
+          className="w-full md:w-64 min-h-11 px-3 rounded-lg border border-border bg-background text-sm"
         />
       </Field>
 
@@ -175,7 +284,7 @@ function PlanForm({
           step={0.5}
           value={hoursPerDay}
           onChange={(e) => setHoursPerDay(Number(e.target.value))}
-          className="w-full md:w-96"
+          className="w-full md:w-96 accent-primary"
         />
       </Field>
 
@@ -188,11 +297,12 @@ function PlanForm({
                 type="button"
                 key={d.id}
                 onClick={() => toggleDay(d.id)}
+                aria-pressed={active}
                 className={
-                  "px-3 py-2 text-xs font-mono uppercase tracking-widest border transition-all " +
+                  "min-h-11 px-4 rounded-full text-sm font-semibold border transition-all " +
                   (active
-                    ? "bg-foreground text-background border-foreground"
-                    : "border-border hover:border-foreground")
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border bg-background hover:bg-accent hover:border-foreground/30")
                 }
               >
                 {d.label}
@@ -203,7 +313,7 @@ function PlanForm({
       </Field>
 
       <Field label="Áreas mais difíceis (peso extra)">
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid sm:grid-cols-2 gap-3">
           {AREAS.map((a) => {
             const active = hardAreas.includes(a.id);
             return (
@@ -211,21 +321,22 @@ function PlanForm({
                 type="button"
                 key={a.id}
                 onClick={() => toggleHard(a.id)}
+                aria-pressed={active}
                 className={
-                  "text-left p-3 border transition-all " +
+                  "text-left p-4 rounded-xl border transition-all " +
                   (active
-                    ? "bg-foreground text-background border-foreground"
-                    : "border-border hover:border-foreground")
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border bg-background hover:bg-accent hover:border-foreground/30")
                 }
               >
-                <div className="text-sm font-bold">{a.label}</div>
+                <div className="text-sm font-semibold">{a.label}</div>
                 <div
                   className={
-                    "text-[10px] mt-0.5 font-mono uppercase " +
-                    (active ? "text-background/70" : "text-muted-foreground")
+                    "text-xs mt-1 " +
+                    (active ? "text-primary-foreground/80" : "text-muted-foreground")
                   }
                 >
-                  {active ? "Foco extra" : "Toque para marcar"}
+                  {active ? "Foco extra ativado" : "Toque para priorizar"}
                 </div>
               </button>
             );
@@ -241,7 +352,7 @@ function PlanForm({
           step={10}
           value={targetScore}
           onChange={(e) => setTargetScore(Number(e.target.value))}
-          className="w-full md:w-96"
+          className="w-full md:w-96 accent-primary"
         />
       </Field>
 
@@ -263,11 +374,12 @@ function PlanForm({
                 type="button"
                 key={opt.id}
                 onClick={() => setFocus(opt.id)}
+                aria-pressed={active}
                 className={
-                  "px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all " +
+                  "min-h-11 px-4 rounded-full text-sm font-semibold border transition-all " +
                   (active
-                    ? "bg-foreground text-background border-foreground"
-                    : "border-border hover:border-foreground")
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border bg-background hover:bg-accent hover:border-foreground/30")
                 }
               >
                 {opt.label}
@@ -277,19 +389,20 @@ function PlanForm({
         </div>
       </Field>
 
-      <div className="flex gap-3 pt-4 border-t border-border">
+      <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-border">
         <button
           type="submit"
           disabled={!canSubmit}
-          className="px-6 py-3 bg-foreground text-background font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-30"
+          className="inline-flex items-center justify-center gap-2 min-h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
+          <Sparkles size={16} aria-hidden />
           Gerar plano
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-6 py-3 border border-border font-bold text-xs uppercase tracking-widest hover:border-foreground"
+            className="inline-flex items-center justify-center min-h-11 px-6 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-accent"
           >
             Cancelar
           </button>
@@ -302,7 +415,7 @@ function PlanForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">
+      <label className="block text-sm font-semibold text-foreground mb-3">
         {label}
       </label>
       {children}
@@ -322,7 +435,7 @@ function PlanView({
   onClear: () => void;
 }) {
   const today = new Date();
-  const [weekStart, setWeekStart] = useState(0); // weeks offset from current
+  const [weekStart, setWeekStart] = useState(0);
 
   const dates = useMemo(() => {
     const base = new Date(today);
@@ -335,90 +448,200 @@ function PlanView({
   const late = plan.tasks.filter((t) => resolvedStatus(t) === "atrasada").length;
   const pct = total ? Math.round((done / total) * 100) : 0;
 
+  const weekTasks = plan.tasks.filter((t) => dates.includes(t.date));
+  const weekDone = weekTasks.filter((t) => t.status === "concluida").length;
+  const weekPct = weekTasks.length
+    ? Math.round((weekDone / weekTasks.length) * 100)
+    : 0;
+
+  const weekLabel =
+    weekStart === 0
+      ? "Esta semana"
+      : weekStart < 0
+        ? `${Math.abs(weekStart)} ${Math.abs(weekStart) === 1 ? "semana atrás" : "semanas atrás"}`
+        : `Daqui a ${weekStart} ${weekStart === 1 ? "semana" : "semanas"}`;
+
   return (
     <div className="space-y-8">
-      {/* Summary */}
-      <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border">
-        <Stat label="Tarefas totais" value={`${total}`} />
-        <Stat label="Concluídas" value={`${done}`} unit={`${pct}%`} bar={pct} />
-        <Stat label="Atrasadas" value={`${late}`} />
+      {/* Summary stats */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Stat
+          icon={<CalendarCheck size={16} />}
+          label="Tarefas totais"
+          value={`${total}`}
+          tone="neutral"
+        />
+        <Stat
+          icon={<CheckCircle2 size={16} />}
+          label="Concluídas"
+          value={`${done}`}
+          unit={`${pct}%`}
+          bar={pct}
+          tone="success"
+        />
+        <Stat
+          icon={<AlertCircle size={16} />}
+          label="Atrasadas"
+          value={`${late}`}
+          tone={late > 0 ? "danger" : "neutral"}
+        />
+        <Stat
+          icon={<Target size={16} />}
           label="Meta de nota"
           value={`${plan.config.targetScore}`}
           unit={`${plan.config.hoursPerDay}h/dia`}
+          tone="primary"
         />
       </section>
 
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setWeekStart((w) => w - 1)}
-            className="px-3 py-2 border border-border text-xs font-mono uppercase tracking-widest hover:border-foreground"
-          >
-            ← Semana anterior
-          </button>
-          <button
-            onClick={() => setWeekStart(0)}
-            className="px-3 py-2 border border-border text-xs font-mono uppercase tracking-widest hover:border-foreground"
-          >
-            Esta semana
-          </button>
-          <button
-            onClick={() => setWeekStart((w) => w + 1)}
-            className="px-3 py-2 border border-border text-xs font-mono uppercase tracking-widest hover:border-foreground"
-          >
-            Próxima semana →
-          </button>
+      {/* Week navigation */}
+      <section className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 self-start">
+            <button
+              onClick={() => setWeekStart((w) => w - 1)}
+              aria-label="Semana anterior"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-full hover:bg-background text-foreground/70 hover:text-foreground transition"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={() => setWeekStart(0)}
+              className="h-9 px-4 rounded-full text-sm font-semibold hover:bg-background transition"
+            >
+              {weekLabel}
+            </button>
+            <button
+              onClick={() => setWeekStart((w) => w + 1)}
+              aria-label="Próxima semana"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-full hover:bg-background text-foreground/70 hover:text-foreground transition"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-accent transition"
+            >
+              <RefreshCw size={14} aria-hidden />
+              Regenerar
+            </button>
+            <button
+              onClick={onClear}
+              className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-sm font-semibold hover:bg-destructive/10 hover:border-destructive/50 transition"
+            >
+              <Trash2 size={14} aria-hidden />
+              Apagar
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onEdit}
-            className="px-3 py-2 border border-border text-xs font-mono uppercase tracking-widest hover:border-foreground"
-          >
-            Regerar
-          </button>
-          <button
-            onClick={onClear}
-            className="px-3 py-2 border border-border text-xs font-mono uppercase tracking-widest hover:border-destructive hover:text-destructive"
-          >
-            Apagar
-          </button>
+
+        {/* Week progress */}
+        <div className="mt-5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-foreground/80">
+              <strong className="font-semibold text-foreground">
+                {weekDone}
+              </strong>{" "}
+              de{" "}
+              <strong className="font-semibold text-foreground">
+                {weekTasks.length}
+              </strong>{" "}
+              tarefas concluídas nesta semana
+            </span>
+            <span className="font-semibold text-foreground tabular-nums">
+              {weekPct}%
+            </span>
+          </div>
+          <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${weekPct}%` }}
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Weekly grid */}
-      <section className="grid md:grid-cols-2 xl:grid-cols-7 gap-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
           const isToday = iso === isoDateInput(new Date());
+          const isPast = iso < isoDateInput(new Date());
+          const dayDone = dayTasks.filter((t) => t.status === "concluida").length;
+          const [wd, dm] = formatDayParts(iso);
           return (
-            <div
+            <article
               key={iso}
               className={
-                "border bg-card p-3 flex flex-col " +
-                (isToday ? "border-foreground" : "border-border")
+                "rounded-2xl border bg-card shadow-sm flex flex-col transition-all " +
+                (isToday
+                  ? "border-primary/50 ring-2 ring-primary/20 shadow-md"
+                  : "border-border hover:shadow-md")
               }
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                  {dateLabel(iso)}
-                </span>
-                {isToday && (
-                  <span className="text-[9px] font-mono uppercase bg-foreground text-background px-1.5 py-0.5">
+              <header
+                className={
+                  "flex items-center justify-between px-4 pt-4 pb-3 " +
+                  (isToday ? "" : "")
+                }
+              >
+                <div className="min-w-0">
+                  <div
+                    className={
+                      "text-sm font-bold capitalize " +
+                      (isToday ? "text-primary" : "text-foreground")
+                    }
+                  >
+                    {wd}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{dm}</div>
+                </div>
+                {isToday ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />
                     Hoje
                   </span>
+                ) : dayTasks.length > 0 && dayDone === dayTasks.length ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/20">
+                    <Check size={10} />
+                    Feito
+                  </span>
+                ) : null}
+              </header>
+
+              <div className="px-4 pb-4 flex-1">
+                {dayTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center py-6 px-3 rounded-xl bg-muted/40 border border-dashed border-border">
+                    <Coffee
+                      size={20}
+                      aria-hidden
+                      className="text-muted-foreground"
+                    />
+                    <p className="mt-2 text-sm font-medium text-foreground/80">
+                      Dia de descanso
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Recarregue para render mais
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="space-y-2.5">
+                    {dayTasks.map((t) => (
+                      <li key={t.id}>
+                        <TaskCard
+                          task={t}
+                          isPastDay={isPast}
+                          onToggle={() => onToggleDone(t.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
-              {dayTasks.length === 0 ? (
-                <div className="text-[11px] text-muted-foreground italic">Descanso</div>
-              ) : (
-                <div className="space-y-2">
-                  {dayTasks.map((t) => (
-                    <TaskCard key={t.id} task={t} onToggle={() => onToggleDone(t.id)} />
-                  ))}
-                </div>
-              )}
-            </div>
+            </article>
           );
         })}
       </section>
@@ -426,65 +649,129 @@ function PlanView({
   );
 }
 
-function TaskCard({ task, onToggle }: { task: StudyTask; onToggle: () => void }) {
+function TaskCard({
+  task,
+  isPastDay,
+  onToggle,
+}: {
+  task: StudyTask;
+  isPastDay: boolean;
+  onToggle: () => void;
+}) {
   const status = resolvedStatus(task);
   const done = status === "concluida";
   const late = status === "atrasada";
   const cta = ctaFor(task);
+  const style = TYPE_STYLES[task.type];
+  const Icon = style.icon;
+
   return (
     <div
       className={
-        "border p-2 text-xs space-y-1 transition-all " +
+        "group rounded-xl border p-3 transition-all " +
         (done
-          ? "border-emerald-500/40 bg-emerald-500/5 opacity-70"
+          ? "border-emerald-500/30 bg-emerald-500/5"
           : late
-            ? "border-destructive/40 bg-destructive/5"
-            : "border-border bg-background")
+            ? "border-destructive/30 bg-destructive/5"
+            : "border-border bg-background hover:border-foreground/20 hover:shadow-sm")
       }
     >
       <div className="flex items-center justify-between gap-2">
         <span
           className={
-            "text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 border " +
-            TYPE_BADGE[task.type]
+            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide " +
+            style.chip
           }
         >
+          <Icon size={10} aria-hidden />
           {typeLabel(task.type)}
         </span>
-        <span className="text-[9px] font-mono text-muted-foreground">
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground tabular-nums">
+          <Clock size={11} aria-hidden />
           {task.minutes}min
         </span>
       </div>
-      <div className={"font-bold leading-tight " + (done ? "line-through" : "")}>
+
+      <h3
+        className={
+          "mt-2 text-sm font-semibold leading-snug text-foreground " +
+          (done ? "line-through text-muted-foreground" : "")
+        }
+      >
         {task.title}
-      </div>
-      <div className="text-[10px] text-muted-foreground">{areaLabel(task.area)}</div>
-      <div className="flex items-center justify-between pt-1">
-        {cta ? (
+      </h3>
+      <p className="mt-0.5 text-xs text-muted-foreground capitalize">
+        {areaLabel(task.area)}
+      </p>
+
+      {late && !done && (
+        <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
+          <AlertCircle size={11} aria-hidden /> Atrasada
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center justify-between gap-2">
+        {cta && !done ? (
           <Link
             to={cta.to}
-            className="text-[10px] font-mono uppercase tracking-widest text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           >
-            {cta.label} →
+            {cta.label}
+            <ArrowRight size={12} aria-hidden />
           </Link>
+        ) : done ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={12} aria-hidden /> Concluída
+          </span>
         ) : (
           <span />
         )}
         <button
           onClick={onToggle}
-          className="text-[10px] font-mono uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground"
+          aria-label={done ? "Desfazer conclusão" : "Marcar tarefa como concluída"}
+          className={
+            "inline-flex items-center gap-1 min-h-8 px-2.5 rounded-md text-xs font-semibold transition " +
+            (done
+              ? "border border-border bg-background text-foreground/70 hover:bg-accent"
+              : "bg-foreground text-background hover:opacity-90")
+          }
         >
-          {done ? "Desfazer" : "Concluir"}
+          {done ? (
+            <>
+              <Undo2 size={12} aria-hidden />
+              Desfazer
+            </>
+          ) : (
+            <>
+              <Check size={12} aria-hidden />
+              Concluir
+            </>
+          )}
         </button>
       </div>
-      {late && !done && (
-        <div className="text-[9px] font-mono uppercase text-destructive">Atrasada</div>
-      )}
+      {/* keep variable referenced for future highlight rules */}
+      <span className="sr-only">{isPastDay ? "Dia passado" : ""}</span>
     </div>
   );
 }
 
-function ctaFor(t: StudyTask): { to: "/questoes" | "/simulados" | "/redacao" | "/revisar" | "/tutor"; label: string } | null {
+function formatDayParts(iso: string): [string, string] {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const wd = dt.toLocaleDateString("pt-BR", { weekday: "long" }).replace(
+    "-feira",
+    "",
+  );
+  const dm = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return [wd, dm];
+}
+
+function ctaFor(
+  t: StudyTask,
+): {
+  to: "/questoes" | "/simulados" | "/redacao" | "/revisar" | "/tutor";
+  label: string;
+} | null {
   switch (t.type) {
     case "questoes":
       return { to: "/questoes", label: "Praticar" };
@@ -502,39 +789,66 @@ function ctaFor(t: StudyTask): { to: "/questoes" | "/simulados" | "/redacao" | "
 }
 
 function Stat({
+  icon,
   label,
   value,
   unit,
   bar,
+  tone = "neutral",
 }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
   unit?: string;
   bar?: number;
+  tone?: "neutral" | "primary" | "success" | "danger";
 }) {
+  const toneStyles: Record<string, string> = {
+    neutral: "bg-muted/60 text-foreground/70",
+    primary: "bg-primary/10 text-primary",
+    success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    danger: "bg-destructive/10 text-destructive",
+  };
+  const barColor: Record<string, string> = {
+    neutral: "bg-foreground/60",
+    primary: "bg-primary",
+    success: "bg-emerald-500",
+    danger: "bg-destructive",
+  };
   return (
-    <div className="bg-background p-4 flex flex-col justify-between min-h-[110px]">
-      <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </span>
-      <div className="mt-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-extrabold tracking-tighter">{value}</span>
-          {unit && (
-            <span className="text-[10px] font-mono uppercase text-muted-foreground">
-              {unit}
-            </span>
-          )}
-        </div>
-        {typeof bar === "number" && (
-          <div className="h-1 bg-border mt-2">
-            <div
-              className="h-full bg-foreground transition-all"
-              style={{ width: `${bar}%` }}
-            />
-          </div>
+    <div className="rounded-2xl border border-border bg-card shadow-sm p-4 sm:p-5 flex flex-col">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+          {label}
+        </span>
+        <span
+          aria-hidden
+          className={
+            "h-8 w-8 rounded-full flex items-center justify-center " +
+            toneStyles[tone]
+          }
+        >
+          {icon}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+          {value}
+        </span>
+        {unit && (
+          <span className="text-xs font-medium text-muted-foreground">
+            {unit}
+          </span>
         )}
       </div>
+      {typeof bar === "number" && (
+        <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={"h-full rounded-full transition-all duration-500 " + barColor[tone]}
+            style={{ width: `${bar}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
