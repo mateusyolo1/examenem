@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
   { to: "/", label: "Dashboard" },
