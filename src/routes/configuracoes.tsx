@@ -43,17 +43,23 @@ function ConfiguracoesPage() {
   const [name, setName] = useState(progress.studentName ?? "");
   const [target, setTarget] = useState(progress.targetScore ?? 700);
   const [daily, setDaily] = useState(progress.dailyMinutes ?? 120);
-  const [examDate, setExamDate] = useState(progress.examDate ?? "");
+  const [examDate, setExamDate] = useState(
+    progress.examDate ? progress.examDate.slice(0, 10) : "",
+  );
 
-  const days = useMemo(() => daysUntilExam(progress.examDate), [progress.examDate]);
+  const days = useMemo(
+    () => (progress.examDate ? daysUntilExam(progress.examDate) : null),
+    [progress.examDate],
+  );
 
   function handleSave() {
-    update({
+    update((prev) => ({
+      ...prev,
       studentName: name.trim() || undefined,
       targetScore: Math.max(0, Math.min(1000, Number(target) || 0)),
       dailyMinutes: Math.max(15, Math.min(720, Number(daily) || 60)),
-      examDate: examDate || undefined,
-    });
+      examDate: examDate ? new Date(examDate).toISOString() : prev.examDate,
+    }));
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   }
