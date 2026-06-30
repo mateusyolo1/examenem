@@ -4,14 +4,21 @@ import {
   LEARNING_STAGES,
   STAGE_TARGETS,
   advanceStage,
-  nextStepHint,
+  evaluateAdvance,
+  markIntroConcluida,
+  markTeoriaConcluida,
+  recordGuidedAnswer,
+  recordIndepAnswer,
+  recordMiniSimuladoResult,
+  recordQuickQuestion,
+  recordReviewAnswer,
   setActiveSubject,
   stageById,
   startSubject,
   studentStatus,
   useActiveLearning,
 } from "@/lib/learning-progress";
-import { ArrowRight, BookOpen, Sparkles, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Sparkles, Target, TrendingUp, X } from "lucide-react";
 
 /**
  * Card "Etapa atual do aluno" — exibido na sidebar do Tutor IA.
@@ -112,19 +119,7 @@ export function CurrentStageCard() {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-border p-2.5">
-              <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                <Target size={10} /> Questões
-              </div>
-              <div className="text-sm font-bold tabular-nums mt-0.5">
-                {active.questoesRespondidas}
-                {active.etapaAtual >= 3 && (
-                  <span className="text-[11px] font-normal text-muted-foreground">
-                    {" "}/ {STAGE_TARGETS.questoesMinimas}
-                  </span>
-                )}
-              </div>
-            </div>
+            <StageCounter active={active} />
             <div className="rounded-lg border border-border p-2.5">
               <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                 <TrendingUp size={10} /> Acerto
@@ -133,11 +128,28 @@ export function CurrentStageCard() {
             </div>
           </div>
 
+          <StageActions subjectId={active.subjectId} stage={active.etapaAtual} />
+
           <div className="rounded-lg bg-muted/50 border border-border p-2.5">
             <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1">
               O que falta para avançar
             </div>
-            <p className="text-xs leading-relaxed">{nextStepHint(active)}</p>
+            {(() => {
+              const crit = evaluateAdvance(active);
+              if (crit.faltam.length === 0) {
+                return <p className="text-xs leading-relaxed">{crit.proximoPasso}</p>;
+              }
+              return (
+                <ul className="text-xs leading-relaxed space-y-1">
+                  {crit.faltam.map((f) => (
+                    <li key={f} className="flex gap-1.5">
+                      <span className="text-muted-foreground">•</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </div>
 
           <div className="flex items-center justify-between gap-2">
@@ -160,7 +172,12 @@ export function CurrentStageCard() {
             {proximaEtapa && (
               <button
                 type="button"
-                onClick={() => advanceStage(active.subjectId)}
+                onClick={() => {
+                  const r = advanceStage(active.subjectId);
+                  if (!r.ok) {
+                    alert("Ainda não é possível avançar:\n\n• " + r.faltam.join("\n• "));
+                  }
+                }}
                 disabled={!active.prontoParaAvancar}
                 className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md bg-foreground text-background disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary transition-colors"
               >
@@ -185,6 +202,152 @@ export function CurrentStageCard() {
       )}
     </section>
   );
+}
+
+// ---- subcomponentes -------------------------------------------------
+
+function StageCounter({ active }: { active: NonNullable<ReturnType<typeof useActiveLearning>> }) {
+  const ss = active.stageStats;
+  let label = "Questões";
+  let value: string = String(active.questoesRespondidas);
+  switch (active.etapaAtual) {
+    case 2:
+      label = "Perguntas rápidas";
+      value = `${ss.perguntasRapidas} / ${STAGE_TARGETS.perguntasRapidasMin}`;
+      break;
+    case 3:
+      label = "Guiadas";
+      value = `${ss.guidedTotal} / ${STAGE_TARGETS.guiadasMin}`;
+      break;
+    case 4:
+      label = "Independentes";
+      value = `${ss.indepTotal} / ${STAGE_TARGETS.indepMin}`;
+      break;
+    case 5:
+      label = "Revisões pendentes";
+      value = String(active.revisoesPendentes);
+      break;
+    case 6:
+      label = "Mini simulado";
+      value = ss.simuladoFeito ? `${ss.simuladoAcertos}/${ss.simuladoTotal}` : "—";
+      break;
+  }
+  return (
+    <div className="rounded-lg border border-border p-2.5">
+      <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        <Target size={10} /> {label}
+      </div>
+      <div className="text-sm font-bold tabular-nums mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function ActionBtn({
+  onClick,
+  children,
+  tone = "default",
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  tone?: "default" | "ok" | "warn";
+}) {
+  const cls =
+    tone === "ok"
+      ? "bg-primary/15 text-primary hover:bg-primary/25"
+      : tone === "warn"
+      ? "bg-muted text-foreground hover:bg-muted/80"
+      : "bg-foreground text-background hover:bg-primary";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-[11px] font-bold px-2.5 py-1.5 rounded-md transition-colors ${cls}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StageActions({ subjectId, stage }: { subjectId: string; stage: 1 | 2 | 3 | 4 | 5 | 6 | 7 }) {
+  if (stage === 7) return null;
+
+  if (stage === 1) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn tone="ok" onClick={() => markIntroConcluida(subjectId)}>
+          <Check size={11} className="inline -mt-0.5 mr-1" />
+          Conclui a introdução
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 2) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn tone="ok" onClick={() => markTeoriaConcluida(subjectId)}>
+          <Check size={11} className="inline -mt-0.5 mr-1" />
+          Concluí a teoria
+        </ActionBtn>
+        <ActionBtn onClick={() => recordQuickQuestion(subjectId, true)}>
+          + Pergunta certa
+        </ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordQuickQuestion(subjectId, false)}>
+          <X size={11} className="inline -mt-0.5 mr-1" />
+          Errei
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 3) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordGuidedAnswer(subjectId, true)}>+ Guiada certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordGuidedAnswer(subjectId, false)}>
+          Guiada errada
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 4) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordIndepAnswer(subjectId, true)}>+ Indep. certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordIndepAnswer(subjectId, false)}>
+          Indep. errada → revisar
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 5) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordReviewAnswer(subjectId, true)}>+ Revisão certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordReviewAnswer(subjectId, false)}>
+          Revisão errada
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 6) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn
+          tone="ok"
+          onClick={() => {
+            const totalStr = window.prompt("Total de questões do mini simulado?", "10");
+            const acertosStr = window.prompt("Quantas você acertou?", "8");
+            const total = Number(totalStr ?? "");
+            const acertos = Number(acertosStr ?? "");
+            if (!Number.isFinite(total) || !Number.isFinite(acertos)) return;
+            recordMiniSimuladoResult(subjectId, acertos, total);
+          }}
+        >
+          Registrar mini simulado
+        </ActionBtn>
+      </div>
+    );
+  }
+  return null;
 }
 
 export default CurrentStageCard;
