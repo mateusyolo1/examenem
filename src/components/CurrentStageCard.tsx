@@ -204,4 +204,150 @@ export function CurrentStageCard() {
   );
 }
 
+// ---- subcomponentes -------------------------------------------------
+
+function StageCounter({ active }: { active: NonNullable<ReturnType<typeof useActiveLearning>> }) {
+  const ss = active.stageStats;
+  let label = "Questões";
+  let value: string = String(active.questoesRespondidas);
+  switch (active.etapaAtual) {
+    case 2:
+      label = "Perguntas rápidas";
+      value = `${ss.perguntasRapidas} / ${STAGE_TARGETS.perguntasRapidasMin}`;
+      break;
+    case 3:
+      label = "Guiadas";
+      value = `${ss.guidedTotal} / ${STAGE_TARGETS.guiadasMin}`;
+      break;
+    case 4:
+      label = "Independentes";
+      value = `${ss.indepTotal} / ${STAGE_TARGETS.indepMin}`;
+      break;
+    case 5:
+      label = "Revisões pendentes";
+      value = String(active.revisoesPendentes);
+      break;
+    case 6:
+      label = "Mini simulado";
+      value = ss.simuladoFeito ? `${ss.simuladoAcertos}/${ss.simuladoTotal}` : "—";
+      break;
+  }
+  return (
+    <div className="rounded-lg border border-border p-2.5">
+      <div className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        <Target size={10} /> {label}
+      </div>
+      <div className="text-sm font-bold tabular-nums mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function ActionBtn({
+  onClick,
+  children,
+  tone = "default",
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  tone?: "default" | "ok" | "warn";
+}) {
+  const cls =
+    tone === "ok"
+      ? "bg-primary/15 text-primary hover:bg-primary/25"
+      : tone === "warn"
+      ? "bg-muted text-foreground hover:bg-muted/80"
+      : "bg-foreground text-background hover:bg-primary";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-[11px] font-bold px-2.5 py-1.5 rounded-md transition-colors ${cls}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StageActions({ subjectId, stage }: { subjectId: string; stage: 1 | 2 | 3 | 4 | 5 | 6 | 7 }) {
+  if (stage === 7) return null;
+
+  if (stage === 1) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn tone="ok" onClick={() => markIntroConcluida(subjectId)}>
+          <Check size={11} className="inline -mt-0.5 mr-1" />
+          Conclui a introdução
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 2) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn tone="ok" onClick={() => markTeoriaConcluida(subjectId)}>
+          <Check size={11} className="inline -mt-0.5 mr-1" />
+          Concluí a teoria
+        </ActionBtn>
+        <ActionBtn onClick={() => recordQuickQuestion(subjectId, true)}>
+          + Pergunta certa
+        </ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordQuickQuestion(subjectId, false)}>
+          <X size={11} className="inline -mt-0.5 mr-1" />
+          Errei
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 3) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordGuidedAnswer(subjectId, true)}>+ Guiada certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordGuidedAnswer(subjectId, false)}>
+          Guiada errada
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 4) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordIndepAnswer(subjectId, true)}>+ Indep. certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordIndepAnswer(subjectId, false)}>
+          Indep. errada → revisar
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 5) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn onClick={() => recordReviewAnswer(subjectId, true)}>+ Revisão certa</ActionBtn>
+        <ActionBtn tone="warn" onClick={() => recordReviewAnswer(subjectId, false)}>
+          Revisão errada
+        </ActionBtn>
+      </div>
+    );
+  }
+  if (stage === 6) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <ActionBtn
+          tone="ok"
+          onClick={() => {
+            const totalStr = window.prompt("Total de questões do mini simulado?", "10");
+            const acertosStr = window.prompt("Quantas você acertou?", "8");
+            const total = Number(totalStr ?? "");
+            const acertos = Number(acertosStr ?? "");
+            if (!Number.isFinite(total) || !Number.isFinite(acertos)) return;
+            recordMiniSimuladoResult(subjectId, acertos, total);
+          }}
+        >
+          Registrar mini simulado
+        </ActionBtn>
+      </div>
+    );
+  }
+  return null;
+}
+
 export default CurrentStageCard;
