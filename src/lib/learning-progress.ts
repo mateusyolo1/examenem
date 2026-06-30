@@ -402,9 +402,23 @@ export function setStage(subjectId: string, stage: LearningStageId) {
   });
 }
 
-export function advanceStage(subjectId: string) {
+/**
+ * Avança a etapa atual respeitando as regras automáticas.
+ * Por padrão NÃO avança se `prontoParaAvancar` for false — retorna `{ ok: false, faltam }`.
+ * Use `{ force: true }` apenas em contextos administrativos (ex.: reset/import).
+ */
+export function advanceStage(
+  subjectId: string,
+  opts?: { force?: boolean },
+): { ok: boolean; faltam: string[] } {
+  let result: { ok: boolean; faltam: string[] } = { ok: false, faltam: [] };
   mutate((s) => {
     const p = { ...ensure(subjectId, s) };
+    const crit = evaluateAdvance(p);
+    if (!opts?.force && !crit.ready) {
+      result = { ok: false, faltam: crit.faltam };
+      return;
+    }
     const concluida = p.etapaAtual;
     if (!p.etapasConcluidas.includes(concluida)) {
       p.etapasConcluidas = [...p.etapasConcluidas, concluida];
@@ -414,14 +428,152 @@ export function advanceStage(subjectId: string) {
     }
     p.ultimaAtividade = Date.now();
     s.bySubject[subjectId] = recompute(p);
+    result = { ok: true, faltam: [] };
+  });
+  return result;
+}
+
+// --- Eventos das regras automáticas ---------------------------------
+
+/** Etapa 1: marca a explicação inicial como concluída. */
+export function markIntroConcluida(subjectId: string) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    p.stageStats = { ...p.stageStats, introConcluida: true };
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
   });
 }
 
+/** Etapa 2: marca a teoria como concluída. */
+export function markTeoriaConcluida(subjectId: string) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    p.stageStats = { ...p.stageStats, teoriaConcluida: true };
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/** Etapa 2: registra uma pergunta rápida respondida. */
+export function recordQuickQuestion(subjectId: string, correct: boolean) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    p.stageStats = { ...p.stageStats, perguntasRapidas: p.stageStats.perguntasRapidas + 1 };
+    p.questoesRespondidas += 1;
+    if (correct) p.acertos += 1;
+    else p.erros += 1;
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/** Etapa 3: registra uma questão guiada respondida. */
+export function recordGuidedAnswer(subjectId: string, correct: boolean) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    const ss = { ...p.stageStats };
+    ss.guidedTotal += 1;
+    if (correct) ss.guidedAcertos += 1;
+    p.stageStats = ss;
+    p.questoesRespondidas += 1;
+    if (correct) p.acertos += 1;
+    else p.erros += 1;
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/**
+ * Etapa 4: registra uma questão independente. Se errar, vai para "Revisar Erros"
+ * (revisoesPendentes++), o que bloqueará o avanço na etapa 5 enquanto houver erros.
+ */
+export function recordIndepAnswer(subjectId: string, correct: boolean) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    const ss = { ...p.stageStats };
+    ss.indepTotal += 1;
+    if (correct) ss.indepAcertos += 1;
+    p.stageStats = ss;
+    p.questoesRespondidas += 1;
+    if (correct) p.acertos += 1;
+    else {
+      p.erros += 1;
+      p.revisoesPendentes += 1; // envia para Revisar Erros
+    }
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/** Etapa 5: registra uma resposta de revisão (e decrementa revisões pendentes em 1). */
+export function recordReviewAnswer(subjectId: string, correct: boolean) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    const ss = { ...p.stageStats };
+    ss.revisaoTotal += 1;
+    if (correct) ss.revisaoAcertos += 1;
+    p.stageStats = ss;
+    if (p.revisoesPendentes > 0) p.revisoesPendentes -= 1;
+    p.questoesRespondidas += 1;
+    if (correct) p.acertos += 1;
+    else p.erros += 1;
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/** Etapa 6: registra o resultado final do mini simulado do assunto. */
+export function recordMiniSimuladoResult(subjectId: string, acertos: number, total: number) {
+  mutate((s) => {
+    const p = { ...ensure(subjectId, s) };
+    p.stageStats = {
+      ...p.stageStats,
+      simuladoFeito: true,
+      simuladoAcertos: Math.max(0, Math.min(total, acertos)),
+      simuladoTotal: Math.max(0, total),
+    };
+    p.questoesRespondidas += total;
+    p.acertos += Math.max(0, Math.min(total, acertos));
+    p.erros += Math.max(0, total - acertos);
+    p.ultimaAtividade = Date.now();
+    s.bySubject[subjectId] = recompute(p);
+  });
+}
+
+/**
+ * Genérico (compatibilidade) — usa o contador apropriado da etapa atual.
+ * Mantido para chamadas antigas; prefira as funções específicas acima.
+ */
 export function recordSubjectAnswer(
   subjectId: string,
   correct: boolean,
   opts?: { addPendingReview?: boolean },
 ) {
+  const cur = getLearningProgress(subjectId)?.etapaAtual ?? 1;
+  if (cur === 2) return recordQuickQuestion(subjectId, correct);
+  if (cur === 3) return recordGuidedAnswer(subjectId, correct);
+  if (cur === 5) return recordReviewAnswer(subjectId, correct);
+  if (cur === 4) {
+    if (opts?.addPendingReview === false) {
+      // comportamento legado: não adicionar revisão
+      mutate((s) => {
+        const p = { ...ensure(subjectId, s) };
+        const ss = { ...p.stageStats };
+        ss.indepTotal += 1;
+        if (correct) ss.indepAcertos += 1;
+        p.stageStats = ss;
+        p.questoesRespondidas += 1;
+        if (correct) p.acertos += 1;
+        else p.erros += 1;
+        p.ultimaAtividade = Date.now();
+        s.bySubject[subjectId] = recompute(p);
+      });
+      return;
+    }
+    return recordIndepAnswer(subjectId, correct);
+  }
+  // demais etapas (1, 6, 7): apenas contabiliza no agregado.
   mutate((s) => {
     const p = { ...ensure(subjectId, s) };
     p.questoesRespondidas += 1;
