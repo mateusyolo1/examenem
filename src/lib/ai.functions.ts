@@ -117,10 +117,10 @@ export const correctEssay = createServerFn({ method: "POST" })
     const end = cleaned.lastIndexOf("}");
     const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
     try {
-      const parsed = JSON.parse(slice);
-      return { feedback: parsed as unknown };
+      const parsed = JSON.parse(slice) as EssayFeedback;
+      return { feedback: parsed };
     } catch {
-      // Fallback: return raw text so UI still renders something useful
-      return { feedback: { raw: text } as unknown };
+      const fallback: EssayFeedback = { raw: text };
+      return { feedback: fallback };
     }
   });
