@@ -44,7 +44,7 @@ const DESKTOP_MAIN: NavItem[] = [
 // Items inside the "Mais" dropdown / sheet
 const MORE: NavItem[] = [
   { to: "/materias", label: "Matérias", icon: BookOpen },
-  { to: "/temas-redacao", label: "Temas", icon: Lightbulb },
+  { to: "/temas", label: "Temas", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
   { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
