@@ -32,6 +32,9 @@ export const Route = createFileRoute("/redacao")({
 });
 
 function Redacao() {
+  const { tema: temaId } = Route.useSearch();
+  const temaSel = temaId ? findTheme(temaId) : undefined;
+  const TEMA = temaSel?.titulo ?? TEMA_PADRAO;
   const { progress, update } = useProgress();
   const [text, setText] = useState("");
   const [feedback, setFeedback] = useState<EssayFeedback | null>(null);
