@@ -11,6 +11,7 @@ import {
   type Area,
 } from "@/lib/storage";
 import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
+import { useReviews } from "@/lib/review";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,6 +54,8 @@ function levelFor(correct: number): { label: string; idx: number; next: number }
 
 function Dashboard() {
   const { progress } = useProgress();
+  const { pendingToday } = useReviews();
+  const pendingReviews = pendingToday().length;
 
   const dias = daysUntilExam(progress.examDate);
   const hoje = answersToday(progress);
@@ -235,15 +238,22 @@ function Dashboard() {
             }
           />
           <Action
-            to="/questoes"
-            kicker={`${wrongIds} erros`}
+            to="/revisar"
+            kicker={
+              pendingReviews > 0
+                ? `${pendingReviews} para hoje`
+                : `${wrongIds} no histórico`
+            }
             title="Revisar erros"
             sub={
-              wrongIds > 0
-                ? "Refaça as questões que você errou"
-                : "Sem erros registrados — bom trabalho"
+              pendingReviews > 0
+                ? "Revisão espaçada — pendentes hoje"
+                : wrongIds > 0
+                  ? "Em fila para próximos dias"
+                  : "Sem erros registrados — bom trabalho"
             }
           />
+
           <Action
             to="/simulados"
             kicker="15 min"
@@ -378,7 +388,7 @@ function Action({
   title,
   sub,
 }: {
-  to: "/questoes" | "/simulados" | "/redacao";
+  to: "/questoes" | "/simulados" | "/redacao" | "/revisar";
   kicker: string;
   title: string;
   sub: string;

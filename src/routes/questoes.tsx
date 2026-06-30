@@ -16,6 +16,7 @@ import {
   type Difficulty,
 } from "@/lib/questions-data";
 import { useSavedQuestions } from "@/lib/saved-questions";
+import { recordReviewAnswer } from "@/lib/review";
 
 const AREA_VALUES = ["todas", "linguagens", "humanas", "natureza", "matematica"] as const;
 const DIFF_VALUES = ["todas", "Fácil", "Médio", "Difícil"] as const;
@@ -117,7 +118,9 @@ function Questoes() {
 
   function confirm() {
     if (!q || !selected) return;
-    recordAnswer(q.id, selected, selected === q.correct);
+    const correct = selected === q.correct;
+    recordAnswer(q.id, selected, correct);
+    recordReviewAnswer(q.id, correct);
     setRevealed(true);
   }
 
