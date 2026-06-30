@@ -13,6 +13,7 @@ import {
 import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
 import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
+import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,7 +40,7 @@ function greet(): string {
   return "Boa noite";
 }
 
-function levelFor(correct: number): { label: string; idx: number; next: number } {
+function areaLevelFor(correct: number): { label: string; idx: number; next: number } {
   const tiers = [
     { label: "Iniciante", min: 0 },
     { label: "Aprendiz", min: 5 },
@@ -59,6 +60,15 @@ function Dashboard() {
   const pendingReviews = pendingToday().length;
   const { plan } = useStudyPlan();
   const topTask = topTaskFor(plan);
+  const xp = useMemo(() => computeXP(progress), [progress]);
+  const lvlInfo = useMemo(() => levelFor(xp.total), [xp.total]);
+  const recentUnlocks = useMemo(
+    () =>
+      ACHIEVEMENTS.map((a) => ({ ...a, ...a.check({ progress, reviewsCompleted: 0 }) }))
+        .filter((a) => a.unlocked)
+        .slice(0, 3),
+    [progress],
+  );
 
   const dias = daysUntilExam(progress.examDate);
   const hoje = answersToday(progress);
@@ -90,7 +100,7 @@ function Dashboard() {
   const areaCards = AREAS.map((a, i) => {
     const s = areaStats(progress, a.id, QUESTION_AREA_MAP);
     const total = QUESTIONS.filter((q) => q.area === a.id).length;
-    const lvl = levelFor(s.correct);
+    const lvl = areaLevelFor(s.correct);
     return {
       ...a,
       idx: i,
@@ -107,7 +117,7 @@ function Dashboard() {
   });
 
   const essaysDone = progress.essays.length;
-  const essayLvl = levelFor(essaysDone * 5); // each essay weighs more
+  const essayLvl = areaLevelFor(essaysDone * 5); // each essay weighs more
   const redacaoCard = {
     label: "Redação",
     short: "Redação",
@@ -242,6 +252,66 @@ function Dashboard() {
             </Link>
           )}
         </section>
+
+        {/* Level + recent achievements */}
+        <section className="animate-reveal mb-10">
+          <Link
+            to="/conquistas"
+            className="block border border-border bg-card p-6 hover:border-foreground transition-colors"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="min-w-[220px]">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Nível {lvlInfo.level} · {lvlInfo.title}
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-extrabold tracking-tighter">
+                    {xp.total.toLocaleString("pt-BR")}
+                  </span>
+                  <span className="text-[10px] font-mono uppercase text-muted-foreground">XP</span>
+                </div>
+                <div className="mt-2 w-56">
+                  <div className="flex justify-between text-[9px] font-mono uppercase text-muted-foreground mb-1">
+                    <span>Nv {lvlInfo.level + 1}</span>
+                    <span>{lvlInfo.xpToNext} XP</span>
+                  </div>
+                  <div className="h-1.5 bg-border">
+                    <div
+                      className="h-full bg-foreground transition-all"
+                      style={{ width: `${lvlInfo.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 min-w-[220px]">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Conquistas recentes
+                </span>
+                {recentUnlocks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Nenhuma medalha ainda. Responda sua primeira questão para começar.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {recentUnlocks.map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex items-center gap-1.5 border border-foreground px-2.5 py-1 text-xs font-bold"
+                      >
+                        <span className="text-primary">✓</span> {a.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Ver todas →
+              </span>
+            </div>
+          </Link>
+        </section>
+
+
 
 
         {/* Recommendation + Quick actions */}
