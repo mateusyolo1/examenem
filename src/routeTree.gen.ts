@@ -9,18 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TutorIaRouteImport } from './routes/tutor-ia'
 import { Route as TutorRouteImport } from './routes/tutor'
 import { Route as TemasRedacaoRouteImport } from './routes/temas-redacao'
+import { Route as TemasRouteImport } from './routes/temas'
 import { Route as SimuladosRouteImport } from './routes/simulados'
+import { Route as RevisarErrosRouteImport } from './routes/revisar-erros'
 import { Route as RevisarRouteImport } from './routes/revisar'
 import { Route as RedacaoRouteImport } from './routes/redacao'
 import { Route as QuestoesRouteImport } from './routes/questoes'
+import { Route as PlanoEstudosRouteImport } from './routes/plano-estudos'
 import { Route as PlanoRouteImport } from './routes/plano'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as MateriasRouteImport } from './routes/materias'
 import { Route as ConquistasRouteImport } from './routes/conquistas'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TutorIaRoute = TutorIaRouteImport.update({
+  id: '/tutor-ia',
+  path: '/tutor-ia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutorRoute = TutorRouteImport.update({
   id: '/tutor',
   path: '/tutor',
@@ -31,9 +41,19 @@ const TemasRedacaoRoute = TemasRedacaoRouteImport.update({
   path: '/temas-redacao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TemasRoute = TemasRouteImport.update({
+  id: '/temas',
+  path: '/temas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SimuladosRoute = SimuladosRouteImport.update({
   id: '/simulados',
   path: '/simulados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevisarErrosRoute = RevisarErrosRouteImport.update({
+  id: '/revisar-erros',
+  path: '/revisar-erros',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevisarRoute = RevisarRouteImport.update({
@@ -49,6 +69,11 @@ const RedacaoRoute = RedacaoRouteImport.update({
 const QuestoesRoute = QuestoesRouteImport.update({
   id: '/questoes',
   path: '/questoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanoEstudosRoute = PlanoEstudosRouteImport.update({
+  id: '/plano-estudos',
+  path: '/plano-estudos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanoRoute = PlanoRouteImport.update({
@@ -71,6 +96,11 @@ const ConquistasRoute = ConquistasRouteImport.update({
   path: '/conquistas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -79,102 +109,144 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
+  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
+  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
+  '/temas': typeof TemasRoute
   '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
+  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
+  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
+  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
+  '/temas': typeof TemasRoute
   '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
+  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/conquistas': typeof ConquistasRoute
   '/materias': typeof MateriasRoute
   '/perfil': typeof PerfilRoute
   '/plano': typeof PlanoRoute
+  '/plano-estudos': typeof PlanoEstudosRoute
   '/questoes': typeof QuestoesRoute
   '/redacao': typeof RedacaoRoute
   '/revisar': typeof RevisarRoute
+  '/revisar-erros': typeof RevisarErrosRoute
   '/simulados': typeof SimuladosRoute
+  '/temas': typeof TemasRoute
   '/temas-redacao': typeof TemasRedacaoRoute
   '/tutor': typeof TutorRoute
+  '/tutor-ia': typeof TutorIaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/configuracoes'
     | '/conquistas'
     | '/materias'
     | '/perfil'
     | '/plano'
+    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
+    | '/revisar-erros'
     | '/simulados'
+    | '/temas'
     | '/temas-redacao'
     | '/tutor'
+    | '/tutor-ia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/configuracoes'
     | '/conquistas'
     | '/materias'
     | '/perfil'
     | '/plano'
+    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
+    | '/revisar-erros'
     | '/simulados'
+    | '/temas'
     | '/temas-redacao'
     | '/tutor'
+    | '/tutor-ia'
   id:
     | '__root__'
     | '/'
+    | '/configuracoes'
     | '/conquistas'
     | '/materias'
     | '/perfil'
     | '/plano'
+    | '/plano-estudos'
     | '/questoes'
     | '/redacao'
     | '/revisar'
+    | '/revisar-erros'
     | '/simulados'
+    | '/temas'
     | '/temas-redacao'
     | '/tutor'
+    | '/tutor-ia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   ConquistasRoute: typeof ConquistasRoute
   MateriasRoute: typeof MateriasRoute
   PerfilRoute: typeof PerfilRoute
   PlanoRoute: typeof PlanoRoute
+  PlanoEstudosRoute: typeof PlanoEstudosRoute
   QuestoesRoute: typeof QuestoesRoute
   RedacaoRoute: typeof RedacaoRoute
   RevisarRoute: typeof RevisarRoute
+  RevisarErrosRoute: typeof RevisarErrosRoute
   SimuladosRoute: typeof SimuladosRoute
+  TemasRoute: typeof TemasRoute
   TemasRedacaoRoute: typeof TemasRedacaoRoute
   TutorRoute: typeof TutorRoute
+  TutorIaRoute: typeof TutorIaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tutor-ia': {
+      id: '/tutor-ia'
+      path: '/tutor-ia'
+      fullPath: '/tutor-ia'
+      preLoaderRoute: typeof TutorIaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tutor': {
       id: '/tutor'
       path: '/tutor'
@@ -189,11 +261,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemasRedacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/temas': {
+      id: '/temas'
+      path: '/temas'
+      fullPath: '/temas'
+      preLoaderRoute: typeof TemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/simulados': {
       id: '/simulados'
       path: '/simulados'
       fullPath: '/simulados'
       preLoaderRoute: typeof SimuladosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revisar-erros': {
+      id: '/revisar-erros'
+      path: '/revisar-erros'
+      fullPath: '/revisar-erros'
+      preLoaderRoute: typeof RevisarErrosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revisar': {
@@ -215,6 +301,13 @@ declare module '@tanstack/react-router' {
       path: '/questoes'
       fullPath: '/questoes'
       preLoaderRoute: typeof QuestoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plano-estudos': {
+      id: '/plano-estudos'
+      path: '/plano-estudos'
+      fullPath: '/plano-estudos'
+      preLoaderRoute: typeof PlanoEstudosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plano': {
@@ -245,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConquistasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -257,27 +357,22 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   ConquistasRoute: ConquistasRoute,
   MateriasRoute: MateriasRoute,
   PerfilRoute: PerfilRoute,
   PlanoRoute: PlanoRoute,
+  PlanoEstudosRoute: PlanoEstudosRoute,
   QuestoesRoute: QuestoesRoute,
   RedacaoRoute: RedacaoRoute,
   RevisarRoute: RevisarRoute,
+  RevisarErrosRoute: RevisarErrosRoute,
   SimuladosRoute: SimuladosRoute,
+  TemasRoute: TemasRoute,
   TemasRedacaoRoute: TemasRedacaoRoute,
   TutorRoute: TutorRoute,
+  TutorIaRoute: TutorIaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
