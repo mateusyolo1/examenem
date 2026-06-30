@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { StageIndicator } from "@/components/StageIndicator";
 import {
   Home,
   ListChecks,
