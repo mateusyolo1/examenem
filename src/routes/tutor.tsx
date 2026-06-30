@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
+import { CurrentStageCard } from "@/components/CurrentStageCard";
 import { askTutor } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
@@ -235,6 +236,7 @@ function Tutor() {
         <div className="grid lg:grid-cols-[260px_1fr] gap-6 flex-1">
           {/* Sidebar */}
           <aside className="space-y-6">
+            <CurrentStageCard />
             <section>
               <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
                 Modos

@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { StageIndicator } from "@/components/StageIndicator";
 import {
   Home,
   ListChecks,
@@ -200,6 +201,7 @@ export function Nav() {
               </span>
               <span className="text-xs font-bold tracking-tight">{lvl.level}</span>
             </Link>
+            <StageIndicator />
             <div
               className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
               title={`Streak de ${progress.streakDays} dia(s)`}

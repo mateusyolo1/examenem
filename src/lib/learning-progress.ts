@@ -61,11 +61,12 @@ export interface SubjectLearningProgress {
 
 interface StoreShape {
   bySubject: Record<string, SubjectLearningProgress>;
+  activeSubjectId?: string | null;
 }
 
 const LP_KEY = "exame:learning-progress:v1";
 
-const empty: StoreShape = { bySubject: {} };
+const empty: StoreShape = { bySubject: {}, activeSubjectId: null };
 
 function safeRead(): StoreShape {
   if (typeof window === "undefined") return empty;
@@ -186,10 +187,51 @@ function recompute(p: SubjectLearningProgress): SubjectLearningProgress {
 function mutate(fn: (s: StoreShape) => void) {
   const s = safeRead();
   // shallow clone só do necessário
-  const next: StoreShape = { bySubject: { ...s.bySubject } };
+  const next: StoreShape = {
+    bySubject: { ...s.bySubject },
+    activeSubjectId: s.activeSubjectId ?? null,
+  };
   fn(next);
   safeWrite(next);
   emit();
+}
+
+// Metas usadas para o cálculo de "o que falta para avançar"
+export const STAGE_TARGETS = {
+  questoesMinimas: 5,
+  taxaMinima: 70,
+} as const;
+
+/** Texto curto descrevendo o que falta para avançar a etapa atual. */
+export function nextStepHint(p: SubjectLearningProgress): string {
+  if (p.etapaAtual >= 7) return "Assunto dominado. Mantenha com revisões espaçadas.";
+  const stage = stageById(p.etapaAtual);
+  if (p.etapaAtual <= 2) {
+    return p.ultimaAtividade
+      ? `Conclua a etapa “${stage.label}” para avançar.`
+      : `Comece a etapa “${stage.label}”.`;
+  }
+  const faltamQ = Math.max(0, STAGE_TARGETS.questoesMinimas - p.questoesRespondidas);
+  if (faltamQ > 0) {
+    return `Falta responder mais ${faltamQ} ${faltamQ === 1 ? "questão" : "questões"} para avançar.`;
+  }
+  if (p.taxaDeAcerto < STAGE_TARGETS.taxaMinima) {
+    return `Eleve a taxa de acerto para ${STAGE_TARGETS.taxaMinima}% (atual: ${p.taxaDeAcerto}%).`;
+  }
+  if (p.revisoesPendentes > 0) {
+    return `Resolva ${p.revisoesPendentes} ${p.revisoesPendentes === 1 ? "revisão pendente" : "revisões pendentes"}.`;
+  }
+  return "Pronto para avançar para a próxima etapa.";
+}
+
+/** Status curto e amigável. */
+export function studentStatus(p: SubjectLearningProgress | null): string {
+  if (!p) return "Escolha um assunto para começar.";
+  if (p.etapaAtual >= 7) return "Dominado";
+  if (p.prontoParaAvancar) return "Pronto para avançar";
+  if (p.revisoesPendentes > 0) return "Revisando erros";
+  if (p.questoesRespondidas > 0) return "Em prática";
+  return "Iniciando";
 }
 
 // --- API pública -----------------------------------------------------
@@ -282,7 +324,6 @@ export function resetAllLearningProgress() {
 
 export function useLearningProgress(): SubjectLearningProgress[] {
   const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  // garante reidratação no client se SSR retornou vazio
   useEffect(() => {
     emit();
   }, []);
@@ -297,3 +338,27 @@ export function useSubjectLearning(subjectId: string): SubjectLearningProgress |
 export function stageById(id: LearningStageId): LearningStage {
   return LEARNING_STAGES.find((s) => s.id === id) ?? LEARNING_STAGES[0];
 }
+
+// --- Assunto ativo ---------------------------------------------------
+
+export function getActiveSubjectId(): string | null {
+  return safeRead().activeSubjectId ?? null;
+}
+
+export function setActiveSubject(subjectId: string | null) {
+  mutate((s) => {
+    s.activeSubjectId = subjectId;
+    if (subjectId) ensure(subjectId, s);
+  });
+}
+
+export function useActiveLearning(): SubjectLearningProgress | null {
+  const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  useEffect(() => {
+    emit();
+  }, []);
+  const id = snap.activeSubjectId;
+  if (!id) return null;
+  return snap.bySubject[id] ?? null;
+}
+
