@@ -137,12 +137,9 @@ function PerfilPage() {
   }
 
   function handleReset() {
-    const ok = window.confirm(
-      "Resetar todo o progresso? Esta ação apaga respostas, simulados e redações. Não pode ser desfeita.",
-    );
-    if (!ok) return;
-    resetProgress();
+    setConfirmReset(true);
   }
+
 
   const examDays = daysUntilExam(progress.examDate);
   const displayName = progress.studentName?.trim() || "Aluno";
