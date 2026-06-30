@@ -336,4 +336,189 @@ function StageActions({ subjectId, stage }: { subjectId: string; stage: 1 | 2 | 
   return null;
 }
 
+function NextStageButtons({
+  active,
+}: {
+  active: NonNullable<ReturnType<typeof useActiveLearning>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [denied, setDenied] = useState<string | null>(null);
+  const stage = stageById(active.etapaAtual);
+  const proxima =
+    active.etapaAtual < 7
+      ? stageById((active.etapaAtual + 1) as 2 | 3 | 4 | 5 | 6 | 7)
+      : null;
+  const crit = evaluateAdvance(active);
+  const concluidas = active.etapasConcluidas
+    .map((id) => stageById(id).label)
+    .filter(Boolean);
+
+  function handleAdvance() {
+    setDenied(null);
+    const r = advanceStage(active.subjectId);
+    if (!r.ok) {
+      setDenied(
+        "Você ainda não cumpriu os critérios para avançar. Conclua as atividades pendentes primeiro.",
+      );
+    } else {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => {
+            setDenied(null);
+            setOpen(true);
+          }}
+          className="text-[11px] font-bold px-2.5 py-2 rounded-md border border-border hover:border-foreground/40 hover:bg-accent transition-colors"
+        >
+          Ver próxima etapa
+        </button>
+        <button
+          type="button"
+          onClick={handleAdvance}
+          disabled={!active.prontoParaAvancar}
+          className="inline-flex items-center justify-center gap-1 text-[11px] font-bold px-2.5 py-2 rounded-md bg-foreground text-background disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary transition-colors"
+        >
+          Avançar etapa <ArrowRight size={11} />
+        </button>
+      </div>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Resumo da próxima etapa"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/60"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-background border border-border rounded-xl shadow-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-border bg-gradient-to-br from-primary/5 to-transparent">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                Próxima etapa
+              </div>
+              <h3 className="text-lg font-extrabold tracking-tight mt-1">{active.assunto}</h3>
+              <p className="text-xs text-muted-foreground">{active.materia}</p>
+            </div>
+
+            <div className="p-5 space-y-4 text-sm">
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+                  Etapa atual
+                </div>
+                <div className="font-bold">
+                  Etapa {active.etapaAtual}: {stage.label}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{stage.description}</p>
+              </div>
+
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+                  Você já concluiu
+                </div>
+                {concluidas.length > 0 ? (
+                  <ul className="text-xs space-y-1">
+                    {concluidas.map((c) => (
+                      <li key={c} className="flex gap-1.5">
+                        <Check size={12} className="text-primary mt-0.5 shrink-0" />
+                        <span>{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhuma etapa concluída ainda — você está construindo a base.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Progresso geral:{" "}
+                  <span className="font-bold text-foreground">
+                    {active.progressoPercentual}%
+                  </span>{" "}
+                  · Acerto:{" "}
+                  <span className="font-bold text-foreground">{active.taxaDeAcerto}%</span>
+                </p>
+              </div>
+
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+                  O que falta para avançar
+                </div>
+                {crit.faltam.length === 0 ? (
+                  <p className="text-xs">{crit.proximoPasso}</p>
+                ) : (
+                  <ul className="text-xs space-y-1">
+                    {crit.faltam.map((f) => (
+                      <li key={f} className="flex gap-1.5">
+                        <span className="text-muted-foreground">•</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+                  Próxima etapa
+                </div>
+                {proxima ? (
+                  <>
+                    <div className="font-bold">
+                      Etapa {active.etapaAtual + 1}: {proxima.label}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{proxima.description}</p>
+                  </>
+                ) : (
+                  <p className="text-xs">
+                    Você já está na última etapa — assunto dominado.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-primary mb-1">
+                  Ação recomendada agora
+                </div>
+                <p className="text-xs leading-relaxed">{crit.proximoPasso}</p>
+              </div>
+
+              {denied && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive">
+                  {denied}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-border flex items-center justify-end gap-2 bg-muted/30">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-xs font-bold px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={handleAdvance}
+                disabled={!active.prontoParaAvancar}
+                className="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-md bg-foreground text-background disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary transition-colors"
+              >
+                Avançar etapa <ArrowRight size={12} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default CurrentStageCard;
