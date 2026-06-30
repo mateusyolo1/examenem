@@ -95,7 +95,7 @@ export function Nav() {
             >
               Exame.
             </Link>
-            <div className="hidden lg:flex items-center gap-1 text-sm font-medium">
+            <div className="hidden xl:flex items-center gap-1 text-sm font-medium">
               {DESKTOP_MAIN.map((l) => {
                 const active = isActive(l.to);
                 const Icon = l.icon;
@@ -145,7 +145,7 @@ export function Nav() {
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label="Abrir menu"
-              className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
+              className="xl:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
             >
               <Menu size={16} />
             </button>
