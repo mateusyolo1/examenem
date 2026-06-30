@@ -609,21 +609,73 @@ function RunView(props: {
 
 // -------- Result view --------
 function ResultView(props: {
-  result: NonNullable<ReturnType<typeof useState<{
-    score: number; total: number; spentSec: number;
-    byArea: Record<string, { correct: number; total: number }>;
-    bySubject: Record<string, { correct: number; total: number }>;
-    wrongIds: string[]; unansweredIds: string[];
-  }>>[0]>;
+  result: ResultData;
   mode: ModeConfig;
+  history: SimuladoRecord[];
   onReset: () => void;
 }) {
-  const { result, mode, onReset } = props;
+  const { result, mode, history, onReset } = props;
   const pct = result.total ? Math.round((result.score / result.total) * 100) : 0;
   const errors = result.total - result.score - result.unansweredIds.length;
+  const estimatedScore = Math.round(300 + pct * 7); // 300 (zero) → 1000 (100%)
+  const avgSec = result.total ? Math.round(result.spentSec / result.total) : 0;
 
   const areaRows = Object.entries(result.byArea).sort((a, b) => b[1].total - a[1].total);
   const subjectRows = Object.entries(result.bySubject).sort((a, b) => b[1].total - a[1].total);
+
+  // Best / worst area by accuracy (need ≥2 questions to be meaningful)
+  const rankableAreas = areaRows
+    .filter(([, v]) => v.total >= 1)
+    .map(([k, v]) => ({ key: k, acc: v.correct / v.total, ...v }));
+  const best = [...rankableAreas].sort((a, b) => b.acc - a.acc)[0];
+  const worst = [...rankableAreas].sort((a, b) => a.acc - b.acc)[0];
+
+  // Top wrong subjects
+  const topWrongSubjects = subjectRows
+    .filter(([, v]) => v.wrong > 0)
+    .sort((a, b) => b[1].wrong - a[1].wrong)
+    .slice(0, 5);
+
+  // Wrong question list
+  const qById = new Map(result.questions.map((q) => [q.id, q]));
+  const wrongList = result.wrongIds
+    .map((id) => qById.get(id))
+    .filter((q): q is Question => !!q);
+
+  // Recommendation
+  const recommendations: string[] = [];
+  if (topWrongSubjects.length > 0) {
+    const [name, v] = topWrongSubjects[0];
+    recommendations.push(
+      `Foque em ${name}: ${v.wrong} ${v.wrong === 1 ? "erro" : "erros"} neste simulado. Refaça questões e revise a teoria do assunto.`,
+    );
+  }
+  const FAST_THRESHOLD = 45; // sec/questão
+  const SLOW_THRESHOLD = 180;
+  if (avgSec > 0 && avgSec < FAST_THRESHOLD && errors >= Math.max(2, Math.floor(result.total * 0.2))) {
+    recommendations.push(
+      `Você respondeu rápido (${avgSec}s/questão) e errou bastante. Treine leitura atenta e interpretação antes de marcar a alternativa.`,
+    );
+  }
+  if (avgSec > SLOW_THRESHOLD) {
+    recommendations.push(
+      `Tempo médio alto (${avgSec}s/questão). Faça simulados cronometrados curtos para ganhar ritmo de prova.`,
+    );
+  }
+  if (worst && worst.acc < 0.5) {
+    recommendations.push(
+      `Sua pior área foi ${areaLabel(worst.key)} (${Math.round(worst.acc * 100)}%). Priorize-a nos próximos estudos.`,
+    );
+  }
+  if (recommendations.length === 0) {
+    recommendations.push("Desempenho equilibrado. Mantenha o ritmo com simulados regulares.");
+  }
+
+  // Evolution data: include this run too (already saved to history)
+  const evolution = [...history].sort((a, b) => a.at - b.at).slice(-10);
+
+  // By difficulty
+  const diffOrder: Difficulty[] = ["Fácil", "Médio", "Difícil"];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
@@ -634,11 +686,18 @@ function ResultView(props: {
             Resultado · {mode.label}
           </span>
           <div className="flex items-end justify-between flex-wrap gap-4 mt-2">
-            <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-primary">
-              {result.score}/{result.total}
-            </h1>
-            <div className="font-mono text-xs uppercase text-muted-foreground">
-              Tempo total: <span className="text-foreground">{fmt(result.spentSec)}</span>
+            <div>
+              <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-primary">
+                {result.score}/{result.total}
+              </h1>
+              <div className="text-xs font-mono uppercase text-muted-foreground mt-2">
+                Nota estimada (0–1000) ·{" "}
+                <span className="text-foreground text-base font-bold">{estimatedScore}</span>
+              </div>
+            </div>
+            <div className="font-mono text-xs uppercase text-muted-foreground text-right">
+              <div>Tempo total: <span className="text-foreground">{fmt(result.spentSec)}</span></div>
+              <div className="mt-1">Média por questão: <span className="text-foreground">{fmt(avgSec)}</span></div>
             </div>
           </div>
         </header>
@@ -650,6 +709,47 @@ function ResultView(props: {
           <Stat label="Em branco" value={String(result.unansweredIds.length)} />
         </div>
 
+        <div className="grid md:grid-cols-2 gap-3 mb-10">
+          <div className="border border-border bg-card p-4">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Melhor área</div>
+            <div className="text-2xl font-extrabold tracking-tighter mt-1">
+              {best ? areaLabel(best.key) : "—"}
+            </div>
+            {best && (
+              <div className="text-xs font-mono text-primary mt-1">
+                {Math.round(best.acc * 100)}% · {best.correct}/{best.total}
+              </div>
+            )}
+          </div>
+          <div className="border border-border bg-card p-4">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Pior área</div>
+            <div className="text-2xl font-extrabold tracking-tighter mt-1">
+              {worst ? areaLabel(worst.key) : "—"}
+            </div>
+            {worst && (
+              <div className="text-xs font-mono text-destructive mt-1">
+                {Math.round(worst.acc * 100)}% · {worst.correct}/{worst.total}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recommendation */}
+        <section className="mb-10 border border-primary/40 bg-primary/5 p-5">
+          <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-primary mb-3">
+            Recomendação de estudo
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {recommendations.map((r, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-primary font-bold">→</span>
+                <span>{r}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Chart: by area */}
         <section className="mb-10">
           <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground border-b border-border pb-3 mb-4">
             Desempenho por área
@@ -665,7 +765,7 @@ function ResultView(props: {
                       {v.correct}/{v.total} · {p}%
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-border overflow-hidden">
+                  <div className="h-2 w-full bg-border overflow-hidden">
                     <div className="h-full bg-primary" style={{ width: `${p}%` }} />
                   </div>
                 </div>
@@ -674,27 +774,91 @@ function ResultView(props: {
           </div>
         </section>
 
+        {/* Chart: evolution */}
+        {evolution.length >= 2 && (
+          <section className="mb-10">
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground border-b border-border pb-3 mb-4">
+              Evolução dos simulados
+            </h2>
+            <EvolutionChart data={evolution} />
+          </section>
+        )}
+
+        {/* Chart: by difficulty */}
         <section className="mb-10">
           <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground border-b border-border pb-3 mb-4">
-            Desempenho por assunto
+            Acertos por dificuldade
           </h2>
-          <div className="grid md:grid-cols-2 gap-2">
-            {subjectRows.map(([s, v]) => {
-              const p = Math.round((v.correct / v.total) * 100);
+          <div className="grid grid-cols-3 gap-3">
+            {diffOrder.map((d) => {
+              const v = result.byDifficulty[d];
+              const p = v.total ? Math.round((v.correct / v.total) * 100) : 0;
+              const color =
+                d === "Fácil" ? "bg-emerald-500"
+                : d === "Médio" ? "bg-amber-500"
+                : "bg-rose-500";
               return (
-                <div
-                  key={s}
-                  className="flex justify-between items-center border border-border bg-card p-3 font-mono text-xs"
-                >
-                  <span className="truncate pr-3">{s}</span>
-                  <span className="text-muted-foreground shrink-0">
-                    {v.correct}/{v.total} · {p}%
-                  </span>
+                <div key={d} className="border border-border bg-card p-4 flex flex-col items-center">
+                  <div className="text-[10px] font-mono uppercase text-muted-foreground">{d}</div>
+                  <div className="text-3xl font-extrabold tracking-tighter mt-1">{p}%</div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    {v.correct}/{v.total}
+                  </div>
+                  <div className="h-1.5 w-full bg-border mt-3 overflow-hidden">
+                    <div className={"h-full " + color} style={{ width: `${p}%` }} />
+                  </div>
                 </div>
               );
             })}
           </div>
         </section>
+
+        {/* Top wrong subjects */}
+        {topWrongSubjects.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground border-b border-border pb-3 mb-4">
+              Assuntos com mais erros
+            </h2>
+            <div className="space-y-2">
+              {topWrongSubjects.map(([name, v]) => (
+                <div
+                  key={name}
+                  className="flex justify-between items-center border border-border bg-card p-3 font-mono text-xs"
+                >
+                  <span className="truncate pr-3">{name}</span>
+                  <span className="text-destructive shrink-0">
+                    {v.wrong} {v.wrong === 1 ? "erro" : "erros"} de {v.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Wrong questions list */}
+        {wrongList.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground border-b border-border pb-3 mb-4">
+              Questões erradas
+            </h2>
+            <div className="space-y-2">
+              {wrongList.map((q) => (
+                <div key={q.id} className="border border-border bg-card p-4">
+                  <div className="flex justify-between items-center mb-1 font-mono text-[11px] uppercase text-muted-foreground">
+                    <span>{q.subject} · {q.year}</span>
+                    <span>
+                      Sua resposta:{" "}
+                      <span className="text-destructive font-bold">{result.answers[q.id]}</span>{" "}
+                      · Correta:{" "}
+                      <span className="text-primary font-bold">{q.correct}</span>
+                    </span>
+                  </div>
+                  <p className="text-sm line-clamp-2">{q.statement}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="border border-border bg-card p-5 mb-8 text-sm">
           <strong className="font-bold">{result.wrongIds.length}</strong>{" "}
@@ -729,6 +893,48 @@ function Stat({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="text-3xl font-extrabold tracking-tighter mt-1">{value}</div>
+    </div>
+  );
+}
+
+function EvolutionChart({ data }: { data: SimuladoRecord[] }) {
+  const W = 600;
+  const H = 160;
+  const PAD = 24;
+  const points = data.map((s, i) => {
+    const pct = s.total ? (s.score / s.total) * 100 : 0;
+    const x = PAD + (i * (W - PAD * 2)) / Math.max(1, data.length - 1);
+    const y = H - PAD - (pct / 100) * (H - PAD * 2);
+    return { x, y, pct, s };
+  });
+  const path = points.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(" ");
+  return (
+    <div className="border border-border bg-card p-4">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-40">
+        {[0, 25, 50, 75, 100].map((g) => {
+          const y = H - PAD - (g / 100) * (H - PAD * 2);
+          return (
+            <g key={g}>
+              <line x1={PAD} x2={W - PAD} y1={y} y2={y} className="stroke-border" strokeWidth={1} />
+              <text x={4} y={y + 3} className="fill-muted-foreground" fontSize={9} fontFamily="monospace">
+                {g}
+              </text>
+            </g>
+          );
+        })}
+        <path d={path} className="stroke-primary" strokeWidth={2} fill="none" />
+        {points.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={3.5} className="fill-primary" />
+            <text x={p.x} y={H - 6} textAnchor="middle" className="fill-muted-foreground" fontSize={9} fontFamily="monospace">
+              {new Date(p.s.at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="mt-2 text-[10px] font-mono uppercase text-muted-foreground text-center">
+        Últimos {data.length} simulados · % de acerto
+      </div>
     </div>
   );
 }
