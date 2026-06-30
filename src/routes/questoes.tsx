@@ -123,6 +123,8 @@ function Questoes() {
     const correct = selected === q.correct;
     recordAnswer(q.id, selected, correct);
     recordReviewAnswer(q.id, correct);
+    const subjectId = subjectIdForQuestion(q.area, questionMateria(q), questionTopic(q));
+    if (subjectId) recordSubjectAnswer(subjectId, correct);
     setRevealed(true);
   }
 
