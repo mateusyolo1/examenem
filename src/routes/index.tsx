@@ -201,6 +201,49 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* Top task of the day */}
+        <section className="animate-reveal mb-10">
+          {topTask ? (
+            <div className="border border-foreground bg-card p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+                  Tarefa mais importante de hoje · {typeLabel(topTask.type)} · {areaLabel(topTask.area)} · {topTask.minutes}min
+                </span>
+                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter mt-2">
+                  {topTask.title}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1 font-mono uppercase tracking-wider">
+                  {topTask.date < new Date().toISOString().slice(0, 10)
+                    ? "Atrasada — recupere assim que puder."
+                    : "Do seu plano de estudos."}
+                </p>
+              </div>
+              <Link
+                to="/plano"
+                className="bg-foreground text-background px-6 py-3 font-bold text-xs uppercase tracking-widest hover:bg-primary transition-colors whitespace-nowrap"
+              >
+                Ver plano →
+              </Link>
+            </div>
+          ) : (
+            <Link
+              to="/plano"
+              className="block border border-dashed border-border bg-card p-6 md:p-8 hover:border-foreground transition-colors"
+            >
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+                Plano de Estudos
+              </span>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter mt-2">
+                Gere seu plano personalizado em 1 minuto →
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 font-mono uppercase tracking-wider">
+                Tarefas diárias, simulados, redações e revisões programadas até o dia da prova.
+              </p>
+            </Link>
+          )}
+        </section>
+
+
         {/* Recommendation + Quick actions */}
         <section className="animate-reveal mb-10 grid lg:grid-cols-3 gap-4">
           {/* Recommendation banner */}
