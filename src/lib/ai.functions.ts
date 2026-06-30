@@ -24,6 +24,19 @@ const tutorInput = z.object({
     ])
     .optional(),
   context: z.string().max(2000).optional(),
+  stage: z
+    .object({
+      assunto: z.string().max(200),
+      etapaAtual: z.number().int().min(1).max(7),
+      etapaAtualLabel: z.string().max(80),
+      proximaEtapaLabel: z.string().max(80).optional(),
+      prontoParaAvancar: z.boolean(),
+      faltam: z.array(z.string().max(300)).max(10),
+      taxaDeAcerto: z.number().min(0).max(100).optional(),
+      questoesRespondidas: z.number().int().min(0).optional(),
+      revisoesPendentes: z.number().int().min(0).optional(),
+    })
+    .optional(),
 });
 
 const MODE_SYSTEM: Record<string, string> = {
@@ -50,6 +63,43 @@ const MODE_SYSTEM: Record<string, string> = {
   erro:
     "Modo EXPLICAR ERRO: analise por que a resposta do(a) aluno(a) está errada, mostre o caminho " +
     "correto passo a passo, aponte a confusão conceitual típica e dê 1 dica para não errar de novo.",
+};
+
+const STAGE_BEHAVIOR: Record<number, string> = {
+  1:
+    "ETAPA 1 — INTRODUÇÃO: o(a) aluno(a) está começando do zero. Explique o conteúdo de forma " +
+    "bem simples, com analogias do dia a dia, sem jargão. Foque em 'o que é' e 'por que importa'. " +
+    "Evite questões complexas; no máximo 1 pergunta de checagem ao final.",
+  2:
+    "ETAPA 2 — TEORIA: aprofunde a teoria essencial (definições, fórmulas, casos típicos). " +
+    "Ao final, faça 2–3 perguntas curtas de verificação para o(a) aluno(a) responder.",
+  3:
+    "ETAPA 3 — QUESTÕES GUIADAS: resolva questões JUNTO com o(a) aluno(a), passo a passo. " +
+    "Mostre o raciocínio completo, explicando cada decisão e por que descartar cada alternativa.",
+  4:
+    "ETAPA 4 — QUESTÕES INDEPENDENTES: proponha questões no estilo ENEM e NÃO entregue a resposta " +
+    "de imediato. Peça que o(a) aluno(a) tente primeiro; só revele o gabarito quando ele(a) responder " +
+    "ou pedir explicitamente. Dê dicas progressivas se travar.",
+  5:
+    "ETAPA 5 — REVISÃO DE ERROS: foque nos erros recentes do(a) aluno(a). Reveja conceitos fracos, " +
+    "explique o motivo do erro e proponha 1–2 questões parecidas para fixação.",
+  6:
+    "ETAPA 6 — MINI SIMULADO: gere um mini simulado cronometrado (5 questões no estilo ENEM, com " +
+    "tempo sugerido — ex.: 15 minutos). Apresente as questões primeiro, peça para o(a) aluno(a) " +
+    "marcar as respostas e só depois mostre o gabarito comentado.",
+  7:
+    "ETAPA 7 — ASSUNTO DOMINADO: parabenize o(a) aluno(a) e sugira o próximo assunto relacionado " +
+    "para continuar a evolução, justificando a escolha.",
+};
+
+const STAGE_LABELS: Record<number, string> = {
+  1: "Introdução",
+  2: "Teoria",
+  3: "Questões guiadas",
+  4: "Questões independentes",
+  5: "Revisão de erros",
+  6: "Mini simulado",
+  7: "Assunto dominado",
 };
 
 export const askTutor = createServerFn({ method: "POST" })
