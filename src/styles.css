@@ -30,73 +30,140 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+
+  /* Feedback tokens */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-review: var(--review);
+  --color-review-foreground: var(--review-foreground);
+
+  /* ENEM area tokens */
+  --color-area-linguagens: var(--area-linguagens);
+  --color-area-humanas: var(--area-humanas);
+  --color-area-natureza: var(--area-natureza);
+  --color-area-matematica: var(--area-matematica);
+  --color-area-redacao: var(--area-redacao);
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
-  --radius: 0.5rem;
-  /* Brutalist Precision palette */
-  --background: oklch(0.992 0.003 80);          /* #FDFCFB */
-  --foreground: oklch(0.157 0 0);               /* #0D0D0D */
+  --radius: 0.625rem;
+
+  /* Light — premium, calm, study-friendly */
+  --background: oklch(0.985 0.003 80);
+  --foreground: oklch(0.20 0.01 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.157 0 0);
+  --card-foreground: oklch(0.20 0.01 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.157 0 0);
-  --primary: oklch(0.629 0.193 41);             /* #E35205 */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.96 0.005 80);
-  --secondary-foreground: oklch(0.157 0 0);
-  --muted: oklch(0.96 0.005 80);
-  --muted-foreground: oklch(0.157 0 0 / 60%);
-  --accent: oklch(0.96 0.005 80);
-  --accent-foreground: oklch(0.157 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.157 0 0 / 9%);              /* #0D0D0D15 */
-  --input: oklch(0.157 0 0 / 12%);
-  --ring: oklch(0.629 0.193 41);
+  --popover-foreground: oklch(0.20 0.01 260);
+
+  --primary: oklch(0.55 0.14 255);            /* refined indigo-blue */
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.965 0.005 260);
+  --secondary-foreground: oklch(0.25 0.01 260);
+  --muted: oklch(0.965 0.005 260);
+  --muted-foreground: oklch(0.45 0.01 260);
+  --accent: oklch(0.95 0.012 255);
+  --accent-foreground: oklch(0.25 0.01 260);
+
+  --destructive: oklch(0.58 0.20 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.62 0.14 155);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.74 0.14 75);
+  --warning-foreground: oklch(0.20 0.01 260);
+  --info: oklch(0.62 0.12 230);
+  --info-foreground: oklch(0.99 0 0);
+  --review: oklch(0.62 0.14 295);
+  --review-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.20 0.01 260 / 10%);
+  --input: oklch(0.20 0.01 260 / 14%);
+  --ring: oklch(0.55 0.14 255 / 50%);
+
+  /* ENEM areas (muted, premium) */
+  --area-linguagens: oklch(0.60 0.14 30);     /* warm coral */
+  --area-humanas: oklch(0.62 0.13 75);        /* amber */
+  --area-natureza: oklch(0.58 0.13 155);      /* forest green */
+  --area-matematica: oklch(0.55 0.14 255);    /* indigo */
+  --area-redacao: oklch(0.58 0.14 310);       /* plum */
 }
 
 .dark {
-  --background: oklch(0.157 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.20 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.20 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.68 0.20 41);
-  --primary-foreground: oklch(0.157 0 0);
-  --secondary: oklch(0.25 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.98 0 0 / 60%);
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.98 0 0);
+  /* Dark — deep slate, low fatigue */
+  --background: oklch(0.17 0.012 260);
+  --foreground: oklch(0.96 0.005 260);
+  --card: oklch(0.21 0.012 260);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.21 0.012 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+
+  --primary: oklch(0.72 0.14 255);
+  --primary-foreground: oklch(0.15 0.01 260);
+
+  --secondary: oklch(0.26 0.012 260);
+  --secondary-foreground: oklch(0.96 0.005 260);
+  --muted: oklch(0.26 0.012 260);
+  --muted-foreground: oklch(0.70 0.01 260);
+  --accent: oklch(0.28 0.018 255);
+  --accent-foreground: oklch(0.96 0.005 260);
+
+  --destructive: oklch(0.68 0.19 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.72 0.14 155);
+  --success-foreground: oklch(0.15 0.01 260);
+  --warning: oklch(0.80 0.14 75);
+  --warning-foreground: oklch(0.15 0.01 260);
+  --info: oklch(0.72 0.12 230);
+  --info-foreground: oklch(0.15 0.01 260);
+  --review: oklch(0.72 0.14 295);
+  --review-foreground: oklch(0.15 0.01 260);
+
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.20 41);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.14 255 / 55%);
+
+  --area-linguagens: oklch(0.72 0.14 30);
+  --area-humanas: oklch(0.76 0.13 75);
+  --area-natureza: oklch(0.72 0.13 155);
+  --area-matematica: oklch(0.72 0.14 255);
+  --area-redacao: oklch(0.72 0.14 310);
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @utility animate-reveal {
-  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
+  html {
+    color-scheme: light dark;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-primary) 25%, transparent);
   }
 }
