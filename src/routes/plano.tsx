@@ -479,7 +479,7 @@ function PlanView({
   return (
     <div className="space-y-8">
       {/* Summary stats */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Stat
           icon={<CalendarCheck size={16} />}
           label="Tarefas totais"
@@ -504,31 +504,58 @@ function PlanView({
           icon={<Target size={16} />}
           label="Meta de nota"
           value={`${plan.config.targetScore}`}
-          unit={`${plan.config.hoursPerDay}h/dia`}
+          tone="primary"
+        />
+        <Stat
+          icon={<Clock size={16} />}
+          label="Horas por dia"
+          value={`${plan.config.hoursPerDay}h`}
+          unit={`${plan.config.weekdays.length} dias/semana`}
           tone="primary"
         />
       </section>
 
       {/* Week navigation */}
       <section className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 self-start">
             <button
               onClick={() => setWeekStart((w) => w - 1)}
-              aria-label="Semana anterior"
+              aria-label="Voltar uma semana"
               className="inline-flex items-center justify-center h-9 w-9 rounded-full hover:bg-background text-foreground/70 hover:text-foreground transition"
             >
               <ChevronLeft size={18} />
             </button>
-            <button
-              onClick={() => setWeekStart(0)}
-              className="h-9 px-4 rounded-full text-sm font-semibold hover:bg-background transition"
-            >
-              {weekLabel}
-            </button>
+            {[
+              { offset: -1, label: "Semana anterior" },
+              { offset: 0, label: "Esta semana" },
+              { offset: 1, label: "Próxima semana" },
+            ].map((tab) => {
+              const active = weekStart === tab.offset;
+              return (
+                <button
+                  key={tab.offset}
+                  onClick={() => setWeekStart(tab.offset)}
+                  aria-pressed={active}
+                  className={
+                    "h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-semibold transition whitespace-nowrap " +
+                    (active
+                      ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                      : "text-foreground/70 hover:text-foreground hover:bg-background/60")
+                  }
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+            {weekStart !== 0 && weekStart !== -1 && weekStart !== 1 && (
+              <span className="h-9 px-3 inline-flex items-center text-xs font-semibold text-primary">
+                {weekLabel}
+              </span>
+            )}
             <button
               onClick={() => setWeekStart((w) => w + 1)}
-              aria-label="Próxima semana"
+              aria-label="Avançar uma semana"
               className="inline-flex items-center justify-center h-9 w-9 rounded-full hover:bg-background text-foreground/70 hover:text-foreground transition"
             >
               <ChevronRight size={18} />
