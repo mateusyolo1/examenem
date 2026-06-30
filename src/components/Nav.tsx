@@ -5,6 +5,7 @@ const LINKS = [
   { to: "/", label: "Dashboard" },
   { to: "/materias", label: "Matérias" },
   { to: "/questoes", label: "Questões" },
+  { to: "/revisar", label: "Revisar" },
   { to: "/simulados", label: "Simulados" },
   { to: "/redacao", label: "Redação" },
   { to: "/tutor", label: "Tutor IA" },
