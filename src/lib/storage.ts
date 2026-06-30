@@ -12,6 +12,14 @@ export const AREAS: { id: Area; label: string; short: string }[] = [
   { id: "matematica", label: "Matemática", short: "Matemática" },
 ];
 
+export interface EssayRecord {
+  id: string;
+  theme: string;
+  text: string;
+  feedback?: unknown; // EssayFeedback shape from ai.functions, kept loose to avoid cycle
+  at: number;
+}
+
 export interface SimuladoRecord {
   id: string;
   score: number;
