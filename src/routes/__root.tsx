@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Exame — Estude para o ENEM" },
+      { title: "Painel do Aluno — Exame ENEM" },
       {
         name: "description",
         content:
           "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro.",
       },
-      { property: "og:title", content: "Exame — Estude para o ENEM" },
+      { property: "og:title", content: "Painel do Aluno — Exame ENEM" },
       {
         property: "og:description",
         content:
@@ -91,12 +91,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Exame — Estude para o ENEM" },
-      { name: "description", content: "Remix of Code Compass is a web application for code exploration and management." },
-      { property: "og:description", content: "Remix of Code Compass is a web application for code exploration and management." },
-      { name: "twitter:description", content: "Remix of Code Compass is a web application for code exploration and management." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7d061d27-58bc-4446-b622-c02d8a824613/id-preview-01d4b9e6--eb692907-5c2b-4009-93b3-5f10a719e2fe.lovable.app-1782843160454.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7d061d27-58bc-4446-b622-c02d8a824613/id-preview-01d4b9e6--eb692907-5c2b-4009-93b3-5f10a719e2fe.lovable.app-1782843160454.png" },
+      { name: "twitter:title", content: "Painel do Aluno — Exame ENEM" },
+      { name: "description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
+      { property: "og:description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
+      { name: "twitter:description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1351a9af-2d6d-454e-9eba-735622021cda" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1351a9af-2d6d-454e-9eba-735622021cda" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
