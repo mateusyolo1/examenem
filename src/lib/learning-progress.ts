@@ -99,6 +99,15 @@ const LP_KEY = "exame:learning-progress:v1";
 
 const empty: StoreShape = { bySubject: {}, activeSubjectId: null };
 
+// Cache do snapshot para useSyncExternalStore — precisa retornar a MESMA
+// referência entre renders enquanto os dados não mudam, senão o React
+// dispara loop infinito ("The result of getSnapshot should be cached").
+let cachedSnapshot: StoreShape | null = null;
+
+function invalidateSnapshot() {
+  cachedSnapshot = null;
+}
+
 function safeRead(): StoreShape {
   if (typeof window === "undefined") return empty;
   try {
@@ -123,6 +132,7 @@ function safeWrite(s: StoreShape) {
 // --- pub/sub simples para reatividade ---------------------------------
 const listeners = new Set<() => void>();
 function emit() {
+  invalidateSnapshot();
   listeners.forEach((l) => l());
 }
 if (typeof window !== "undefined") {
@@ -137,7 +147,12 @@ function subscribe(cb: () => void) {
 }
 
 function getSnapshot(): StoreShape {
-  return safeRead();
+  if (cachedSnapshot === null) {
+    cachedSnapshot = safeRead();
+  }
+  return cachedSnapshot;
+}
+
 }
 function getServerSnapshot(): StoreShape {
   return empty;
