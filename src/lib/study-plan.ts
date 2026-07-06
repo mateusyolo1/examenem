@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Area } from "./storage";
 import { AREAS } from "./storage";
 import { ESSAY_THEMES } from "./essay-themes";
+import { SUBJECTS, type Subject } from "./subjects";
 
 const KEY = "exame:study-plan:v1";
 
@@ -17,6 +18,7 @@ export interface StudyPlanConfig {
   hardAreas: Area[];
   targetScore: number; // 0-1000
   focus: Focus;
+  subjects?: string[]; // opcional: IDs de matérias específicas a priorizar
 }
 
 export interface StudyTask {
@@ -100,19 +102,49 @@ interface Slot {
   type: TaskType;
   area: StudyTask["area"];
   minutes: number;
-  title: (a: StudyTask["area"]) => string;
+  title: (label: string) => string;
+}
+
+type Pick = { area: StudyTask["area"]; label: string };
+
+function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
+  if (!cfg.subjects?.length) return null;
+  const chosen = SUBJECTS.filter(
+    (s) => cfg.subjects!.includes(s.id) && s.area !== "redacao",
+  );
+  if (!chosen.length) return null;
+  const queue: Subject[] = [];
+  chosen.forEach((s) => {
+    const w = cfg.hardAreas.includes(s.area as Area) ? 3 : 1;
+    for (let i = 0; i < w; i++) queue.push(s);
+  });
+  return queue;
+}
+
+function makePicker(cfg: StudyPlanConfig): () => Pick {
+  const subjectQueue = buildSubjectQueue(cfg);
+  if (subjectQueue) {
+    let i = 0;
+    return () => {
+      const s = subjectQueue[i % subjectQueue.length];
+      i += 1;
+      return { area: s.area as Area, label: s.name };
+    };
+  }
+  const areaQueue = buildAreaQueue(cfg);
+  let i = 0;
+  return () => {
+    const a = areaQueue[i % areaQueue.length];
+    i += 1;
+    return { area: a, label: AREA_LABEL[a] };
+  };
 }
 
 function dayTemplate(
   weekday: number,
-  areaCursor: { i: number; queue: Area[] },
+  pick: () => Pick,
   focus: Focus,
 ): Slot[] {
-  const nextArea = (): Area => {
-    const a = areaCursor.queue[areaCursor.i % areaCursor.queue.length];
-    areaCursor.i += 1;
-    return a;
-  };
   const wantsRedacao = focus === "redacao";
 
   // Base templates (sum ~120min); they get scaled to hoursPerDay later.
@@ -148,20 +180,20 @@ function dayTemplate(
         },
       ];
     default: {
-      const a1 = nextArea();
-      const a2 = nextArea();
+      const p1 = pick();
+      const p2 = pick();
       const slots: Slot[] = [
         {
           type: "teoria",
-          area: a1,
+          area: p1.area,
           minutes: 50,
-          title: (a) => `Teoria de ${AREA_LABEL[a]}`,
+          title: () => `Teoria de ${p1.label}`,
         },
         {
           type: "questoes",
-          area: a2,
+          area: p2.area,
           minutes: 50,
-          title: (a) => `10 questões de ${AREA_LABEL[a]}`,
+          title: () => `10 questões de ${p2.label}`,
         },
       ];
       slots.push(
@@ -191,7 +223,7 @@ export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
   const end = new Date(cfg.examDate);
   end.setHours(0, 0, 0, 0);
 
-  const areaCursor = { i: 0, queue: buildAreaQueue(cfg) };
+  const pick = makePicker(cfg);
   const themes = [...ESSAY_THEMES];
   let themeIdx = 0;
 
@@ -200,13 +232,17 @@ export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay();
     if (!cfg.weekdays.includes(wd)) continue;
-    const slots = dayTemplate(wd, areaCursor, cfg.focus);
+    const slots = dayTemplate(wd, pick, cfg.focus);
     const base = slots.reduce((s, x) => s + x.minutes, 0);
     const scale = targetMinPerDay / base;
     const dateStr = isoDate(d);
     slots.forEach((s) => {
-      let title = s.title(s.area);
-      if (s.type === "redacao") {
+      let title = s.title("");
+      if (s.type === "redacao" && s.area === "redacao" && !title.includes(":")) {
+        const t = themes[themeIdx % themes.length];
+        themeIdx += 1;
+        title = `Redação: ${t.titulo}`;
+      } else if (s.type === "redacao") {
         const t = themes[themeIdx % themes.length];
         themeIdx += 1;
         title = `Redação: ${t.titulo}`;
