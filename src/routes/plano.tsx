@@ -26,6 +26,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AREAS, useProgress, type Area } from "@/lib/storage";
+import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
 import {
   WEEKDAYS,
   useStudyPlan,
@@ -237,6 +238,7 @@ function PlanForm({
   const [hardAreas, setHardAreas] = useState<Area[]>(initial?.hardAreas ?? []);
   const [targetScore, setTargetScore] = useState<number>(initial?.targetScore ?? 700);
   const [focus, setFocus] = useState<Focus>(initial?.focus ?? "balanced");
+  const [subjects, setSubjects] = useState<string[]>(initial?.subjects ?? []);
 
   function toggleDay(d: number) {
     setWeekdays((w) =>
@@ -245,6 +247,9 @@ function PlanForm({
   }
   function toggleHard(a: Area) {
     setHardAreas((h) => (h.includes(a) ? h.filter((x) => x !== a) : [...h, a]));
+  }
+  function toggleSubject(id: string) {
+    setSubjects((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
   const canSubmit =
@@ -262,6 +267,7 @@ function PlanForm({
           hardAreas,
           targetScore,
           focus,
+          subjects,
         });
       }}
       className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
