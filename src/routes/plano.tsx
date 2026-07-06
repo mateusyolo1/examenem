@@ -26,6 +26,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AREAS, useProgress, type Area } from "@/lib/storage";
+import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
 import {
   WEEKDAYS,
   useStudyPlan,
@@ -237,6 +238,7 @@ function PlanForm({
   const [hardAreas, setHardAreas] = useState<Area[]>(initial?.hardAreas ?? []);
   const [targetScore, setTargetScore] = useState<number>(initial?.targetScore ?? 700);
   const [focus, setFocus] = useState<Focus>(initial?.focus ?? "balanced");
+  const [subjects, setSubjects] = useState<string[]>(initial?.subjects ?? []);
 
   function toggleDay(d: number) {
     setWeekdays((w) =>
@@ -245,6 +247,9 @@ function PlanForm({
   }
   function toggleHard(a: Area) {
     setHardAreas((h) => (h.includes(a) ? h.filter((x) => x !== a) : [...h, a]));
+  }
+  function toggleSubject(id: string) {
+    setSubjects((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
   const canSubmit =
@@ -262,6 +267,7 @@ function PlanForm({
           hardAreas,
           targetScore,
           focus,
+          subjects,
         });
       }}
       className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
@@ -358,6 +364,83 @@ function PlanForm({
           })}
         </div>
       </Field>
+
+      <Field
+        label={
+          subjects.length
+            ? `Matérias específicas (${subjects.length} selecionada${subjects.length === 1 ? "" : "s"})`
+            : "Matérias específicas (opcional — vazio = todas as áreas)"
+        }
+      >
+        <p className="text-xs text-muted-foreground -mt-1 mb-3">
+          Escolha exatamente o que quer estudar. Se nenhuma for selecionada, o
+          plano cobre todas as áreas.
+        </p>
+        <div className="space-y-4">
+          {SUBJECT_AREAS.filter((a) => a.id !== "redacao").map((area) => {
+            const areaSubjects = SUBJECTS.filter((s) => s.area === area.id);
+            const areaSelected = areaSubjects.filter((s) => subjects.includes(s.id)).length;
+            const allSelected = areaSelected === areaSubjects.length;
+            return (
+              <div key={area.id} className="rounded-xl border border-border bg-background/40 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {area.label}
+                    {areaSelected > 0 && (
+                      <span className="ml-2 text-primary normal-case tracking-normal">
+                        {areaSelected}/{areaSubjects.length}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSubjects((prev) =>
+                        allSelected
+                          ? prev.filter((id) => !areaSubjects.some((s) => s.id === id))
+                          : Array.from(new Set([...prev, ...areaSubjects.map((s) => s.id)])),
+                      )
+                    }
+                    className="text-[11px] font-semibold text-primary hover:underline"
+                  >
+                    {allSelected ? "Limpar" : "Selecionar todas"}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {areaSubjects.map((s) => {
+                    const active = subjects.includes(s.id);
+                    return (
+                      <button
+                        type="button"
+                        key={s.id}
+                        onClick={() => toggleSubject(s.id)}
+                        aria-pressed={active}
+                        className={
+                          "min-h-9 px-3 rounded-full text-xs font-semibold border transition-all " +
+                          (active
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "border-border bg-background hover:bg-accent hover:border-foreground/30")
+                        }
+                      >
+                        {s.name}
+                        <span
+                          className={
+                            "ml-1.5 text-[10px] font-mono " +
+                            (active ? "text-primary-foreground/70" : "text-muted-foreground")
+                          }
+                        >
+                          {s.difficulty[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Field>
+
 
       <Field label={`Objetivo de nota: ${targetScore}`}>
         <input
@@ -610,7 +693,7 @@ function PlanView({
       <StageTasksSection />
 
       {/* Weekly grid */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
