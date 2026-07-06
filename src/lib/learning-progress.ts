@@ -153,7 +153,7 @@ function getSnapshot(): StoreShape {
   return cachedSnapshot;
 }
 
-}
+
 function getServerSnapshot(): StoreShape {
   return empty;
 }
