@@ -109,14 +109,15 @@ export function Nav() {
         className="sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-3 xl:gap-4 min-w-0">
             <Link
               to="/"
               className="font-extrabold text-xl sm:text-2xl tracking-tighter uppercase shrink-0"
             >
               Exame.
             </Link>
-            <div className="hidden lg:flex items-center gap-0.5 text-sm font-medium">
+            {/* Desktop nav promoted to xl to avoid crowding on medium widths */}
+            <div className="hidden xl:flex items-center gap-0.5 text-sm font-medium">
               {DESKTOP_MAIN.map((l) => {
                 const active = isActive(l.to);
                 const Icon = l.icon;
@@ -133,8 +134,8 @@ export function Nav() {
                     }
                   >
                     <Icon size={14} />
-                    <span className="hidden xl:inline">{l.label}</span>
-                    <span className="xl:hidden">{l.shortLabel ?? l.label}</span>
+                    <span className="hidden 2xl:inline">{l.label}</span>
+                    <span className="2xl:hidden">{l.shortLabel ?? l.label}</span>
                   </Link>
                 );
               })}
@@ -189,10 +190,10 @@ export function Nav() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Link
               to="/conquistas"
-              className="hidden sm:inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
               title={`${xp.total.toLocaleString("pt-BR")} XP — ${lvl.title}`}
               aria-label={`Nível ${lvl.level}, ${xp.total} XP`}
             >
@@ -201,9 +202,11 @@ export function Nav() {
               </span>
               <span className="text-xs font-bold tracking-tight">{lvl.level}</span>
             </Link>
-            <StageIndicator />
+            <div className="hidden lg:block">
+              <StageIndicator />
+            </div>
             <div
-              className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
+              className="hidden sm:inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
               title={`Streak de ${progress.streakDays} dia(s)`}
               aria-label={`Streak ${progress.streakDays} dias`}
             >
@@ -217,7 +220,7 @@ export function Nav() {
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-label="Abrir menu"
-              className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
+              className="xl:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
             >
               <Menu size={16} />
             </button>
@@ -228,7 +231,7 @@ export function Nav() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Navegação rápida"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="grid grid-cols-6 max-w-2xl mx-auto">
           {MOBILE_PRIMARY.map((l) => {
