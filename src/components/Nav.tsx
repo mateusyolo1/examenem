@@ -193,7 +193,7 @@ export function Nav() {
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Link
               to="/conquistas"
-              className="hidden md:inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
+              className="hidden 2xl:inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
               title={`${xp.total.toLocaleString("pt-BR")} XP — ${lvl.title}`}
               aria-label={`Nível ${lvl.level}, ${xp.total} XP`}
             >
@@ -202,11 +202,11 @@ export function Nav() {
               </span>
               <span className="text-xs font-bold tracking-tight">{lvl.level}</span>
             </Link>
-            <div className="hidden lg:block">
+            <div className="hidden 2xl:block">
               <StageIndicator />
             </div>
             <div
-              className="hidden sm:inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
+              className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
               title={`Streak de ${progress.streakDays} dia(s)`}
               aria-label={`Streak ${progress.streakDays} dias`}
             >
