@@ -312,7 +312,10 @@ function WatchingView({
   allWatched: boolean;
   onStartQuiz: () => void;
   quizLoading: boolean;
+  quizPrefetching: boolean;
+  quizPrefetchReady: boolean;
   videos: Video[];
+
   onSaveProgress: (seconds: number) => void;
   resumeAt: number;
 }) {
