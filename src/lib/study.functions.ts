@@ -609,7 +609,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const cacheKey = `lesson-quiz:v5-per-video:${data.topicId}`;
+    const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
@@ -668,7 +668,7 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const cacheKey = `lesson-quiz:v5-per-video:${data.topicId}`;
+    const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
