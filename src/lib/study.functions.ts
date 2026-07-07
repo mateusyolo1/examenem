@@ -210,10 +210,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     if (cached) {
       suggestions = (cached.response as unknown as { suggestions: AiVideoSuggestion[] }).suggestions;
     } else {
-      // Build a good search query for YouTube — use the topic itself, biased for ENEM
-      const query = `${topic.title} ${topic.subject ?? ""} ENEM aula`.trim();
+      // Query prioritizes the specific topic title (in quotes) so YouTube
+      // doesn't fall back to generic subject-level videos that overlap with
+      // sibling topics under the same subject.
+      const query = `"${topic.title}" ${topic.subject ?? ""} ENEM aula explicação`.trim();
 
-      // Scrape YouTube search results (no API key needed)
       const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
       let html = "";
       try {
@@ -229,7 +230,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         html = "";
       }
 
-      // Extract ytInitialData JSON blob and find videoRenderer entries
+      // Extract up to ~20 candidates so we still have 6 after de-duplication
       const parsed: AiVideoSuggestion[] = [];
       const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
       if (match) {
@@ -254,16 +255,31 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
                 title,
                 channel_name: channel,
               });
-              if (parsed.length >= 8) break;
+              if (parsed.length >= 20) break;
             }
-            if (parsed.length >= 8) break;
+            if (parsed.length >= 20) break;
           }
         } catch {
           /* ignore parse errors */
         }
       }
 
-      suggestions = parsed.slice(0, 6);
+      // De-duplicate against videos already used by AI in any other topic —
+      // avoids the same video appearing in "Interpretação de Texto" and
+      // "Gramática" just because both share the Português subject.
+      const candidateIds = parsed.map((p) => p.youtube_id);
+      const usedIds = new Set<string>();
+      if (candidateIds.length > 0) {
+        const { data: existing } = await supabaseAdmin
+          .from("study_videos")
+          .select("youtube_id")
+          .neq("topic_id", topic.id)
+          .in("youtube_id", candidateIds);
+        for (const row of existing ?? []) usedIds.add(row.youtube_id);
+      }
+
+      const unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
+      suggestions = unique.slice(0, 6);
 
       if (suggestions.length > 0) {
         await supabaseAdmin.from("ai_response_cache").insert({
@@ -273,6 +289,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         });
       }
     }
+
 
     if (suggestions.length > 0) {
       const rows = suggestions.map((s, i) => ({
