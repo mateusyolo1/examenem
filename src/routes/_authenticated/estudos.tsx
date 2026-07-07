@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+
 import {
   listStudyTopics,
   listUserVideos,
