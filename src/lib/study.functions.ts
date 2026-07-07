@@ -356,8 +356,60 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
       .limit(6);
     if (error) throw new Error(error.message);
 
-    return { topic, videos: videos ?? [] };
+    const ids = (videos ?? []).map((v) => v.id);
+    const progressMap = new Map<string, { watched: boolean; watch_seconds: number }>();
+    if (ids.length > 0) {
+      const { data: progress } = await supabase
+        .from("user_video_progress")
+        .select("video_id, watched, watch_seconds")
+        .eq("user_id", context.userId)
+        .in("video_id", ids);
+      for (const p of progress ?? []) {
+        progressMap.set(p.video_id, {
+          watched: !!p.watched,
+          watch_seconds: p.watch_seconds ?? 0,
+        });
+      }
+    }
+
+    return {
+      topic,
+      videos: (videos ?? []).map((v) => ({
+        ...v,
+        watched: progressMap.get(v.id)?.watched ?? false,
+        watch_seconds: progressMap.get(v.id)?.watch_seconds ?? 0,
+      })),
+    };
   });
+
+// ============================================================
+// Save current playback position (for resume)
+// ============================================================
+export const saveVideoPosition = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        videoId: z.string().uuid(),
+        watchSeconds: z.number().int().min(0).max(60 * 60 * 24),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase.from("user_video_progress").upsert(
+      {
+        user_id: userId,
+        video_id: data.videoId,
+        watch_seconds: data.watchSeconds,
+        last_watched_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,video_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 interface QuizQuestion {
   videoId: string;
