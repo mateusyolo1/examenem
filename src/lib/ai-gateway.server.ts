@@ -6,7 +6,7 @@ export function createGateway() {
   return createOpenAICompatible({
     name: "lovable",
     baseURL: "https://ai.gateway.lovable.dev/v1",
-    headers: { "Lovable-API-Key": apiKey },
+    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
   });
 }
 
