@@ -14,9 +14,11 @@ import {
   suggestVideosForTopic,
   markVideoWatched,
   clearSuggestedVideos,
+  listSuggestionHistory,
+  clearSuggestionHistory,
 
 } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
 
