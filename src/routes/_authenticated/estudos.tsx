@@ -433,7 +433,21 @@ function TopicSearches({ topic }: { topic: Topic }) {
           addMutation.mutate({ url: url.trim(), title: title.trim() || undefined });
         }}
       />
+
+      <ConfirmDialog
+        open={videoToDelete !== null}
+        title="Remover este vídeo?"
+        description="O vídeo será apagado da sua lista de vídeos salvos deste assunto."
+        confirmLabel="Remover"
+        destructive
+        onConfirm={() => {
+          if (videoToDelete) deleteMutation.mutate(videoToDelete);
+          setVideoToDelete(null);
+        }}
+        onCancel={() => setVideoToDelete(null)}
+      />
     </div>
+
   );
 }
 
