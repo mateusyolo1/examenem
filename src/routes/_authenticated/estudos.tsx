@@ -245,12 +245,6 @@ function EstudosPage() {
   );
 }
 
-function WeekPlanTopics() {
-  const { plan } = useStudyPlan();
-  const navigate = useNavigate();
-  const resolveFn = useServerFn(resolveStudyTopic);
-  const listMasteryFn = useServerFn(listTopicMastery);
-  const [openingSlug, setOpeningSlug] = useState<string | null>(null);
 
 function MiniWeekCalendar() {
   const { plan } = useStudyPlan();
