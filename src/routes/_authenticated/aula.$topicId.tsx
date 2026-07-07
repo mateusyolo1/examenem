@@ -160,7 +160,7 @@ function LessonPlayer({
   });
 
   const submitMutation = useMutation({
-    mutationFn: (answers: { videoId: string; chosenIndex: number }[]) =>
+    mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
     onSuccess: () => setPhase("result"),
     onError: (e: Error) => toast.error(e.message),
@@ -496,13 +496,17 @@ function WatchingView({
 
 interface QuizPayload {
   questions: {
-    videoId: string;
-    youtubeId: string;
-    videoTitle: string;
+    id: string;
     question: string;
     options: string[];
     correctIndex: number;
     explanation: string;
+    videoRef: {
+      videoId: string;
+      youtubeId: string;
+      videoTitle: string;
+      timestamp?: string;
+    };
   }[];
   skipped: { youtubeId: string; title: string; reason: string }[];
 }
@@ -513,17 +517,17 @@ function QuizView({
   submitting,
 }: {
   payload: QuizPayload;
-  onSubmit: (a: { videoId: string; chosenIndex: number }[]) => void;
+  onSubmit: (a: { questionId: string; chosenIndex: number }[]) => void;
   submitting: boolean;
 }) {
   const [choices, setChoices] = useState<Record<string, number>>({});
 
-  const allAnswered = payload.questions.every((q) => choices[q.videoId] !== undefined);
+  const allAnswered = payload.questions.every((q) => choices[q.id] !== undefined);
 
   const submit = () => {
     const answers = payload.questions.map((q) => ({
-      videoId: q.videoId,
-      chosenIndex: choices[q.videoId],
+      questionId: q.id,
+      chosenIndex: choices[q.id],
     }));
     onSubmit(answers);
   };
@@ -536,23 +540,23 @@ function QuizView({
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Atividade baseada nas aulas</h2>
         <p className="text-sm text-muted-foreground">
-          Responda uma questão por vídeo. Escolha a alternativa que melhor completa o enunciado.
+          {payload.questions.length} questões cobrindo o conteúdo dos vídeos que você acabou de assistir.
         </p>
       </div>
 
       {payload.skipped.length > 0 && (
         <div className="border border-dashed border-border rounded-md p-3 text-xs text-muted-foreground bg-card">
-          Não foi possível gerar questão para {payload.skipped.length} vídeo(s):{" "}
-          {payload.skipped.map((s) => s.title).join(", ")} (sem legendas disponíveis).
+          Não foi possível analisar {payload.skipped.length} vídeo(s):{" "}
+          {payload.skipped.map((s) => s.title).join(", ")}.
         </div>
       )}
 
       <ol className="space-y-8">
         {payload.questions.map((q, i) => {
-          const answered = choices[q.videoId] !== undefined;
+          const answered = choices[q.id] !== undefined;
           return (
             <li
-              key={q.videoId}
+              key={q.id}
               className="border border-border bg-card rounded-lg p-6 sm:p-8 space-y-5 shadow-sm"
             >
               <header className="space-y-3 pb-4 border-b border-border">
@@ -570,7 +574,8 @@ function QuizView({
                   )}
                 </div>
                 <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70 line-clamp-1">
-                  Sobre: {q.videoTitle}
+                  Baseado em: {q.videoRef.videoTitle}
+                  {q.videoRef.timestamp ? ` · aos ${q.videoRef.timestamp}` : ""}
                 </p>
               </header>
 
@@ -578,11 +583,11 @@ function QuizView({
 
               <div className="space-y-2.5 pt-1">
                 {q.options.map((opt, idx) => {
-                  const selected = choices[q.videoId] === idx;
+                  const selected = choices[q.id] === idx;
                   return (
                     <button
                       key={idx}
-                      onClick={() => setChoices({ ...choices, [q.videoId]: idx })}
+                      onClick={() => setChoices({ ...choices, [q.id]: idx })}
                       className={
                         "w-full text-left flex items-start gap-3 px-4 py-3.5 rounded-md border transition-colors " +
                         (selected
@@ -631,7 +636,7 @@ function ResultView({
   result: {
     score: number;
     total: number;
-    graded: { videoId: string; chosenIndex: number; correct: boolean }[];
+    graded: { questionId: string; chosenIndex: number; correct: boolean }[];
     quiz: QuizPayload;
   };
   topicId: string;
@@ -651,10 +656,10 @@ function ResultView({
 
       <ol className="space-y-4">
         {result.quiz.questions.map((q, i) => {
-          const g = result.graded.find((x) => x.videoId === q.videoId);
+          const g = result.graded.find((x) => x.questionId === q.id);
           const correct = g?.correct ?? false;
           return (
-            <li key={q.videoId} className="border border-border bg-card rounded-md p-4">
+            <li key={q.id} className="border border-border bg-card rounded-md p-4">
               <div className="flex items-start gap-2 mb-2">
                 <span
                   className={
