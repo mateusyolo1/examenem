@@ -775,7 +775,21 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        title="Limpar lista de sugestões?"
+        description="Todos os vídeos sugeridos pela IA para este assunto serão removidos. Você poderá gerar novas sugestões depois."
+        confirmLabel="Limpar lista"
+        destructive
+        onConfirm={() => {
+          clearMutation.mutate();
+          setClearConfirmOpen(false);
+        }}
+        onCancel={() => setClearConfirmOpen(false)}
+      />
     </div>
+
   );
 }
 
