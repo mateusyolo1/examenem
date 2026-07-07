@@ -588,11 +588,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function PlanView({
   plan,
+  mastery,
   onToggleDone,
   onEdit,
   onClear,
 }: {
   plan: NonNullable<ReturnType<typeof useStudyPlan>["plan"]>;
+  mastery: TopicMastery[];
   onToggleDone: (id: string) => void;
   onEdit: () => void;
   onClear: () => void;
