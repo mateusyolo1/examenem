@@ -151,7 +151,7 @@ function LessonPlayer({
     mutationFn: () => buildQuiz({ data: { topicId } }),
     onSuccess: (r) => {
       if (r.questions.length === 0) {
-        toast.error("Não foi possível gerar questões (nenhum vídeo com legendas).");
+        toast.error("Não foi possível gerar a atividade agora. Tente novamente em instantes.");
         return;
       }
       setPhase("quiz");
