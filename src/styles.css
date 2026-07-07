@@ -166,7 +166,7 @@
     padding-bottom: calc(4rem + env(safe-area-inset-bottom));
   }
   @media (min-width: 1024px) {
-    body { padding-bottom: 0; }
+    body { padding-bottom: 0; padding-left: 16rem; }
   }
   ::selection {
     background-color: color-mix(in oklab, var(--color-primary) 25%, transparent);
