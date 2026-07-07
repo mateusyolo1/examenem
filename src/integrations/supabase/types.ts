@@ -444,6 +444,48 @@ export type Database = {
           },
         ]
       }
+      topic_mastery: {
+        Row: {
+          area: string
+          attempts: number
+          created_at: string
+          id: string
+          last_score: number
+          last_seen_at: string
+          mastered: boolean
+          next_review_at: string
+          topic_slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_score: number
+          last_seen_at?: string
+          mastered?: boolean
+          next_review_at?: string
+          topic_slug: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_score?: number
+          last_seen_at?: string
+          mastered?: boolean
+          next_review_at?: string
+          topic_slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_essays: {
         Row: {
           created_at: string
