@@ -254,27 +254,28 @@ Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`
     )
     .join("\n\n");
 
+  const targetCount = successfulSummaries.length;
+
   const quizPrompt = `Você é professor(a) preparando uma atividade ENEM sobre o tópico "${topicCtx}".
 
-Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE 3 questões de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE nesses resumos.
+Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE ${targetCount} questão(ões) de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE nesses resumos.
 
 REGRAS OBRIGATÓRIAS:
-- As 3 questões devem cobrir conceitos DIFERENTES apresentados nos vídeos.
+- Gere EXATAMENTE ${targetCount} questões — uma para cada vídeo analisado (na ordem apresentada), cobrindo o conceito principal daquele vídeo específico.
+- Cada questão DEVE indicar qual vídeo a inspirou no campo "videoId" (id EXATO mostrado no resumo).
 - Use SOMENTE informações presentes nos resumos abaixo. Não invente.
-- Cada questão deve indicar qual vídeo a inspirou (campo "videoId" com o id EXATO mostrado).
 - Se houver timestamp relevante, inclua no campo "timestamp" (formato "MM:SS").
 - Nível ENEM: contextualizada, autocontida, testando compreensão.
 - Alternativas plausíveis; distratores baseados em erros conceituais comuns.
 - A explicação deve citar o conceito/exemplo do vídeo que justifica a resposta.
 - Responda APENAS com JSON válido no formato:
 {"questions":[
-  {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."},
-  {...},
-  {...}
+  {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}
 ]}
 
 RESUMOS DOS VÍDEOS:
 ${combined}`;
+
 
   let quizJson: {
     questions?: Array<{
@@ -298,7 +299,7 @@ ${combined}`;
   const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
   const questions: QuizQuestion[] = [];
 
-  for (let i = 0; i < rawQuestions.length && questions.length < 3; i++) {
+  for (let i = 0; i < rawQuestions.length && questions.length < targetCount; i++) {
     const q = rawQuestions[i];
     if (
       typeof q.question !== "string" ||
