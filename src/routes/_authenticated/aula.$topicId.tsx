@@ -496,13 +496,17 @@ function WatchingView({
 
 interface QuizPayload {
   questions: {
-    videoId: string;
-    youtubeId: string;
-    videoTitle: string;
+    id: string;
     question: string;
     options: string[];
     correctIndex: number;
     explanation: string;
+    videoRef: {
+      videoId: string;
+      youtubeId: string;
+      videoTitle: string;
+      timestamp?: string;
+    };
   }[];
   skipped: { youtubeId: string; title: string; reason: string }[];
 }
