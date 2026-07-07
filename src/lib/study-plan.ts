@@ -37,16 +37,17 @@ export interface StudyTask {
   topicArea?: Area;
 }
 
-// Mapeamento parcial de subject id (SUBJECTS) → slug em study_topics.
-// Quando o plano é gerado com matérias específicas, se houver
-// correspondência aqui a tarefa de teoria abre exatamente aquele tópico.
-// Fora daqui o CTA cai no fallback por área.
-const SUBJECT_TO_TOPIC_SLUG: Record<string, string> = {
-  "ling-interp": "lin-interpretacao",
-  "ling-gram": "lin-gramatica",
-  "ling-lit": "lin-literatura",
-  "ling-ingles": "lin-ingles",
-};
+// Catálogo de tópicos vindo do banco (`study_topics`), usado pelo gerador
+// para rotacionar as tarefas de teoria em tópicos concretos (ex: "Funções",
+// "Geometria Plana") em vez de só nomes de área.
+export interface TopicCatalogEntry {
+  slug: string;
+  area: Area;
+  title: string;
+  subject: string | null;
+  sort_order: number;
+}
+
 
 export interface StudyPlan {
   id: string;
