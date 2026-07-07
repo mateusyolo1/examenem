@@ -30,7 +30,23 @@ export interface StudyTask {
   minutes: number;
   status: TaskStatus;
   note?: string;
+  // Integração com "Estudar": para teoria, apontamos para um tópico
+  // específico (slug de study_topics) ou pelo menos a área, para o
+  // CTA "Estudar" resolver e abrir /aula/$topicId.
+  topicSlug?: string;
+  topicArea?: Area;
 }
+
+// Mapeamento parcial de subject id (SUBJECTS) → slug em study_topics.
+// Quando o plano é gerado com matérias específicas, se houver
+// correspondência aqui a tarefa de teoria abre exatamente aquele tópico.
+// Fora daqui o CTA cai no fallback por área.
+const SUBJECT_TO_TOPIC_SLUG: Record<string, string> = {
+  "ling-interp": "lin-interpretacao",
+  "ling-gram": "lin-gramatica",
+  "ling-lit": "lin-literatura",
+  "ling-ingles": "lin-ingles",
+};
 
 export interface StudyPlan {
   id: string;
@@ -103,9 +119,11 @@ interface Slot {
   area: StudyTask["area"];
   minutes: number;
   title: (label: string) => string;
+  topicArea?: Area;
+  topicSlug?: string;
 }
 
-type Pick = { area: StudyTask["area"]; label: string };
+type Pick = { area: StudyTask["area"]; label: string; subjectId?: string };
 
 function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
   if (!cfg.subjects?.length) return null;
@@ -128,7 +146,7 @@ function makePicker(cfg: StudyPlanConfig): () => Pick {
     return () => {
       const s = subjectQueue[i % subjectQueue.length];
       i += 1;
-      return { area: s.area as Area, label: s.name };
+      return { area: s.area as Area, label: s.name, subjectId: s.id };
     };
   }
   const areaQueue = buildAreaQueue(cfg);
@@ -188,6 +206,8 @@ function dayTemplate(
           area: p1.area,
           minutes: 50,
           title: () => `Teoria de ${p1.label}`,
+          topicArea: p1.area === "geral" || p1.area === "redacao" ? undefined : (p1.area as Area),
+          topicSlug: p1.subjectId ? SUBJECT_TO_TOPIC_SLUG[p1.subjectId] : undefined,
         },
         {
           type: "questoes",
@@ -255,6 +275,8 @@ export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
         type: s.type,
         minutes: Math.max(15, Math.round(s.minutes * scale)),
         status: "pendente",
+        topicSlug: s.topicSlug,
+        topicArea: s.topicArea,
       });
     });
   }
@@ -290,6 +312,23 @@ export function resolvedStatus(t: StudyTask): TaskStatus {
   if (t.status === "concluida") return "concluida";
   if (t.date < todayIso()) return "atrasada";
   return "pendente";
+}
+
+// Standalone helper (não precisa do hook) — usado por outras telas
+// (aula, prática) para marcar a tarefa vinculada como concluída assim
+// que o aluno termina a atividade que veio do cronograma.
+export function markPlanTaskDone(id: string) {
+  const cur = read();
+  if (!cur) return;
+  const target = cur.tasks.find((t) => t.id === id);
+  if (!target || target.status === "concluida") return;
+  const next: StudyPlan = {
+    ...cur,
+    tasks: cur.tasks.map((t) =>
+      t.id === id ? { ...t, status: "concluida" as const } : t,
+    ),
+  };
+  write(next);
 }
 
 export function useStudyPlan() {

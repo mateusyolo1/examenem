@@ -1,5 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { resolveStudyTopic } from "@/lib/study.functions";
+import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 import {
   CalendarDays,
   CheckCircle2,
@@ -790,7 +795,6 @@ function TaskCard({
   const status = resolvedStatus(task);
   const done = status === "concluida";
   const late = status === "atrasada";
-  const cta = ctaFor(task);
   const style = TYPE_STYLES[task.type];
   const Icon = style.icon;
 
@@ -862,19 +866,13 @@ function TaskCard({
             </>
           )}
         </button>
-        {cta && !done ? (
-          <Link
-            to={cta.to}
-            className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline"
-          >
-            {cta.label}
-            <ArrowRight size={12} aria-hidden />
-          </Link>
-        ) : done ? (
+        {done ? (
           <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 size={12} aria-hidden /> Concluída
           </span>
-        ) : null}
+        ) : (
+          <TaskCta task={task} />
+        )}
       </div>
       {/* keep variable referenced for future highlight rules */}
       <span className="sr-only">{isPastDay ? "Dia passado" : ""}</span>
@@ -896,7 +894,7 @@ function formatDayParts(iso: string): [string, string] {
 function ctaFor(
   t: StudyTask,
 ): {
-  to: "/questoes" | "/simulados" | "/redacao" | "/revisar" | "/tutor";
+  to: "/questoes" | "/simulados" | "/redacao" | "/revisar";
   label: string;
 } | null {
   switch (t.type) {
@@ -908,11 +906,112 @@ function ctaFor(
       return { to: "/redacao", label: "Escrever" };
     case "revisao":
       return { to: "/revisar", label: "Revisar" };
-    case "teoria":
-      return { to: "/tutor", label: "Estudar" };
     default:
       return null;
   }
+}
+
+// Smart CTA — for teoria/redacao we integrate with the "Estudar" flow:
+// - teoria: resolve topic (by slug or area) then open /aula/$topicId
+//   with taskId so the aula auto-completes the schedule task on finish.
+// - redacao: if the student has a recent essayTask cached from a lesson,
+//   propose writing directly on that topic (opens /aula/$topicId/pratica).
+//   Otherwise falls back to the generic /redacao route.
+function TaskCta({ task }: { task: StudyTask }) {
+  const navigate = useNavigate();
+  const resolve = useServerFn(resolveStudyTopic);
+  const lastEssays = useLastEssayTasks();
+
+  const openLessonMutation = useMutation({
+    mutationFn: async () => {
+      const topic = await resolve({
+        data: {
+          slug: task.topicSlug,
+          area: task.topicArea,
+        },
+      });
+      return topic;
+    },
+    onSuccess: (topic) => {
+      navigate({
+        to: "/aula/$topicId",
+        params: { topicId: topic.id },
+        search: { taskId: task.id },
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (task.type === "teoria") {
+    const canResolve = !!(task.topicSlug || task.topicArea);
+    if (!canResolve) {
+      return (
+        <Link
+          to="/estudos"
+          className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline"
+        >
+          Estudar
+          <ArrowRight size={12} aria-hidden />
+        </Link>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => openLessonMutation.mutate()}
+        disabled={openLessonMutation.isPending}
+        className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline disabled:opacity-60"
+      >
+        {openLessonMutation.isPending ? "Abrindo aula…" : "Estudar (vídeos + atividade)"}
+        <ArrowRight size={12} aria-hidden />
+      </button>
+    );
+  }
+
+  if (task.type === "redacao") {
+    // Try to reuse the most recent essayTask cached from a lesson of any
+    // area — the aula's essayTask is already focused on a concrete skill.
+    const candidates = Object.values(lastEssays).sort((a, b) => b.savedAt - a.savedAt);
+    const recent = candidates[0];
+    if (recent) {
+      return (
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() =>
+              navigate({
+                to: "/aula/$topicId/pratica",
+                params: { topicId: recent.topicId },
+                search: { taskId: task.id },
+              })
+            }
+            className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline text-left"
+          >
+            Escrever sobre "{recent.topicTitle}"
+            <ArrowRight size={12} aria-hidden />
+          </button>
+          <Link
+            to="/redacao"
+            className="text-[10px] text-muted-foreground text-center hover:underline"
+          >
+            ou usar tema livre
+          </Link>
+        </div>
+      );
+    }
+  }
+
+  const cta = ctaFor(task);
+  if (!cta) return null;
+  return (
+    <Link
+      to={cta.to}
+      className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline"
+    >
+      {cta.label}
+      <ArrowRight size={12} aria-hidden />
+    </Link>
+  );
 }
 
 function Stat({

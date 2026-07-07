@@ -41,9 +41,14 @@ import {
   saveVideoPosition,
   markVideoWatched,
 } from "@/lib/study.functions";
+import { z } from "zod";
+import { markPlanTaskDone } from "@/lib/study-plan";
+import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z.object({ taskId: z.string().optional() }).parse(search),
   component: LessonPage,
   errorComponent: ({ error, reset }) => {
     const router = useRouter();
@@ -76,6 +81,7 @@ type Phase = "watching" | "quiz" | "result";
 
 function LessonPage() {
   const { topicId } = Route.useParams();
+  const { taskId } = Route.useSearch();
   const getPlaylist = useServerFn(getLessonPlaylist);
 
   const { data, isLoading } = useQuery({
@@ -110,7 +116,15 @@ function LessonPage() {
     );
   }
 
-  return <LessonPlayer topicId={topicId} topicTitle={data.topic.title} videos={data.videos} />;
+  return (
+    <LessonPlayer
+      topicId={topicId}
+      topicTitle={data.topic.title}
+      topicArea={data.topic.area}
+      videos={data.videos}
+      taskId={taskId}
+    />
+  );
 }
 
 interface Video {
@@ -125,11 +139,15 @@ interface Video {
 function LessonPlayer({
   topicId,
   topicTitle,
+  topicArea,
   videos,
+  taskId,
 }: {
   topicId: string;
   topicTitle: string;
+  topicArea: string;
   videos: Video[];
+  taskId?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("watching");
   const [watched, setWatched] = useState<Set<number>>(
@@ -178,6 +196,18 @@ function LessonPlayer({
         toast.error("Não foi possível gerar a atividade agora. Tente novamente em instantes.");
         return;
       }
+      // Cache essayTask so /plano can propose "Escrever sobre esta aula"
+      // for the next redação task in the cronograma.
+      if (r.essayTask) {
+        saveLastEssayTask({
+          topicId,
+          topicTitle,
+          area: topicArea,
+          essayTitle: r.essayTask.title,
+          focusSkill: r.essayTask.focusSkill,
+          savedAt: Date.now(),
+        });
+      }
       setPhase("quiz");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -187,7 +217,12 @@ function LessonPlayer({
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
-    onSuccess: () => setPhase("result"),
+    onSuccess: () => {
+      // Auto-complete the linked schedule task, if this aula was opened
+      // from /plano.
+      if (taskId) markPlanTaskDone(taskId);
+      setPhase("result");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -279,7 +314,7 @@ function LessonPlayer({
         )}
 
         {phase === "result" && submitMutation.data && (
-          <ResultView result={submitMutation.data} topicId={topicId} />
+          <ResultView result={submitMutation.data} topicId={topicId} taskId={taskId} />
         )}
       </main>
     </div>
@@ -700,6 +735,7 @@ function QuizView({
 function ResultView({
   result,
   topicId,
+  taskId,
 }: {
   result: {
     score: number;
@@ -708,6 +744,7 @@ function ResultView({
     quiz: QuizPayload;
   };
   topicId: string;
+  taskId?: string;
 }) {
   const pct = Math.round((result.score / Math.max(result.total, 1)) * 100);
   return (
@@ -798,6 +835,7 @@ function ResultView({
               <Link
                 to="/aula/$topicId/pratica"
                 params={{ topicId }}
+                search={taskId ? { taskId } : {}}
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
               >
                 <PenLine size={13} /> Escrever agora

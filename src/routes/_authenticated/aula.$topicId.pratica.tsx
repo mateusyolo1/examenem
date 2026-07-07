@@ -16,8 +16,12 @@ import {
   submitLessonEssay,
   listLessonEssayAttempts,
 } from "@/lib/study.functions";
+import { z } from "zod";
+import { markPlanTaskDone } from "@/lib/study-plan";
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId/pratica")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z.object({ taskId: z.string().optional() }).parse(search),
   head: () => ({
     meta: [{ title: "Prática de escrita — Aula" }],
   }),
@@ -26,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/aula/$topicId/pratica")({
 
 function PraticaPage() {
   const { topicId } = Route.useParams();
+  const { taskId } = Route.useSearch();
   const getTask = useServerFn(getLessonEssayTask);
   const submit = useServerFn(submitLessonEssay);
   const listAttempts = useServerFn(listLessonEssayAttempts);
@@ -50,6 +55,8 @@ function PraticaPage() {
     onSuccess: (r) => {
       setResult(r);
       attemptsQuery.refetch();
+      // Auto-complete the linked redação task, if opened from /plano.
+      if (taskId) markPlanTaskDone(taskId);
     },
     onError: (e: Error) => toast.error(e.message),
   });
