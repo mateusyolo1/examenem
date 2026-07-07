@@ -269,20 +269,48 @@ Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`
 
   const quizPrompt = `Você é professor(a) preparando uma atividade ENEM sobre o tópico "${topicCtx}".
 
-Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE ${targetCount} questão(ões) de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE nesses resumos.
+Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Sua resposta deve conter DUAS partes: um quiz de múltipla escolha E, quando fizer sentido, uma tarefa de escrita focada.
 
-REGRAS OBRIGATÓRIAS:
-- Gere EXATAMENTE ${targetCount} questões — uma para cada vídeo analisado (na ordem apresentada), cobrindo o conceito principal daquele vídeo específico.
+PARTE 1 — QUIZ:
+- Gere EXATAMENTE ${targetCount} questões — uma para cada vídeo analisado (na ordem apresentada), cobrindo o conceito principal daquele vídeo.
 - Cada questão DEVE indicar qual vídeo a inspirou no campo "videoId" (id EXATO mostrado no resumo).
-- Use SOMENTE informações presentes nos resumos abaixo. Não invente.
+- Use SOMENTE informações presentes nos resumos. Não invente.
 - Se houver timestamp relevante, inclua no campo "timestamp" (formato "MM:SS").
 - Nível ENEM: contextualizada, autocontida, testando compreensão.
 - Alternativas plausíveis; distratores baseados em erros conceituais comuns.
 - A explicação deve citar o conceito/exemplo do vídeo que justifica a resposta.
-- Responda APENAS com JSON válido no formato:
-{"questions":[
-  {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}
-]}
+
+PARTE 2 — TAREFA DE ESCRITA (essayTask):
+- Devolva "essayTask": null SE o conteúdo dos vídeos NÃO se pratica escrevendo (ex.: matemática pura, química de reações, biologia celular sem contextualização, geografia física, física de fórmulas).
+- Devolva uma essayTask SEMPRE que o conteúdo se praticar escrevendo: redação, gramática aplicada (pontuação, coesão, concordância em produção), tipologia textual, análise linguística de texto, argumentação, interpretação para escrita, literatura para dissertar, filosofia/sociologia dissertativas, história para dissertação, geografia humana dissertativa.
+- A essayTask deve pedir um texto CURTO (60-180 palavras) que EXERCITE ESPECIFICAMENTE o que o vídeo ensinou.
+- "focusSkill": frase curta descrevendo a habilidade específica praticada (ex.: "uso de vírgula em orações intercaladas").
+- "rubric": 2 a 4 critérios OBJETIVOS e VERIFICÁVEIS SÓ dessa habilidade — não incluir ortografia, acentuação, concordância ou coesão geral, a menos que a habilidade ensinada seja exatamente essa.
+- "prompt": enunciado da tarefa (o que escrever e sobre o quê), garantindo que o aluno terá como aplicar a habilidade.
+
+Responda APENAS com JSON válido no formato:
+{
+  "questions": [
+    {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}
+  ],
+  "essayTask": null
+}
+OU com essayTask preenchida:
+{
+  "questions": [...],
+  "essayTask": {
+    "title": "Praticar pontuação em orações intercaladas",
+    "prompt": "Escreva um parágrafo de 8 a 12 linhas contando uma experiência marcante, usando pelo menos 2 orações intercaladas isoladas por vírgulas.",
+    "focusSkill": "Uso de vírgulas em orações intercaladas e apostos",
+    "rubric": [
+      "Isolar corretamente ao menos 2 orações intercaladas com vírgulas",
+      "Usar aposto explicativo entre vírgulas ao menos uma vez",
+      "Não separar sujeito de verbo com vírgula"
+    ],
+    "minWords": 80,
+    "maxWords": 150
+  }
+}
 
 RESUMOS DOS VÍDEOS:
 ${combined}`;
@@ -297,7 +325,16 @@ ${combined}`;
       correctIndex?: number;
       explanation?: string;
     }>;
+    essayTask?: {
+      title?: string;
+      prompt?: string;
+      focusSkill?: string;
+      rubric?: unknown;
+      minWords?: number;
+      maxWords?: number;
+    } | null;
   } = {};
+
 
   try {
     const text = await callGemini(apiKey, [{ text: quizPrompt }]);
