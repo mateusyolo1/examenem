@@ -40,6 +40,7 @@ import {
   submitLessonAttempt,
   saveVideoPosition,
   markVideoWatched,
+  recordTopicMastery,
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
