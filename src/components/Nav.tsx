@@ -182,6 +182,10 @@ export function Nav() {
             <div className="space-y-0.5">{SECONDARY.map((l) => renderLink(l))}</div>
           </div>
         </nav>
+
+        <div className="px-3 pt-2 pb-4 border-t border-border">
+          <UserMenu />
+        </div>
       </aside>
 
       {/* Mobile bottom tab bar */}
