@@ -215,7 +215,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       .single();
     if (tErr) throw new Error(tErr.message);
 
-    const cacheKey = `video-suggestions:${topic.id}`;
+    const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
@@ -267,14 +267,21 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
                 v.longBylineText?.runs?.[0]?.text ??
                 "";
               if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
+              const lengthText: string | undefined =
+                v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
+              const duration = parseLengthText(lengthText);
+              // Skip live streams / unknown-length entries — they can't be
+              // budgeted against the daily study time.
+              if (duration == null || duration <= 0) continue;
               parsed.push({
                 youtube_id: v.videoId,
                 title,
                 channel_name: channel,
+                duration_seconds: duration,
               });
-              if (parsed.length >= 20) break;
+              if (parsed.length >= 30) break;
             }
-            if (parsed.length >= 20) break;
+            if (parsed.length >= 30) break;
           }
         } catch {
           /* ignore parse errors */
@@ -296,7 +303,31 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       }
 
       const unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
-      suggestions = unique.slice(0, 6);
+
+      // Budget selection: fit as many videos as possible under maxSeconds,
+      // skipping any single video that already exceeds the daily budget.
+      // Always try to keep at least 3 to unlock "Iniciar aula".
+      const fits: AiVideoSuggestion[] = [];
+      let running = 0;
+      for (const v of unique) {
+        const d = v.duration_seconds ?? 0;
+        if (d > maxSeconds) continue;
+        if (running + d > maxSeconds) break;
+        fits.push(v);
+        running += d;
+        if (fits.length >= 6) break;
+      }
+      // Fallback: if the budget is very tight and we got <3, take the 3
+      // shortest videos so the lesson can still be started.
+      if (fits.length < 3) {
+        const shortest = [...unique]
+          .filter((v) => (v.duration_seconds ?? Infinity) <= maxSeconds)
+          .sort((a, b) => (a.duration_seconds ?? 0) - (b.duration_seconds ?? 0))
+          .slice(0, 3);
+        suggestions = shortest;
+      } else {
+        suggestions = fits;
+      }
 
       if (suggestions.length > 0) {
         await supabaseAdmin.from("ai_response_cache").insert({
