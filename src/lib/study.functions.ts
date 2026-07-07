@@ -464,15 +464,39 @@ export const saveVideoPosition = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ============================================================
+// Lesson Quiz — 3 questões baseadas nos vídeos reais
+// Etapa 1: Gemini "assiste" cada vídeo do YouTube (URL nativa) e
+//          devolve um resumo estruturado do conteúdo. Cache por youtube_id.
+// Etapa 2: Gemini gera 3 questões cobrindo o conjunto dos resumos.
+//          Cache por topicId.
+// ============================================================
+
+// Modelo mais barato do catálogo que aceita vídeo do YouTube nativamente.
+const VIDEO_MODEL = "google/gemini-2.5-flash-lite";
+// Janela de vídeo processada (economia em aulas longas — 99% das aulas ENEM
+// entregam o conceito principal nos primeiros 12 minutos).
+const VIDEO_WINDOW_SECONDS = 720;
+
+interface VideoSummary {
+  keyConcepts: string[];
+  definitions: string[];
+  examples: string[];
+  timestamps: { at: string; note: string }[];
+}
 
 interface QuizQuestion {
-  videoId: string;
-  youtubeId: string;
-  videoTitle: string;
+  id: string;
   question: string;
   options: string[];
   correctIndex: number;
   explanation: string;
+  videoRef: {
+    videoId: string;
+    youtubeId: string;
+    videoTitle: string;
+    timestamp?: string;
+  };
 }
 
 interface LessonQuizPayload {
@@ -480,47 +504,124 @@ interface LessonQuizPayload {
   skipped: { youtubeId: string; title: string; reason: string }[];
 }
 
-async function fetchYoutubeTranscript(youtubeId: string): Promise<string | null> {
-  try {
-    const watchRes = await fetch(`https://www.youtube.com/watch?v=${youtubeId}&hl=pt-BR`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+// Chama o Gateway diretamente porque precisamos passar a URL do YouTube em
+// bloco multimodal. `image_url` com URL do YouTube é o formato que Gemini
+// via OpenRouter aceita para vídeos.
+async function callGeminiWithYoutube(
+  youtubeId: string,
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Lovable-API-Key": apiKey,
+    },
+    body: JSON.stringify({
+      model: VIDEO_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            {
+              type: "image_url",
+              image_url: {
+                url: `https://www.youtube.com/watch?v=${youtubeId}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      extra_body: {
+        video_metadata: { end_offset: `${VIDEO_WINDOW_SECONDS}s` },
       },
-    });
-    const html = await watchRes.text();
-    const m = html.match(/ytInitialPlayerResponse\s*=\s*(\{.*?\})\s*;\s*(?:var|<\/script>)/s);
-    if (!m) return null;
-    const player = JSON.parse(m[1]);
-    const tracks: Array<{ baseUrl: string; languageCode: string; kind?: string }> =
-      player?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-    if (tracks.length === 0) return null;
+    }),
+  });
 
-    const preferred =
-      tracks.find((t) => t.languageCode === "pt-BR" && !t.kind) ??
-      tracks.find((t) => t.languageCode === "pt" && !t.kind) ??
-      tracks.find((t) => t.languageCode === "pt-BR") ??
-      tracks.find((t) => t.languageCode === "pt") ??
-      tracks.find((t) => t.languageCode?.startsWith("en") && !t.kind) ??
-      tracks[0];
-    if (!preferred?.baseUrl) return null;
-
-    const capRes = await fetch(`${preferred.baseUrl}&fmt=json3`);
-    if (!capRes.ok) return null;
-    const capJson = (await capRes.json()) as {
-      events?: { segs?: { utf8?: string }[] }[];
-    };
-    const text = (capJson.events ?? [])
-      .flatMap((e) => e.segs ?? [])
-      .map((s) => s.utf8 ?? "")
-      .join("")
-      .replace(/\s+/g, " ")
-      .trim();
-    return text.length > 50 ? text : null;
-  } catch {
-    return null;
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("rate_limit");
+    if (res.status === 402) throw new Error("credits_exhausted");
+    throw new Error(`gateway_${res.status}: ${errText.slice(0, 200)}`);
   }
+
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = json.choices?.[0]?.message?.content ?? "";
+  if (!content) throw new Error("empty_response");
+  return content;
+}
+
+function parseJsonLoose<T>(text: string): T {
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  return JSON.parse(slice) as T;
+}
+
+async function summarizeVideo(
+  youtubeId: string,
+  videoTitle: string,
+  topicCtx: string,
+  supabaseAdmin: Awaited<
+    ReturnType<typeof import("@/integrations/supabase/client.server")>
+  >["supabaseAdmin"],
+): Promise<VideoSummary> {
+  const cacheKey = `video-summary:${youtubeId}`;
+  const { data: cached } = await supabaseAdmin
+    .from("ai_response_cache")
+    .select("response")
+    .eq("cache_key", cacheKey)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (cached) return cached.response as unknown as VideoSummary;
+
+  const system = `Você é um assistente que assiste vídeos-aula em português e extrai o conteúdo real ensinado pelo(a) professor(a). Trabalhe APENAS com o que foi dito/mostrado no vídeo — nunca invente conteúdo.`;
+
+  const user = `Assista a este vídeo (aula sobre "${topicCtx}", título: "${videoTitle}") e devolva um JSON com o resumo do que o(a) professor(a) explica.
+
+Estrutura obrigatória (JSON puro, sem cercas de código):
+{
+  "keyConcepts": ["conceito 1 explicado no vídeo", "conceito 2", ...],
+  "definitions": ["definição literal citada", ...],
+  "examples": ["exemplo trabalhado pelo professor", ...],
+  "timestamps": [{"at": "MM:SS", "note": "o que é dito nesse momento"}, ...]
+}
+
+Regras:
+- Inclua 3 a 8 conceitos-chave (o que um aluno precisa aprender).
+- Inclua exemplos concretos usados pelo professor (equações, casos, textos, comparações).
+- Timestamps devem apontar momentos onde os conceitos mais importantes aparecem.
+- Se o vídeo não puder ser processado ou não for sobre "${topicCtx}", devolva {"keyConcepts":[],"definitions":[],"examples":[],"timestamps":[]}.`;
+
+  const content = await callGeminiWithYoutube(youtubeId, system, user);
+  const parsed = parseJsonLoose<VideoSummary>(content);
+
+  const summary: VideoSummary = {
+    keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
+    definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
+    examples: Array.isArray(parsed.examples) ? parsed.examples : [],
+    timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
+  };
+
+  if (summary.keyConcepts.length > 0) {
+    await supabaseAdmin.from("ai_response_cache").insert({
+      cache_key: cacheKey,
+      prompt_type: "video-summary",
+      response: JSON.parse(JSON.stringify(summary)),
+    });
+  }
+
+  return summary;
 }
 
 export const buildLessonQuiz = createServerFn({ method: "POST" })
@@ -537,9 +638,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       .eq("cache_key", cacheKey)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
-    if (cached) {
-      return cached.response as unknown as LessonQuizPayload;
-    }
+    if (cached) return cached.response as unknown as LessonQuizPayload;
 
     const { data: topic } = await supabase
       .from("study_topics")
@@ -559,111 +658,164 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       throw new Error("Nenhum vídeo encontrado para gerar a atividade.");
     }
 
-    const { generateText } = await import("ai");
-    const { createGateway, CHAT_MODEL } = await import("./ai-gateway.server");
-    const gateway = createGateway();
-
-    const questions: QuizQuestion[] = [];
-    const skipped: LessonQuizPayload["skipped"] = [];
     const topicCtx = topic
       ? `${topic.title}${topic.subject ? ` (${topic.subject})` : ""}${topic.area ? ` — ${topic.area}` : ""}`
       : "ENEM";
 
-    for (const v of videos) {
-      const transcript = await fetchYoutubeTranscript(v.youtube_id);
-      const hasTranscript = !!transcript;
-      const truncated = transcript ? transcript.slice(0, 8000) : "";
+    // Etapa 1: resume cada vídeo em paralelo. Falha num vídeo não derruba o resto.
+    const summaryResults = await Promise.allSettled(
+      videos.map((v) =>
+        summarizeVideo(v.youtube_id, v.title ?? "Vídeo", topicCtx, supabaseAdmin).then(
+          (summary) => ({ video: v, summary }),
+        ),
+      ),
+    );
 
-      const prompt = hasTranscript
-        ? `Você é professor preparando questões para o ENEM.
+    const successfulSummaries: { video: (typeof videos)[number]; summary: VideoSummary }[] = [];
+    const skipped: LessonQuizPayload["skipped"] = [];
 
-Abaixo está a TRANSCRIÇÃO de uma aula em vídeo. Gere UMA questão de múltipla escolha (4 alternativas, apenas uma correta) sobre um conceito ESPECÍFICO ensinado NESTE texto.
-
-REGRAS OBRIGATÓRIAS:
-- Use APENAS informações presentes na transcrição. Não invente dados fora dela.
-- A pergunta deve ser clara, autocontida e testar compreensão real do conteúdo (não literal do texto).
-- As 4 alternativas devem ser plausíveis; apenas uma correta.
-- A explicação deve citar o trecho/conceito da transcrição que justifica a resposta.
-- Responda APENAS com JSON válido, sem cercas de código, no formato:
-{"question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}
-
-TRANSCRIÇÃO:
-"""
-${truncated}
-"""`
-        : `Você é professor preparando questões para o ENEM sobre o tópico: ${topicCtx}.
-
-Gere UMA questão de múltipla escolha (4 alternativas, apenas uma correta) alinhada ao tema do vídeo abaixo (usado como referência da aula):
-
-TÍTULO DO VÍDEO: "${v.title ?? "Aula"}"
-
-REGRAS OBRIGATÓRIAS:
-- A questão deve testar um conceito central do tópico "${topicCtx}", coerente com o que um vídeo com esse título ensinaria.
-- Nível ENEM, clara, autocontida, com contexto suficiente para ser respondida sem o vídeo.
-- As 4 alternativas devem ser plausíveis; apenas uma correta.
-- A explicação deve justificar por que a alternativa correta está certa e por que as outras estão erradas.
-- Responda APENAS com JSON válido, sem cercas de código, no formato:
-{"question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}`;
-
-      try {
-        const { text } = await generateText({
-          model: gateway(CHAT_MODEL),
-          prompt,
-        });
-        const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-        const start = cleaned.indexOf("{");
-        const end = cleaned.lastIndexOf("}");
-        const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-        const parsed = JSON.parse(slice) as {
-          question?: string;
-          options?: string[];
-          correctIndex?: number;
-          explanation?: string;
-        };
-        if (
-          typeof parsed.question === "string" &&
-          Array.isArray(parsed.options) &&
-          parsed.options.length === 4 &&
-          typeof parsed.correctIndex === "number" &&
-          parsed.correctIndex >= 0 &&
-          parsed.correctIndex < 4 &&
-          typeof parsed.explanation === "string"
-        ) {
-          questions.push({
-            videoId: v.id,
-            youtubeId: v.youtube_id,
-            videoTitle: v.title ?? "Vídeo",
-            question: parsed.question,
-            options: parsed.options,
-            correctIndex: parsed.correctIndex,
-            explanation: parsed.explanation,
-          });
-        } else {
-          skipped.push({
-            youtubeId: v.youtube_id,
-            title: v.title ?? "Vídeo",
-            reason: "IA não gerou questão válida",
-          });
+    for (let i = 0; i < summaryResults.length; i++) {
+      const r = summaryResults[i];
+      const v = videos[i];
+      if (r.status === "fulfilled" && r.value.summary.keyConcepts.length > 0) {
+        successfulSummaries.push(r.value);
+      } else {
+        const reason =
+          r.status === "rejected"
+            ? r.reason instanceof Error
+              ? r.reason.message
+              : "erro"
+            : "vídeo sem conteúdo analisável";
+        if (reason === "credits_exhausted") {
+          throw new Error(
+            "Créditos de IA esgotados neste mês. Adicione créditos ou tente novamente no próximo ciclo.",
+          );
         }
-      } catch {
         skipped.push({
           youtubeId: v.youtube_id,
           title: v.title ?? "Vídeo",
-          reason: "Erro ao gerar questão",
+          reason:
+            reason === "rate_limit"
+              ? "IA sobrecarregada — tente de novo em instantes"
+              : reason.startsWith("gateway_")
+                ? "Vídeo não pôde ser processado"
+                : reason,
         });
       }
     }
 
+    if (successfulSummaries.length === 0) {
+      throw new Error(
+        "Nenhum vídeo da aula pôde ser analisado. Sugira novos vídeos e tente novamente.",
+      );
+    }
+
+    // Etapa 2: 3 questões cobrindo os resumos.
+    const { generateText } = await import("ai");
+    const { createGateway } = await import("./ai-gateway.server");
+    const gateway = createGateway();
+
+    const combined = successfulSummaries
+      .map(
+        ({ video, summary }, idx) =>
+          `[Vídeo ${idx + 1}] "${video.title ?? "Vídeo"}" (id: ${video.id}, youtube: ${video.youtube_id})
+Conceitos-chave: ${summary.keyConcepts.join("; ")}
+Definições: ${summary.definitions.join("; ")}
+Exemplos: ${summary.examples.join("; ")}
+Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`,
+      )
+      .join("\n\n");
+
+    const quizPrompt = `Você é professor(a) preparando uma atividade ENEM sobre o tópico "${topicCtx}".
+
+Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE 3 questões de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE no conteúdo desses resumos.
+
+REGRAS OBRIGATÓRIAS:
+- As 3 questões devem cobrir conceitos DIFERENTES apresentados nos vídeos (não repetir o mesmo tema).
+- Use SOMENTE informações presentes nos resumos abaixo. Não invente conteúdo.
+- Cada questão deve indicar qual vídeo a inspirou (campo "videoId" com o id EXATO mostrado).
+- Se houver timestamp relevante, inclua no campo "timestamp" (formato "MM:SS").
+- Nível ENEM: contextualizada, autocontida, testando compreensão (não memorização literal).
+- Alternativas plausíveis; distratores baseados em erros conceituais comuns.
+- A explicação deve citar o conceito/exemplo do vídeo que justifica a resposta.
+- Responda APENAS com JSON válido, sem cercas de código, no formato:
+{"questions":[
+  {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."},
+  {...},
+  {...}
+]}
+
+RESUMOS DOS VÍDEOS:
+${combined}`;
+
+    let quizJson: {
+      questions?: Array<{
+        videoId?: string;
+        timestamp?: string;
+        question?: string;
+        options?: string[];
+        correctIndex?: number;
+        explanation?: string;
+      }>;
+    } = {};
+
+    try {
+      const { text } = await generateText({
+        model: gateway(VIDEO_MODEL),
+        prompt: quizPrompt,
+      });
+      quizJson = parseJsonLoose(text);
+    } catch (e) {
+      throw new Error(
+        `Falha ao gerar questões: ${e instanceof Error ? e.message : "erro desconhecido"}`,
+      );
+    }
+
+    const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
+    const questions: QuizQuestion[] = [];
+
+    for (let i = 0; i < rawQuestions.length && questions.length < 3; i++) {
+      const q = rawQuestions[i];
+      if (
+        typeof q.question !== "string" ||
+        !Array.isArray(q.options) ||
+        q.options.length !== 4 ||
+        typeof q.correctIndex !== "number" ||
+        q.correctIndex < 0 ||
+        q.correctIndex > 3 ||
+        typeof q.explanation !== "string"
+      ) {
+        continue;
+      }
+      const ref =
+        successfulSummaries.find((s) => s.video.id === q.videoId) ??
+        successfulSummaries[i % successfulSummaries.length];
+      questions.push({
+        id: `q${questions.length + 1}`,
+        question: q.question,
+        options: q.options,
+        correctIndex: q.correctIndex,
+        explanation: q.explanation,
+        videoRef: {
+          videoId: ref.video.id,
+          youtubeId: ref.video.youtube_id,
+          videoTitle: ref.video.title ?? "Vídeo",
+          timestamp: typeof q.timestamp === "string" ? q.timestamp : undefined,
+        },
+      });
+    }
+
+    if (questions.length === 0) {
+      throw new Error("A IA não gerou questões válidas. Tente novamente em instantes.");
+    }
 
     const payload: LessonQuizPayload = { questions, skipped };
 
-    if (questions.length > 0) {
-      await supabaseAdmin.from("ai_response_cache").insert({
-        cache_key: cacheKey,
-        prompt_type: "lesson-quiz",
-        response: JSON.parse(JSON.stringify(payload)),
-      });
-    }
+    await supabaseAdmin.from("ai_response_cache").insert({
+      cache_key: cacheKey,
+      prompt_type: "lesson-quiz",
+      response: JSON.parse(JSON.stringify(payload)),
+    });
 
     return payload;
   });
@@ -672,7 +824,7 @@ const submitInput = z.object({
   topicId: z.string().uuid(),
   answers: z.array(
     z.object({
-      videoId: z.string().uuid(),
+      questionId: z.string(),
       chosenIndex: z.number().int().min(0).max(3),
     }),
   ),
@@ -696,9 +848,9 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
     const quiz = cached.response as unknown as LessonQuizPayload;
 
     const graded = data.answers.map((a) => {
-      const q = quiz.questions.find((x) => x.videoId === a.videoId);
+      const q = quiz.questions.find((x) => x.id === a.questionId);
       const correct = q ? a.chosenIndex === q.correctIndex : false;
-      return { videoId: a.videoId, chosenIndex: a.chosenIndex, correct };
+      return { questionId: a.questionId, chosenIndex: a.chosenIndex, correct };
     });
     const score = graded.filter((g) => g.correct).length;
     const total = quiz.questions.length;
@@ -714,6 +866,7 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
 
     return { score, total, graded, quiz };
   });
+
 
 
 
