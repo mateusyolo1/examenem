@@ -314,7 +314,7 @@ function LessonPlayer({
         )}
 
         {phase === "result" && submitMutation.data && (
-          <ResultView result={submitMutation.data} topicId={topicId} />
+          <ResultView result={submitMutation.data} topicId={topicId} taskId={taskId} />
         )}
       </main>
     </div>
@@ -735,6 +735,7 @@ function QuizView({
 function ResultView({
   result,
   topicId,
+  taskId,
 }: {
   result: {
     score: number;
@@ -743,6 +744,7 @@ function ResultView({
     quiz: QuizPayload;
   };
   topicId: string;
+  taskId?: string;
 }) {
   const pct = Math.round((result.score / Math.max(result.total, 1)) * 100);
   return (
@@ -833,6 +835,7 @@ function ResultView({
               <Link
                 to="/aula/$topicId/pratica"
                 params={{ topicId }}
+                search={taskId ? { taskId } : {}}
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
               >
                 <PenLine size={13} /> Escrever agora
