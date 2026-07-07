@@ -24,8 +24,10 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
   variant,
   destructive,
+  confirmDisabled,
   onConfirm,
   onCancel,
+
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!open) return;
