@@ -139,11 +139,15 @@ interface Video {
 function LessonPlayer({
   topicId,
   topicTitle,
+  topicArea,
   videos,
+  taskId,
 }: {
   topicId: string;
   topicTitle: string;
+  topicArea: string;
   videos: Video[];
+  taskId?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("watching");
   const [watched, setWatched] = useState<Set<number>>(
