@@ -382,5 +382,32 @@ ${combined}`;
     throw new Error("O Gemini não gerou questões válidas. Tente novamente em instantes.");
   }
 
-  return { questions, skipped };
+  // Valida e normaliza essayTask
+  let essayTask: EssayTask | null = null;
+  const et = quizJson.essayTask;
+  if (
+    et &&
+    typeof et.title === "string" &&
+    typeof et.prompt === "string" &&
+    typeof et.focusSkill === "string" &&
+    Array.isArray(et.rubric) &&
+    et.rubric.every((r) => typeof r === "string" && r.trim().length > 0) &&
+    et.rubric.length >= 2 &&
+    et.rubric.length <= 6
+  ) {
+    const min = typeof et.minWords === "number" && et.minWords > 0 ? Math.floor(et.minWords) : 60;
+    const max =
+      typeof et.maxWords === "number" && et.maxWords > min ? Math.floor(et.maxWords) : 180;
+    essayTask = {
+      title: et.title.trim(),
+      prompt: et.prompt.trim(),
+      focusSkill: et.focusSkill.trim(),
+      rubric: (et.rubric as string[]).map((r) => r.trim()),
+      minWords: min,
+      maxWords: max,
+    };
+  }
+
+  return { questions, skipped, essayTask };
 }
+
