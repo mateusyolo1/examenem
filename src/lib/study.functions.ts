@@ -487,6 +487,12 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       return cached.response as unknown as LessonQuizPayload;
     }
 
+    const { data: topic } = await supabase
+      .from("study_topics")
+      .select("title, subject, area")
+      .eq("id", data.topicId)
+      .single();
+
     const { data: videos, error } = await supabase
       .from("study_videos")
       .select("id, youtube_id, title")
@@ -505,20 +511,17 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
 
     const questions: QuizQuestion[] = [];
     const skipped: LessonQuizPayload["skipped"] = [];
+    const topicCtx = topic
+      ? `${topic.title}${topic.subject ? ` (${topic.subject})` : ""}${topic.area ? ` — ${topic.area}` : ""}`
+      : "ENEM";
 
     for (const v of videos) {
       const transcript = await fetchYoutubeTranscript(v.youtube_id);
-      if (!transcript) {
-        skipped.push({
-          youtubeId: v.youtube_id,
-          title: v.title ?? "Vídeo",
-          reason: "Sem legendas disponíveis",
-        });
-        continue;
-      }
+      const hasTranscript = !!transcript;
+      const truncated = transcript ? transcript.slice(0, 8000) : "";
 
-      const truncated = transcript.slice(0, 8000);
-      const prompt = `Você é professor preparando questões para o ENEM.
+      const prompt = hasTranscript
+        ? `Você é professor preparando questões para o ENEM.
 
 Abaixo está a TRANSCRIÇÃO de uma aula em vídeo. Gere UMA questão de múltipla escolha (4 alternativas, apenas uma correta) sobre um conceito ESPECÍFICO ensinado NESTE texto.
 
@@ -533,7 +536,20 @@ REGRAS OBRIGATÓRIAS:
 TRANSCRIÇÃO:
 """
 ${truncated}
-"""`;
+"""`
+        : `Você é professor preparando questões para o ENEM sobre o tópico: ${topicCtx}.
+
+Gere UMA questão de múltipla escolha (4 alternativas, apenas uma correta) alinhada ao tema do vídeo abaixo (usado como referência da aula):
+
+TÍTULO DO VÍDEO: "${v.title ?? "Aula"}"
+
+REGRAS OBRIGATÓRIAS:
+- A questão deve testar um conceito central do tópico "${topicCtx}", coerente com o que um vídeo com esse título ensinaria.
+- Nível ENEM, clara, autocontida, com contexto suficiente para ser respondida sem o vídeo.
+- As 4 alternativas devem ser plausíveis; apenas uma correta.
+- A explicação deve justificar por que a alternativa correta está certa e por que as outras estão erradas.
+- Responda APENAS com JSON válido, sem cercas de código, no formato:
+{"question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."}`;
 
       try {
         const { text } = await generateText({
@@ -583,6 +599,7 @@ ${truncated}
         });
       }
     }
+
 
     const payload: LessonQuizPayload = { questions, skipped };
 
