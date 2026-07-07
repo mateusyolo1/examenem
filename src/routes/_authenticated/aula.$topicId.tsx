@@ -37,7 +37,10 @@ import {
   getLessonPlaylist,
   buildLessonQuiz,
   submitLessonAttempt,
+  saveVideoPosition,
+  markVideoWatched,
 } from "@/lib/study.functions";
+
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
   component: LessonPage,
@@ -114,6 +117,8 @@ interface Video {
   youtube_id: string;
   title: string | null;
   channel_name: string | null;
+  watched?: boolean;
+  watch_seconds?: number;
 }
 
 function LessonPlayer({
@@ -126,11 +131,21 @@ function LessonPlayer({
   videos: Video[];
 }) {
   const [phase, setPhase] = useState<Phase>("watching");
-  const [current, setCurrent] = useState(0);
-  const [watched, setWatched] = useState<Set<number>>(new Set());
+  const [watched, setWatched] = useState<Set<number>>(
+    () => new Set(videos.map((v, i) => (v.watched ? i : -1)).filter((i) => i >= 0)),
+  );
+  // Initial video = first unwatched with saved position, else first unwatched, else last.
+  const [current, setCurrent] = useState(() => {
+    const withProgress = videos.findIndex((v) => !v.watched && (v.watch_seconds ?? 0) > 0);
+    if (withProgress >= 0) return withProgress;
+    const firstUnwatched = videos.findIndex((v) => !v.watched);
+    return firstUnwatched >= 0 ? firstUnwatched : videos.length - 1;
+  });
 
   const buildQuiz = useServerFn(buildLessonQuiz);
   const submit = useServerFn(submitLessonAttempt);
+  const savePos = useServerFn(saveVideoPosition);
+  const markWatchedFn = useServerFn(markVideoWatched);
 
   const quizMutation = useMutation({
     mutationFn: () => buildQuiz({ data: { topicId } }),
@@ -156,13 +171,20 @@ function LessonPlayer({
   const allWatched = watched.size === total;
 
   const markCurrentWatched = () => {
-    setWatched((prev) => new Set(prev).add(current));
+    setWatched((prev) => {
+      if (prev.has(current)) return prev;
+      const next = new Set(prev).add(current);
+      return next;
+    });
+    // Persist server-side (fire and forget).
+    markWatchedFn({ data: { videoId: video.id, watched: true } }).catch(() => {});
   };
 
   const goNext = () => {
     markCurrentWatched();
     if (current < total - 1) setCurrent(current + 1);
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,7 +224,14 @@ function LessonPlayer({
             onStartQuiz={() => quizMutation.mutate()}
             quizLoading={quizMutation.isPending}
             videos={videos}
+            onSaveProgress={(seconds) =>
+              savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
+                () => {},
+              )
+            }
+            resumeAt={video.watch_seconds ?? 0}
           />
+
         )}
 
         {phase === "quiz" && quizMutation.data && (
@@ -234,6 +263,8 @@ function WatchingView({
   onStartQuiz,
   quizLoading,
   videos,
+  onSaveProgress,
+  resumeAt,
 }: {
   video: Video;
   current: number;
@@ -247,16 +278,33 @@ function WatchingView({
   onStartQuiz: () => void;
   quizLoading: boolean;
   videos: Video[];
+  onSaveProgress: (seconds: number) => void;
+  resumeAt: number;
 }) {
   const isWatched = watched.has(current);
   const isLast = current === total - 1;
   const canGoNext = isWatched;
   const iframeRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
+  const onSaveProgressRef = useRef(onSaveProgress);
+  onSaveProgressRef.current = onSaveProgress;
+  const resumeAtRef = useRef(resumeAt);
+  resumeAtRef.current = resumeAt;
 
   useEffect(() => {
     let cancelled = false;
     let poll: ReturnType<typeof setInterval> | null = null;
+    let saveTimer: ReturnType<typeof setInterval> | null = null;
+
+    const flush = () => {
+      try {
+        const p = playerRef.current;
+        if (!p || typeof p.getCurrentTime !== "function") return;
+        const cur = p.getCurrentTime();
+        if (cur > 1) onSaveProgressRef.current(cur);
+      } catch {}
+    };
+
     loadYouTubeApi().then((YT) => {
       if (cancelled || !iframeRef.current) return;
       const player = new YT.Player(iframeRef.current, {
@@ -266,9 +314,16 @@ function WatchingView({
           modestbranding: 1,
           enablejsapi: 1,
           origin: window.location.origin,
+          start: Math.max(0, Math.floor(resumeAtRef.current)),
         },
         events: {
-          onReady: () => {
+          onReady: (e: any) => {
+            try {
+              if (resumeAtRef.current > 3) e.target.seekTo(resumeAtRef.current, true);
+            } catch {}
+            // Save current position periodically
+            saveTimer = setInterval(flush, 5000);
+            // End-of-video detection fallback
             poll = setInterval(() => {
               try {
                 const p = playerRef.current;
@@ -286,7 +341,7 @@ function WatchingView({
             }, 1000);
           },
           onStateChange: (e: any) => {
-            // 0 = ended
+            // 0 = ended, 2 = paused
             if (e.data === 0) {
               onMarkWatched();
               toast.success("Vídeo concluído — marcado como assistido");
@@ -295,14 +350,24 @@ function WatchingView({
                 poll = null;
               }
             }
+            if (e.data === 2) flush();
           },
         },
       });
       playerRef.current = player;
     });
+
+    const onBeforeUnload = () => flush();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onBeforeUnload);
+
     return () => {
       cancelled = true;
+      flush();
       if (poll) clearInterval(poll);
+      if (saveTimer) clearInterval(saveTimer);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onBeforeUnload);
       try {
         playerRef.current?.destroy?.();
       } catch {}
@@ -310,6 +375,7 @@ function WatchingView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.youtube_id]);
+
 
 
   return (
