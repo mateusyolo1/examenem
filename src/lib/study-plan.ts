@@ -46,6 +46,7 @@ export interface TopicCatalogEntry {
   title: string;
   subject: string | null;
   sort_order: number;
+}
 
 // Desempenho por tópico (Abordagem 3) — alimentado por `topic_mastery`.
 export interface TopicMastery {
@@ -57,6 +58,8 @@ export interface TopicMastery {
   next_review_at: string;
   mastered: boolean;
 }
+
+
 
 
 
