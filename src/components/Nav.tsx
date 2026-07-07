@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
@@ -20,7 +20,6 @@ import {
   Trophy,
   Settings as SettingsIcon,
   MoreHorizontal,
-  ChevronDown,
 } from "lucide-react";
 
 type NavItem = {
@@ -30,27 +29,24 @@ type NavItem = {
   icon: React.ComponentType<{ size?: number }>;
 };
 
-// Desktop primary menu (always visible on lg+)
-const DESKTOP_MAIN: NavItem[] = [
-  { to: "/", label: "Dashboard", shortLabel: "Dashboard", icon: Home },
+const PRIMARY: NavItem[] = [
+  { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/plano", label: "Plano de Estudos", shortLabel: "Plano", icon: Calendar },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
   { to: "/redacao", label: "Redação", icon: PenLine },
   { to: "/tutor", label: "Tutor IA", icon: Bot },
-  { to: "/perfil", label: "Perfil", icon: User },
 ];
 
-// Items inside the "Mais" dropdown / sheet
-const MORE: NavItem[] = [
+const SECONDARY: NavItem[] = [
   { to: "/materias", label: "Matérias", icon: BookOpen },
   { to: "/temas", label: "Temas", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
+  { to: "/perfil", label: "Perfil", icon: User },
   { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 
-// Mobile bottom bar — 5 priority + Mais
 const MOBILE_PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/plano", label: "Plano", icon: Calendar },
@@ -59,8 +55,7 @@ const MOBILE_PRIMARY: NavItem[] = [
   { to: "/simulados", label: "Simulados", icon: FileText },
 ];
 
-// Full list for mobile sheet
-const ALL: NavItem[] = [...DESKTOP_MAIN, ...MORE];
+const ALL: NavItem[] = [...PRIMARY, ...SECONDARY];
 
 export function Nav() {
   const { progress } = useProgress();
@@ -68,31 +63,34 @@ export function Nav() {
   const xp = computeXP(progress);
   const lvl = levelFor(xp.total);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
-  const moreActive = MORE.some((m) => isActive(m.to));
-
-  // Close desktop "Mais" dropdown on outside click / esc / route change
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false);
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [moreOpen]);
+  const moreActive = SECONDARY.some((m) => isActive(m.to));
 
   useEffect(() => {
-    setMoreOpen(false);
     setSheetOpen(false);
   }, [pathname]);
+
+  const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
+    const active = isActive(l.to);
+    const Icon = l.icon;
+    return (
+      <Link
+        key={l.to}
+        to={l.to}
+        aria-current={active ? "page" : undefined}
+        className={
+          "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors min-h-10 " +
+          (active
+            ? "bg-accent text-foreground"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/50")
+        }
+      >
+        <Icon size={opts?.compact ? 16 : 18} />
+        <span className="truncate">{l.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -103,112 +101,16 @@ export function Nav() {
         Pular para o conteúdo
       </a>
 
-      {/* Top bar */}
-      <nav
-        aria-label="Navegação principal"
-        className="sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 xl:gap-4 min-w-0">
-            <Link
-              to="/"
-              className="font-extrabold text-xl sm:text-2xl tracking-tighter uppercase shrink-0"
-            >
-              Exame.
-            </Link>
-            {/* Desktop nav promoted to xl to avoid crowding on medium widths */}
-            <div className="hidden xl:flex items-center gap-0.5 text-sm font-medium">
-              {DESKTOP_MAIN.map((l) => {
-                const active = isActive(l.to);
-                const Icon = l.icon;
-                return (
-                  <Link
-                    key={l.to}
-                    to={l.to}
-                    aria-current={active ? "page" : undefined}
-                    className={
-                      "inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md transition-colors whitespace-nowrap " +
-                      (active
-                        ? "bg-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50")
-                    }
-                  >
-                    <Icon size={14} />
-                    <span className="hidden 2xl:inline">{l.label}</span>
-                    <span className="2xl:hidden">{l.shortLabel ?? l.label}</span>
-                  </Link>
-                );
-              })}
-
-              {/* Desktop "Mais" dropdown */}
-              <div className="relative" ref={moreRef}>
-                <button
-                  type="button"
-                  onClick={() => setMoreOpen((v) => !v)}
-                  aria-haspopup="menu"
-                  aria-expanded={moreOpen}
-                  className={
-                    "inline-flex items-center gap-1.5 px-2.5 py-2 rounded-md transition-colors " +
-                    (moreActive || moreOpen
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50")
-                  }
-                >
-                  <MoreHorizontal size={14} />
-                  Mais
-                  <ChevronDown size={12} className={moreOpen ? "rotate-180 transition-transform" : "transition-transform"} />
-                </button>
-                {moreOpen && (
-                  <div
-                    role="menu"
-                    className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
-                  >
-                    {MORE.map((l) => {
-                      const active = isActive(l.to);
-                      const Icon = l.icon;
-                      return (
-                        <Link
-                          key={l.to}
-                          to={l.to}
-                          role="menuitem"
-                          aria-current={active ? "page" : undefined}
-                          className={
-                            "flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors " +
-                            (active
-                              ? "bg-accent text-foreground"
-                              : "text-foreground hover:bg-accent")
-                          }
-                        >
-                          <Icon size={16} />
-                          {l.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Link
-              to="/conquistas"
-              className="hidden 2xl:inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
-              title={`${xp.total.toLocaleString("pt-BR")} XP — ${lvl.title}`}
-              aria-label={`Nível ${lvl.level}, ${xp.total} XP`}
-            >
-              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                Nv
-              </span>
-              <span className="text-xs font-bold tracking-tight">{lvl.level}</span>
-            </Link>
-            <div className="hidden 2xl:block">
-              <StageIndicator />
-            </div>
+      {/* Mobile top bar */}
+      <div className="lg:hidden sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
+        <div className="px-4 h-14 flex items-center justify-between gap-3">
+          <Link to="/" className="font-extrabold text-xl tracking-tighter uppercase">
+            Exame.
+          </Link>
+          <div className="flex items-center gap-1.5">
             <div
-              className="hidden sm:inline-flex xl:hidden 2xl:inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
+              className="hidden sm:inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
               title={`Streak de ${progress.streakDays} dia(s)`}
-              aria-label={`Streak ${progress.streakDays} dias`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden />
               <span className="text-xs font-bold uppercase tracking-wider font-mono tabular-nums">
@@ -220,18 +122,72 @@ export function Nav() {
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-label="Abrir menu"
-              className="xl:hidden inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-border hover:bg-accent"
             >
               <Menu size={16} />
             </button>
           </div>
         </div>
-      </nav>
+      </div>
+
+      {/* Desktop sidebar */}
+      <aside
+        aria-label="Navegação principal"
+        className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-card border-r border-border"
+      >
+        <div className="px-5 pt-5 pb-4 flex items-center justify-between gap-2">
+          <Link to="/" className="font-extrabold text-2xl tracking-tighter uppercase">
+            Exame.
+          </Link>
+          <ThemeToggle />
+        </div>
+
+        <div className="px-4 pb-4 flex items-center gap-2">
+          <Link
+            to="/conquistas"
+            className="flex items-center gap-1.5 border border-border px-2.5 py-1.5 rounded-md hover:border-foreground/30 hover:bg-accent transition-colors"
+            title={`${xp.total.toLocaleString("pt-BR")} XP — ${lvl.title}`}
+          >
+            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              Nv
+            </span>
+            <span className="text-xs font-bold tracking-tight">{lvl.level}</span>
+          </Link>
+          <div
+            className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1.5 rounded-full"
+            title={`Streak de ${progress.streakDays} dia(s)`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" aria-hidden />
+            <span className="text-xs font-bold uppercase tracking-wider font-mono tabular-nums">
+              {progress.streakDays}d
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <StageIndicator />
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
+          <div>
+            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              Estudo
+            </div>
+            <div className="space-y-0.5">{PRIMARY.map((l) => renderLink(l))}</div>
+          </div>
+          <div>
+            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+              Mais
+            </div>
+            <div className="space-y-0.5">{SECONDARY.map((l) => renderLink(l))}</div>
+          </div>
+        </nav>
+      </aside>
 
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Navegação rápida"
-        className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-md border-t border-border pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="grid grid-cols-6 max-w-2xl mx-auto">
           {MOBILE_PRIMARY.map((l) => {
@@ -270,10 +226,10 @@ export function Nav() {
         </ul>
       </nav>
 
-      {/* Slide-up / side sheet */}
+      {/* Slide-up sheet (mobile only) */}
       {sheetOpen && (
         <div
-          className="fixed inset-0 z-[60]"
+          className="lg:hidden fixed inset-0 z-[60]"
           role="dialog"
           aria-modal="true"
           aria-label="Menu de navegação"
@@ -282,7 +238,7 @@ export function Nav() {
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
             onClick={() => setSheetOpen(false)}
           />
-          <div className="absolute bottom-0 inset-x-0 lg:inset-y-0 lg:right-0 lg:left-auto lg:w-80 bg-card border-t lg:border-l border-border rounded-t-2xl lg:rounded-none shadow-2xl pb-[env(safe-area-inset-bottom)] animate-reveal">
+          <div className="absolute bottom-0 inset-x-0 bg-card border-t border-border rounded-t-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] animate-reveal">
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <span className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                 Navegação
