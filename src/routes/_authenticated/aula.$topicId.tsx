@@ -41,9 +41,14 @@ import {
   saveVideoPosition,
   markVideoWatched,
 } from "@/lib/study.functions";
+import { z } from "zod";
+import { markPlanTaskDone } from "@/lib/study-plan";
+import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z.object({ taskId: z.string().optional() }).parse(search),
   component: LessonPage,
   errorComponent: ({ error, reset }) => {
     const router = useRouter();
