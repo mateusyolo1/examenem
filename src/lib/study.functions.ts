@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchYoutubeTranscriptText } from "./youtube-transcripts.server";
 
 // ============================================================
 // List topics (full tree)
@@ -465,18 +466,14 @@ export const saveVideoPosition = createServerFn({ method: "POST" })
   });
 
 // ============================================================
-// Lesson Quiz — 3 questões baseadas nos vídeos reais
-// Etapa 1: Gemini "assiste" cada vídeo do YouTube (URL nativa) e
-//          devolve um resumo estruturado do conteúdo. Cache por youtube_id.
-// Etapa 2: Gemini gera 3 questões cobrindo o conjunto dos resumos.
-//          Cache por topicId.
+// Lesson Quiz — 3 questões baseadas nas legendas reais dos vídeos
+// Etapa 1: captura a legenda automática/manual de cada vídeo e resume o conteúdo.
+// Etapa 2: gera 3 questões cobrindo o conjunto dos resumos.
+// Caches por youtube_id e por topicId para economizar créditos.
 // ============================================================
 
-// Modelo mais barato do catálogo que aceita vídeo do YouTube nativamente.
+// Modelo mais barato do catálogo para resumo e geração de questões em texto.
 const VIDEO_MODEL = "google/gemini-2.5-flash-lite";
-// Janela de vídeo processada (economia em aulas longas — 99% das aulas ENEM
-// entregam o conceito principal nos primeiros 12 minutos).
-const VIDEO_WINDOW_SECONDS = 720;
 
 interface VideoSummary {
   keyConcepts: string[];
@@ -504,62 +501,6 @@ interface LessonQuizPayload {
   skipped: { youtubeId: string; title: string; reason: string }[];
 }
 
-// Chama o Gateway diretamente porque precisamos passar a URL do YouTube em
-// bloco multimodal. `image_url` com URL do YouTube é o formato que Gemini
-// via OpenRouter aceita para vídeos.
-async function callGeminiWithYoutube(
-  youtubeId: string,
-  systemPrompt: string,
-  userPrompt: string,
-): Promise<string> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
-
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": apiKey,
-    },
-    body: JSON.stringify({
-      model: VIDEO_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: userPrompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `https://www.youtube.com/watch?v=${youtubeId}`,
-              },
-            },
-          ],
-        },
-      ],
-      response_format: { type: "json_object" },
-      extra_body: {
-        video_metadata: { end_offset: `${VIDEO_WINDOW_SECONDS}s` },
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    if (res.status === 429) throw new Error("rate_limit");
-    if (res.status === 402) throw new Error("credits_exhausted");
-    throw new Error(`gateway_${res.status}: ${errText.slice(0, 200)}`);
-  }
-
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = json.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("empty_response");
-  return content;
-}
-
 function parseJsonLoose<T>(text: string): T {
   const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
   const start = cleaned.indexOf("{");
@@ -578,7 +519,7 @@ async function summarizeVideo(
   topicCtx: string,
   supabaseAdmin: SupabaseAdmin,
 ): Promise<VideoSummary> {
-  const cacheKey = `video-summary:${youtubeId}`;
+  const cacheKey = `video-summary:transcript:v1:${youtubeId}`;
   const { data: cached } = await supabaseAdmin
     .from("ai_response_cache")
     .select("response")
@@ -587,26 +528,52 @@ async function summarizeVideo(
     .maybeSingle();
   if (cached) return cached.response as unknown as VideoSummary;
 
-  const system = `Você é um assistente que assiste vídeos-aula em português e extrai o conteúdo real ensinado pelo(a) professor(a). Trabalhe APENAS com o que foi dito/mostrado no vídeo — nunca invente conteúdo.`;
+  const transcript = await fetchYoutubeTranscriptText(youtubeId);
+  const { generateText } = await import("ai");
+  const { createGateway } = await import("./ai-gateway.server");
+  const gateway = createGateway();
 
-  const user = `Assista a este vídeo (aula sobre "${topicCtx}", título: "${videoTitle}") e devolva um JSON com o resumo do que o(a) professor(a) explica.
+  const prompt = `Você é um assistente que resume vídeos-aula para gerar atividades de estudo.
 
-Estrutura obrigatória (JSON puro, sem cercas de código):
+Use APENAS a transcrição real abaixo. Não use o título para inventar conteúdo.
+
+Aula: "${topicCtx}"
+Vídeo: "${videoTitle}"
+Idioma da legenda: ${transcript.lang ?? "desconhecido"}
+Trechos da transcrição com timestamps:
+${transcript.text}
+
+Devolva JSON puro, sem cercas de código, nesta estrutura:
+
 {
-  "keyConcepts": ["conceito 1 explicado no vídeo", "conceito 2", ...],
-  "definitions": ["definição literal citada", ...],
-  "examples": ["exemplo trabalhado pelo professor", ...],
-  "timestamps": [{"at": "MM:SS", "note": "o que é dito nesse momento"}, ...]
+  "keyConcepts": ["conceito explicado na transcrição", "..."],
+  "definitions": ["definição ou distinção conceitual presente na fala", "..."],
+  "examples": ["exemplo, exercício, caso ou comparação citado", "..."],
+  "timestamps": [{"at": "MM:SS", "note": "conceito dito nesse momento"}]
 }
 
 Regras:
-- Inclua 3 a 8 conceitos-chave (o que um aluno precisa aprender).
-- Inclua exemplos concretos usados pelo professor (equações, casos, textos, comparações).
-- Timestamps devem apontar momentos onde os conceitos mais importantes aparecem.
-- Se o vídeo não puder ser processado ou não for sobre "${topicCtx}", devolva {"keyConcepts":[],"definitions":[],"examples":[],"timestamps":[]}.`;
+- Inclua 3 a 8 conceitos-chave.
+- Inclua exemplos concretos quando existirem.
+- Timestamps devem existir apenas se aparecerem nos trechos acima.
+- Se a transcrição não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
+- Responda em português.`;
 
-  const content = await callGeminiWithYoutube(youtubeId, system, user);
-  const parsed = parseJsonLoose<VideoSummary>(content);
+  let parsed: VideoSummary;
+  try {
+    const { text } = await generateText({
+      model: gateway(VIDEO_MODEL),
+      prompt,
+    });
+    parsed = parseJsonLoose<VideoSummary>(text);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "erro desconhecido";
+    if (message.includes("429") || message.toLowerCase().includes("rate")) throw new Error("rate_limit");
+    if (message.includes("402") || message.toLowerCase().includes("credit")) {
+      throw new Error("credits_exhausted");
+    }
+    throw error;
+  }
 
   const summary: VideoSummary = {
     keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
@@ -633,7 +600,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const cacheKey = `lesson-quiz:v2:${data.topicId}`;
+    const cacheKey = `lesson-quiz:v3:${data.topicId}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
@@ -687,7 +654,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
             ? r.reason instanceof Error
               ? r.reason.message
               : "erro"
-            : "vídeo sem conteúdo analisável";
+            : "legenda sem conteúdo analisável";
         if (reason === "credits_exhausted") {
           throw new Error(
             "Créditos de IA esgotados neste mês. Adicione créditos ou tente novamente no próximo ciclo.",
@@ -700,7 +667,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
             reason === "rate_limit"
               ? "IA sobrecarregada — tente de novo em instantes"
               : reason.startsWith("gateway_")
-                ? "Vídeo não pôde ser processado"
+                ? "Legenda não pôde ser processada"
                 : reason,
         });
       }
@@ -708,7 +675,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
 
     if (successfulSummaries.length === 0) {
       throw new Error(
-        "Nenhum vídeo da aula pôde ser analisado. Sugira novos vídeos e tente novamente.",
+        "Nenhum vídeo da aula possui legenda analisável. Sugira novos vídeos e tente novamente.",
       );
     }
 
@@ -838,7 +805,7 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const cacheKey = `lesson-quiz:v2:${data.topicId}`;
+    const cacheKey = `lesson-quiz:v3:${data.topicId}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
