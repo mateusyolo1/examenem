@@ -909,11 +909,7 @@ function SuggestionHistoryModal({
               Vídeos daqui não voltam a ser sugeridos.
             </p>
             <button
-              onClick={() => {
-                if (confirm("Apagar o histórico? Vídeos antigos poderão ser sugeridos novamente.")) {
-                  clearMutation.mutate();
-                }
-              }}
+              onClick={() => setConfirmClearOpen(true)}
               disabled={clearMutation.isPending}
               className="text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
             >
@@ -922,6 +918,20 @@ function SuggestionHistoryModal({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmClearOpen}
+        title="Apagar histórico de sugestões?"
+        description="Os vídeos removidos daqui poderão ser sugeridos novamente pela IA para este assunto."
+        confirmLabel="Apagar histórico"
+        destructive
+        onConfirm={() => {
+          clearMutation.mutate();
+          setConfirmClearOpen(false);
+        }}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
+
     </div>,
     document.body,
   );
