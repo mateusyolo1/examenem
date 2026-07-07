@@ -149,70 +149,76 @@ function EstudosPage() {
             </p>
           </header>
 
-          <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-            {/* Sidebar */}
-            <aside className="border border-border bg-card p-4 rounded-md h-fit lg:sticky lg:top-6">
-              <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
-                Assuntos
-              </h2>
-              <div className="space-y-1">
-                {roots.map((area) => {
-                  const children = byParent[area.id] ?? [];
-                  const expanded = expandedAreas.has(area.id);
-                  return (
-                    <div key={area.id}>
-                      <button
-                        onClick={() => toggleArea(area.id)}
-                        className="w-full flex items-center justify-between text-left px-2 py-2 rounded hover:bg-accent transition-colors"
-                      >
-                        <span className="text-sm font-bold">
-                          {AREA_LABEL[area.area] ?? area.title}
-                        </span>
-                        <ChevronRight
-                          size={14}
-                          className={`transition-transform ${expanded ? "rotate-90" : ""}`}
-                        />
-                      </button>
-                      {expanded && (
-                        <div className="pl-2 space-y-0.5 mt-1 mb-2">
-                          {children.map((t) => (
-                            <button
-                              key={t.id}
-                              onClick={() => setSelectedTopicId(t.id)}
-                              className={
-                                "w-full text-left px-2 py-1.5 rounded text-sm transition-colors " +
-                                (selectedTopicId === t.id
-                                  ? "bg-foreground text-background font-medium"
-                                  : "text-muted-foreground hover:bg-accent hover:text-foreground")
-                              }
-                            >
-                              {t.title}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </aside>
-
-            {/* Content */}
-            <section>
-              {selectedTopic ? (
-                <TopicSearches topic={selectedTopic} />
-              ) : (
-                <div className="border border-dashed border-border rounded-md p-12 text-center bg-card">
-                  <Youtube size={48} className="mx-auto text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-bold mb-2">Escolha um assunto</h2>
-                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                    Abra uma área na barra lateral e clique num assunto para ver as buscas
-                    recomendadas.
-                  </p>
-                </div>
-              )}
-            </section>
+          {/* Assuntos - barra horizontal no topo */}
+          <div className="border border-border bg-card p-4 rounded-md mb-6">
+            <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
+              Assuntos
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {roots.map((area) => {
+                const children = byParent[area.id] ?? [];
+                const expanded = expandedAreas.has(area.id);
+                return (
+                  <div key={area.id} className="relative">
+                    <button
+                      onClick={() => toggleArea(area.id)}
+                      className={
+                        "w-full flex items-center justify-between text-left px-3 py-2 rounded border transition-colors " +
+                        (expanded
+                          ? "border-foreground bg-accent"
+                          : "border-border hover:bg-accent")
+                      }
+                    >
+                      <span className="text-sm font-bold">
+                        {AREA_LABEL[area.area] ?? area.title}
+                      </span>
+                      <ChevronRight
+                        size={14}
+                        className={`transition-transform ${expanded ? "rotate-90" : ""}`}
+                      />
+                    </button>
+                    {expanded && (
+                      <div className="absolute z-20 left-0 right-0 mt-1 border border-border bg-popover rounded-md shadow-lg p-1 space-y-0.5 max-h-80 overflow-y-auto">
+                        {children.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              setSelectedTopicId(t.id);
+                              toggleArea(area.id);
+                            }}
+                            className={
+                              "w-full text-left px-2 py-1.5 rounded text-sm transition-colors " +
+                              (selectedTopicId === t.id
+                                ? "bg-foreground text-background font-medium"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground")
+                            }
+                          >
+                            {t.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Conteúdo centralizado */}
+          <section className="max-w-5xl mx-auto">
+            {selectedTopic ? (
+              <TopicSearches topic={selectedTopic} />
+            ) : (
+              <div className="border border-dashed border-border rounded-md p-12 text-center bg-card">
+                <Youtube size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h2 className="text-xl font-bold mb-2">Escolha um assunto</h2>
+                <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                  Abra uma área acima e clique num assunto para ver as buscas recomendadas.
+                </p>
+              </div>
+            )}
+          </section>
+
         </div>
       </main>
       <Footer />
