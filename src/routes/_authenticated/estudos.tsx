@@ -550,7 +550,9 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const listSuggested = useServerFn(listVideosForTopic);
   const suggest = useServerFn(suggestVideosForTopic);
   const markWatched = useServerFn(markVideoWatched);
+  const clearSuggested = useServerFn(clearSuggestedVideos);
   const qc = useQueryClient();
+
 
   const key = ["suggested-videos", topic.id];
   const { data, isLoading } = useQuery({
