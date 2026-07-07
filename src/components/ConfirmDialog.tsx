@@ -1,14 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, X } from "lucide-react";
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  description?: string;
+  description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
+  destructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,7 +20,8 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
-  variant = "default",
+  variant,
+  destructive,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -35,7 +37,8 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  const isDestructive = variant === "destructive";
+  const isDestructive = destructive || variant === "destructive";
+
 
   return createPortal(
     <div
