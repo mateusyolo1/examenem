@@ -154,6 +154,20 @@ function Plano() {
       }));
   }, [topicsData]);
 
+  // Mastery (Abordagem 3): alimenta o gerador de plano com desempenho.
+  const listMasteryFn = useServerFn(listTopicMastery);
+  const { data: masteryData } = useQuery({
+    queryKey: ["topic-mastery"],
+    queryFn: () => listMasteryFn(),
+    staleTime: 60 * 1000,
+  });
+  const masteryList: TopicMastery[] = useMemo(() => {
+    return ((masteryData?.mastery ?? []) as TopicMastery[]).map((m) => ({
+      ...m,
+      area: m.area as TopicMastery["area"],
+    }));
+  }, [masteryData]);
+
   if (!plan || editing) {
     return (
       <Shell plan={plan}>
@@ -162,7 +176,11 @@ function Plano() {
           defaultExamDate={progress.examDate}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
-            savePlan(cfg, topicCatalog.length ? topicCatalog : undefined);
+            savePlan(
+              cfg,
+              topicCatalog.length ? topicCatalog : undefined,
+              masteryList.length ? masteryList : undefined,
+            );
             setEditing(false);
           }}
         />
@@ -175,6 +193,7 @@ function Plano() {
     <Shell plan={plan}>
       <PlanView
         plan={plan}
+        mastery={masteryList}
         onToggleDone={toggleDone}
         onEdit={() => setEditing(true)}
         onClear={() => setAskClear(true)}
@@ -193,6 +212,7 @@ function Plano() {
       />
     </Shell>
   );
+
 }
 
 function Shell({
