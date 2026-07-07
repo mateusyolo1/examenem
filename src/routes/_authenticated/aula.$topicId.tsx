@@ -9,6 +9,7 @@ import {
   Check,
   ClipboardList,
   Lock,
+  PenLine,
   Play,
   Sparkles,
   X,
