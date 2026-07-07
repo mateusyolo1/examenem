@@ -120,6 +120,7 @@ function LessonPage() {
   return (
     <LessonPlayer
       topicId={topicId}
+      topicSlug={data.topic.slug}
       topicTitle={data.topic.title}
       topicArea={data.topic.area}
       videos={data.videos}
@@ -139,12 +140,14 @@ interface Video {
 
 function LessonPlayer({
   topicId,
+  topicSlug,
   topicTitle,
   topicArea,
   videos,
   taskId,
 }: {
   topicId: string;
+  topicSlug: string;
   topicTitle: string;
   topicArea: string;
   videos: Video[];
