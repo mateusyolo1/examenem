@@ -117,6 +117,8 @@ interface Video {
   youtube_id: string;
   title: string | null;
   channel_name: string | null;
+  watched?: boolean;
+  watch_seconds?: number;
 }
 
 function LessonPlayer({
@@ -129,11 +131,21 @@ function LessonPlayer({
   videos: Video[];
 }) {
   const [phase, setPhase] = useState<Phase>("watching");
-  const [current, setCurrent] = useState(0);
-  const [watched, setWatched] = useState<Set<number>>(new Set());
+  const [watched, setWatched] = useState<Set<number>>(
+    () => new Set(videos.map((v, i) => (v.watched ? i : -1)).filter((i) => i >= 0)),
+  );
+  // Initial video = first unwatched with saved position, else first unwatched, else last.
+  const [current, setCurrent] = useState(() => {
+    const withProgress = videos.findIndex((v) => !v.watched && (v.watch_seconds ?? 0) > 0);
+    if (withProgress >= 0) return withProgress;
+    const firstUnwatched = videos.findIndex((v) => !v.watched);
+    return firstUnwatched >= 0 ? firstUnwatched : videos.length - 1;
+  });
 
   const buildQuiz = useServerFn(buildLessonQuiz);
   const submit = useServerFn(submitLessonAttempt);
+  const savePos = useServerFn(saveVideoPosition);
+  const markWatchedFn = useServerFn(markVideoWatched);
 
   const quizMutation = useMutation({
     mutationFn: () => buildQuiz({ data: { topicId } }),
@@ -159,13 +171,20 @@ function LessonPlayer({
   const allWatched = watched.size === total;
 
   const markCurrentWatched = () => {
-    setWatched((prev) => new Set(prev).add(current));
+    setWatched((prev) => {
+      if (prev.has(current)) return prev;
+      const next = new Set(prev).add(current);
+      return next;
+    });
+    // Persist server-side (fire and forget).
+    markWatchedFn({ data: { videoId: video.id, watched: true } }).catch(() => {});
   };
 
   const goNext = () => {
     markCurrentWatched();
     if (current < total - 1) setCurrent(current + 1);
   };
+
 
   return (
     <div className="min-h-screen bg-background">
