@@ -111,7 +111,11 @@ function rid(): string {
 }
 
 // Build a weighted rotation of areas (hard + focus areas first).
-function buildAreaQueue(cfg: StudyPlanConfig): Area[] {
+// Mastery increases weight for areas whose average score is low (< 0.6).
+function buildAreaQueue(
+  cfg: StudyPlanConfig,
+  mastery?: TopicMastery[],
+): Area[] {
   const all = AREAS.map((a) => a.id);
   const weight: Record<Area, number> = {
     linguagens: 1,
@@ -123,12 +127,28 @@ function buildAreaQueue(cfg: StudyPlanConfig): Area[] {
   if (cfg.focus !== "balanced" && cfg.focus !== "redacao") {
     weight[cfg.focus] += 2;
   }
+  if (mastery && mastery.length) {
+    const byArea: Record<Area, number[]> = {
+      linguagens: [], humanas: [], natureza: [], matematica: [],
+    };
+    for (const m of mastery) {
+      if (m.area in byArea) byArea[m.area].push(m.last_score);
+    }
+    (Object.keys(byArea) as Area[]).forEach((a) => {
+      const scores = byArea[a];
+      if (!scores.length) return;
+      const avg = scores.reduce((s, x) => s + x, 0) / scores.length;
+      if (avg < 0.6) weight[a] += 2; // reforço
+      else if (avg >= 0.85) weight[a] = Math.max(1, weight[a] - 1); // já domina
+    });
+  }
   const queue: Area[] = [];
   all.forEach((a) => {
     for (let i = 0; i < weight[a]; i++) queue.push(a);
   });
   return queue;
 }
+
 
 interface Slot {
   type: TaskType;
