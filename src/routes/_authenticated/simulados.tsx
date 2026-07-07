@@ -259,6 +259,25 @@ function Simulados() {
           </p>
         </header>
 
+        <div className="mb-8 border border-primary/30 bg-primary/5 rounded-md p-5 flex flex-wrap items-center gap-4 justify-between">
+          <div>
+            <div className="text-xs font-mono uppercase tracking-widest text-primary mb-1">
+              Novo
+            </div>
+            <h2 className="text-lg font-extrabold tracking-tight">Provas Reais do ENEM</h2>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+              Questões oficiais de 2009 a 2024, prova completa ou por área, com nota TRI aproximada.
+            </p>
+          </div>
+          <a
+            href="/simulados-reais"
+            className="px-4 py-2 bg-foreground text-background text-xs font-bold uppercase tracking-widest whitespace-nowrap"
+          >
+            Ir para Provas Reais →
+          </a>
+        </div>
+
+
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           {PRESETS.map((d) => (
             <button

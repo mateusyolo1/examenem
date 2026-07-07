@@ -10,6 +10,7 @@ import {
   ListChecks,
   RotateCw,
   FileText,
+  FileCheck,
   PenLine,
   Bot,
   User,
@@ -17,6 +18,7 @@ import {
   X,
   Calendar,
   BookOpen,
+  Youtube,
   Lightbulb,
   Trophy,
   Settings as SettingsIcon,
@@ -33,9 +35,11 @@ type NavItem = {
 const PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/plano", label: "Plano de Estudos", shortLabel: "Plano", icon: Calendar },
+  { to: "/estudos", label: "Estudar (vídeos)", shortLabel: "Estudos", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/simulados-reais", label: "Provas Reais ENEM", shortLabel: "Reais", icon: FileCheck },
   { to: "/redacao", label: "Redação", icon: PenLine },
   { to: "/tutor", label: "Tutor IA", icon: Bot },
 ];
@@ -50,10 +54,10 @@ const SECONDARY: NavItem[] = [
 
 const MOBILE_PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
-  { to: "/plano", label: "Plano", icon: Calendar },
+  { to: "/estudos", label: "Estudos", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
-  { to: "/revisar", label: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
+  { to: "/simulados-reais", label: "Reais", icon: FileCheck },
 ];
 
 const ALL: NavItem[] = [...PRIMARY, ...SECONDARY];
