@@ -27,7 +27,7 @@ type Mode =
 
 const HISTORY_KEY = "exame:tutor:history:v1";
 
-export const Route = createFileRoute("/tutor")({
+export const Route = createFileRoute("/_authenticated/tutor")({
   head: () => ({
     meta: [
       { title: "Tutor IA — Professor particular de ENEM" },

@@ -9,127 +9,127 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TutorRouteImport } from './routes/tutor'
-import { Route as TemasRouteImport } from './routes/temas'
-import { Route as SimuladosRouteImport } from './routes/simulados'
-import { Route as RevisarRouteImport } from './routes/revisar'
-import { Route as RedacaoRouteImport } from './routes/redacao'
-import { Route as QuestoesRouteImport } from './routes/questoes'
-import { Route as PlanoRouteImport } from './routes/plano'
-import { Route as PerfilRouteImport } from './routes/perfil'
-import { Route as MateriasRouteImport } from './routes/materias'
-import { Route as ConquistasRouteImport } from './routes/conquistas'
-import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedTutorRouteImport } from './routes/_authenticated/tutor'
+import { Route as AuthenticatedTemasRouteImport } from './routes/_authenticated/temas'
+import { Route as AuthenticatedSimuladosRouteImport } from './routes/_authenticated/simulados'
+import { Route as AuthenticatedRevisarRouteImport } from './routes/_authenticated/revisar'
+import { Route as AuthenticatedRedacaoRouteImport } from './routes/_authenticated/redacao'
+import { Route as AuthenticatedQuestoesRouteImport } from './routes/_authenticated/questoes'
+import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
+import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
+import { Route as AuthenticatedMateriasRouteImport } from './routes/_authenticated/materias'
+import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 
-const TutorRoute = TutorRouteImport.update({
-  id: '/tutor',
-  path: '/tutor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TemasRoute = TemasRouteImport.update({
-  id: '/temas',
-  path: '/temas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SimuladosRoute = SimuladosRouteImport.update({
-  id: '/simulados',
-  path: '/simulados',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RevisarRoute = RevisarRouteImport.update({
-  id: '/revisar',
-  path: '/revisar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RedacaoRoute = RedacaoRouteImport.update({
-  id: '/redacao',
-  path: '/redacao',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QuestoesRoute = QuestoesRouteImport.update({
-  id: '/questoes',
-  path: '/questoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlanoRoute = PlanoRouteImport.update({
-  id: '/plano',
-  path: '/plano',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerfilRoute = PerfilRouteImport.update({
-  id: '/perfil',
-  path: '/perfil',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MateriasRoute = MateriasRouteImport.update({
-  id: '/materias',
-  path: '/materias',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConquistasRoute = ConquistasRouteImport.update({
-  id: '/conquistas',
-  path: '/conquistas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/_authenticated/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedTutorRoute = AuthenticatedTutorRouteImport.update({
+  id: '/_authenticated/tutor',
+  path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTemasRoute = AuthenticatedTemasRouteImport.update({
+  id: '/_authenticated/temas',
+  path: '/temas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSimuladosRoute = AuthenticatedSimuladosRouteImport.update({
+  id: '/_authenticated/simulados',
+  path: '/simulados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRevisarRoute = AuthenticatedRevisarRouteImport.update({
+  id: '/_authenticated/revisar',
+  path: '/revisar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRedacaoRoute = AuthenticatedRedacaoRouteImport.update({
+  id: '/_authenticated/redacao',
+  path: '/redacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedQuestoesRoute = AuthenticatedQuestoesRouteImport.update({
+  id: '/_authenticated/questoes',
+  path: '/questoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPlanoRoute = AuthenticatedPlanoRouteImport.update({
+  id: '/_authenticated/plano',
+  path: '/plano',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
+  id: '/_authenticated/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedMateriasRoute = AuthenticatedMateriasRouteImport.update({
+  id: '/_authenticated/materias',
+  path: '/materias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedConquistasRoute = AuthenticatedConquistasRouteImport.update({
+  id: '/_authenticated/conquistas',
+  path: '/conquistas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/_authenticated/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/conquistas': typeof ConquistasRoute
-  '/materias': typeof MateriasRoute
-  '/perfil': typeof PerfilRoute
-  '/plano': typeof PlanoRoute
-  '/questoes': typeof QuestoesRoute
-  '/redacao': typeof RedacaoRoute
-  '/revisar': typeof RevisarRoute
-  '/simulados': typeof SimuladosRoute
-  '/temas': typeof TemasRoute
-  '/tutor': typeof TutorRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/conquistas': typeof AuthenticatedConquistasRoute
+  '/materias': typeof AuthenticatedMateriasRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
+  '/plano': typeof AuthenticatedPlanoRoute
+  '/questoes': typeof AuthenticatedQuestoesRoute
+  '/redacao': typeof AuthenticatedRedacaoRoute
+  '/revisar': typeof AuthenticatedRevisarRoute
+  '/simulados': typeof AuthenticatedSimuladosRoute
+  '/temas': typeof AuthenticatedTemasRoute
+  '/tutor': typeof AuthenticatedTutorRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/conquistas': typeof ConquistasRoute
-  '/materias': typeof MateriasRoute
-  '/perfil': typeof PerfilRoute
-  '/plano': typeof PlanoRoute
-  '/questoes': typeof QuestoesRoute
-  '/redacao': typeof RedacaoRoute
-  '/revisar': typeof RevisarRoute
-  '/simulados': typeof SimuladosRoute
-  '/temas': typeof TemasRoute
-  '/tutor': typeof TutorRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/conquistas': typeof AuthenticatedConquistasRoute
+  '/materias': typeof AuthenticatedMateriasRoute
+  '/perfil': typeof AuthenticatedPerfilRoute
+  '/plano': typeof AuthenticatedPlanoRoute
+  '/questoes': typeof AuthenticatedQuestoesRoute
+  '/redacao': typeof AuthenticatedRedacaoRoute
+  '/revisar': typeof AuthenticatedRevisarRoute
+  '/simulados': typeof AuthenticatedSimuladosRoute
+  '/temas': typeof AuthenticatedTemasRoute
+  '/tutor': typeof AuthenticatedTutorRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/conquistas': typeof ConquistasRoute
-  '/materias': typeof MateriasRoute
-  '/perfil': typeof PerfilRoute
-  '/plano': typeof PlanoRoute
-  '/questoes': typeof QuestoesRoute
-  '/redacao': typeof RedacaoRoute
-  '/revisar': typeof RevisarRoute
-  '/simulados': typeof SimuladosRoute
-  '/temas': typeof TemasRoute
-  '/tutor': typeof TutorRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
+  '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
+  '/_authenticated/materias': typeof AuthenticatedMateriasRoute
+  '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/plano': typeof AuthenticatedPlanoRoute
+  '/_authenticated/questoes': typeof AuthenticatedQuestoesRoute
+  '/_authenticated/redacao': typeof AuthenticatedRedacaoRoute
+  '/_authenticated/revisar': typeof AuthenticatedRevisarRoute
+  '/_authenticated/simulados': typeof AuthenticatedSimuladosRoute
+  '/_authenticated/temas': typeof AuthenticatedTemasRoute
+  '/_authenticated/tutor': typeof AuthenticatedTutorRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/configuracoes'
     | '/conquistas'
     | '/materias'
@@ -141,9 +141,9 @@ export interface FileRouteTypes {
     | '/simulados'
     | '/temas'
     | '/tutor'
+    | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/configuracoes'
     | '/conquistas'
     | '/materias'
@@ -155,139 +155,140 @@ export interface FileRouteTypes {
     | '/simulados'
     | '/temas'
     | '/tutor'
+    | '/'
   id:
     | '__root__'
-    | '/'
-    | '/configuracoes'
-    | '/conquistas'
-    | '/materias'
-    | '/perfil'
-    | '/plano'
-    | '/questoes'
-    | '/redacao'
-    | '/revisar'
-    | '/simulados'
-    | '/temas'
-    | '/tutor'
+    | '/_authenticated/configuracoes'
+    | '/_authenticated/conquistas'
+    | '/_authenticated/materias'
+    | '/_authenticated/perfil'
+    | '/_authenticated/plano'
+    | '/_authenticated/questoes'
+    | '/_authenticated/redacao'
+    | '/_authenticated/revisar'
+    | '/_authenticated/simulados'
+    | '/_authenticated/temas'
+    | '/_authenticated/tutor'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ConfiguracoesRoute: typeof ConfiguracoesRoute
-  ConquistasRoute: typeof ConquistasRoute
-  MateriasRoute: typeof MateriasRoute
-  PerfilRoute: typeof PerfilRoute
-  PlanoRoute: typeof PlanoRoute
-  QuestoesRoute: typeof QuestoesRoute
-  RedacaoRoute: typeof RedacaoRoute
-  RevisarRoute: typeof RevisarRoute
-  SimuladosRoute: typeof SimuladosRoute
-  TemasRoute: typeof TemasRoute
-  TutorRoute: typeof TutorRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
+  AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
+  AuthenticatedMateriasRoute: typeof AuthenticatedMateriasRoute
+  AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+  AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
+  AuthenticatedQuestoesRoute: typeof AuthenticatedQuestoesRoute
+  AuthenticatedRedacaoRoute: typeof AuthenticatedRedacaoRoute
+  AuthenticatedRevisarRoute: typeof AuthenticatedRevisarRoute
+  AuthenticatedSimuladosRoute: typeof AuthenticatedSimuladosRoute
+  AuthenticatedTemasRoute: typeof AuthenticatedTemasRoute
+  AuthenticatedTutorRoute: typeof AuthenticatedTutorRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tutor': {
-      id: '/tutor'
-      path: '/tutor'
-      fullPath: '/tutor'
-      preLoaderRoute: typeof TutorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/temas': {
-      id: '/temas'
-      path: '/temas'
-      fullPath: '/temas'
-      preLoaderRoute: typeof TemasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/simulados': {
-      id: '/simulados'
-      path: '/simulados'
-      fullPath: '/simulados'
-      preLoaderRoute: typeof SimuladosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/revisar': {
-      id: '/revisar'
-      path: '/revisar'
-      fullPath: '/revisar'
-      preLoaderRoute: typeof RevisarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redacao': {
-      id: '/redacao'
-      path: '/redacao'
-      fullPath: '/redacao'
-      preLoaderRoute: typeof RedacaoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/questoes': {
-      id: '/questoes'
-      path: '/questoes'
-      fullPath: '/questoes'
-      preLoaderRoute: typeof QuestoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plano': {
-      id: '/plano'
-      path: '/plano'
-      fullPath: '/plano'
-      preLoaderRoute: typeof PlanoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/perfil': {
-      id: '/perfil'
-      path: '/perfil'
-      fullPath: '/perfil'
-      preLoaderRoute: typeof PerfilRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/materias': {
-      id: '/materias'
-      path: '/materias'
-      fullPath: '/materias'
-      preLoaderRoute: typeof MateriasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/conquistas': {
-      id: '/conquistas'
-      path: '/conquistas'
-      fullPath: '/conquistas'
-      preLoaderRoute: typeof ConquistasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/configuracoes': {
-      id: '/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof ConfiguracoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/tutor': {
+      id: '/_authenticated/tutor'
+      path: '/tutor'
+      fullPath: '/tutor'
+      preLoaderRoute: typeof AuthenticatedTutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/temas': {
+      id: '/_authenticated/temas'
+      path: '/temas'
+      fullPath: '/temas'
+      preLoaderRoute: typeof AuthenticatedTemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/simulados': {
+      id: '/_authenticated/simulados'
+      path: '/simulados'
+      fullPath: '/simulados'
+      preLoaderRoute: typeof AuthenticatedSimuladosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/revisar': {
+      id: '/_authenticated/revisar'
+      path: '/revisar'
+      fullPath: '/revisar'
+      preLoaderRoute: typeof AuthenticatedRevisarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/redacao': {
+      id: '/_authenticated/redacao'
+      path: '/redacao'
+      fullPath: '/redacao'
+      preLoaderRoute: typeof AuthenticatedRedacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/questoes': {
+      id: '/_authenticated/questoes'
+      path: '/questoes'
+      fullPath: '/questoes'
+      preLoaderRoute: typeof AuthenticatedQuestoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/plano': {
+      id: '/_authenticated/plano'
+      path: '/plano'
+      fullPath: '/plano'
+      preLoaderRoute: typeof AuthenticatedPlanoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/perfil': {
+      id: '/_authenticated/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/materias': {
+      id: '/_authenticated/materias'
+      path: '/materias'
+      fullPath: '/materias'
+      preLoaderRoute: typeof AuthenticatedMateriasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/conquistas': {
+      id: '/_authenticated/conquistas'
+      path: '/conquistas'
+      fullPath: '/conquistas'
+      preLoaderRoute: typeof AuthenticatedConquistasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ConfiguracoesRoute: ConfiguracoesRoute,
-  ConquistasRoute: ConquistasRoute,
-  MateriasRoute: MateriasRoute,
-  PerfilRoute: PerfilRoute,
-  PlanoRoute: PlanoRoute,
-  QuestoesRoute: QuestoesRoute,
-  RedacaoRoute: RedacaoRoute,
-  RevisarRoute: RevisarRoute,
-  SimuladosRoute: SimuladosRoute,
-  TemasRoute: TemasRoute,
-  TutorRoute: TutorRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
+  AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
+  AuthenticatedMateriasRoute: AuthenticatedMateriasRoute,
+  AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+  AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
+  AuthenticatedQuestoesRoute: AuthenticatedQuestoesRoute,
+  AuthenticatedRedacaoRoute: AuthenticatedRedacaoRoute,
+  AuthenticatedRevisarRoute: AuthenticatedRevisarRoute,
+  AuthenticatedSimuladosRoute: AuthenticatedSimuladosRoute,
+  AuthenticatedTemasRoute: AuthenticatedTemasRoute,
+  AuthenticatedTutorRoute: AuthenticatedTutorRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

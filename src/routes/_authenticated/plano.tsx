@@ -42,7 +42,7 @@ import {
 } from "@/lib/study-plan";
 import { StageTasksSection } from "@/components/StageTasksSection";
 
-export const Route = createFileRoute("/plano")({
+export const Route = createFileRoute("/_authenticated/plano")({
   head: () => ({
     meta: [
       { title: "Plano de Estudos — Exame ENEM" },

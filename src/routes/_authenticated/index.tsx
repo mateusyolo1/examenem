@@ -15,7 +15,7 @@ import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
 import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Painel do Aluno — Exame ENEM" },
