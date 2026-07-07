@@ -191,7 +191,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Fetch topic details
     const { data: topic, error: tErr } = await supabase
       .from("study_topics")
       .select("id, title, area, subject")
@@ -199,7 +198,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       .single();
     if (tErr) throw new Error(tErr.message);
 
-    // Check AI cache
     const cacheKey = `video-suggestions:${topic.id}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
@@ -212,65 +210,61 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     if (cached) {
       suggestions = (cached.response as unknown as { suggestions: AiVideoSuggestion[] }).suggestions;
     } else {
-      const { generateText } = await import("ai");
-      const { createGateway, CHAT_MODEL } = await import("./ai-gateway.server");
-      const gateway = createGateway();
+      // Build a good search query for YouTube — use the topic itself, biased for ENEM
+      const query = `${topic.title} ${topic.subject ?? ""} ENEM aula`.trim();
 
-      const prompt = `Sugira 6 vídeos reais e populares do YouTube em português brasileiro sobre "${topic.title}" ${topic.subject ? `(${topic.subject})` : ""} para estudantes preparando para o ENEM.
-
-Priorize canais educacionais brasileiros conhecidos: Curso Enem Gratuito, Kuadro, Descomplica, Me Salva!, Prof. Ferretto, Poliedro, Brasil Escola, Biologia Total (Paulo Jubilut), Prof. Marcelo Boaro, Débora Aladim, Umberto Mannarino, Ferreto Matemática, Matemática Rio, Prof. Vinícius (Português).
-
-IMPORTANTE:
-- Use APENAS IDs de vídeos que você TEM CERTEZA que existem no YouTube. Não invente IDs.
-- Se não tiver certeza sobre um vídeo específico, prefira sugerir menos vídeos (mínimo 3).
-- Cada YouTube ID tem exatamente 11 caracteres alfanuméricos (letras, números, _ ou -).
-
-Responda APENAS com JSON válido, sem cercas de código, no formato:
-{
-  "suggestions": [
-    {"youtube_id": "abc123XYZ_-", "title": "Título real do vídeo", "channel_name": "Nome do canal"}
-  ]
-}`;
-
-      const { text } = await generateText({
-        model: gateway(CHAT_MODEL),
-        prompt,
-      });
-
-      const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-
+      // Scrape YouTube search results (no API key needed)
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
+      let html = "";
       try {
-        const parsed = JSON.parse(slice) as { suggestions?: AiVideoSuggestion[] };
-        suggestions = (parsed.suggestions ?? []).filter(
-          (s) => s.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(s.youtube_id),
-        );
+        const res = await fetch(searchUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+          },
+        });
+        html = await res.text();
       } catch {
-        suggestions = [];
+        html = "";
       }
 
-      // Validate each video against YouTube oEmbed — filters removed,
-      // private, or non-embeddable IDs (the ones that render "Vídeo indisponível")
-      if (suggestions.length > 0) {
-        const checks = await Promise.all(
-          suggestions.map(async (s) => {
-            try {
-              const res = await fetch(
-                `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${s.youtube_id}&format=json`,
-                { method: "GET" },
-              );
-              return res.ok ? s : null;
-            } catch {
-              return null;
+      // Extract ytInitialData JSON blob and find videoRenderer entries
+      const parsed: AiVideoSuggestion[] = [];
+      const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
+      if (match) {
+        try {
+          const json = JSON.parse(match[1]);
+          const sections =
+            json?.contents?.twoColumnSearchResultsRenderer?.primaryContents
+              ?.sectionListRenderer?.contents ?? [];
+          for (const section of sections) {
+            const items = section?.itemSectionRenderer?.contents ?? [];
+            for (const item of items) {
+              const v = item?.videoRenderer;
+              if (!v?.videoId) continue;
+              const title = v.title?.runs?.[0]?.text ?? v.title?.simpleText ?? "";
+              const channel =
+                v.ownerText?.runs?.[0]?.text ??
+                v.longBylineText?.runs?.[0]?.text ??
+                "";
+              if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
+              parsed.push({
+                youtube_id: v.videoId,
+                title,
+                channel_name: channel,
+              });
+              if (parsed.length >= 8) break;
             }
-          }),
-        );
-        suggestions = checks.filter((s): s is AiVideoSuggestion => s !== null);
+            if (parsed.length >= 8) break;
+          }
+        } catch {
+          /* ignore parse errors */
+        }
       }
 
-      // Cache result for 30 days (default in table) — only if we have valid videos
+      suggestions = parsed.slice(0, 6);
+
       if (suggestions.length > 0) {
         await supabaseAdmin.from("ai_response_cache").insert({
           cache_key: cacheKey,
@@ -280,8 +274,6 @@ Responda APENAS com JSON válido, sem cercas de código, no formato:
       }
     }
 
-
-    // Persist suggested videos (skip duplicates via unique constraint)
     if (suggestions.length > 0) {
       const rows = suggestions.map((s, i) => ({
         topic_id: topic.id,
@@ -299,3 +291,4 @@ Responda APENAS com JSON válido, sem cercas de código, no formato:
 
     return { added: suggestions.length };
   });
+
