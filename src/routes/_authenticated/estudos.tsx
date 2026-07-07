@@ -556,6 +556,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const clearSuggested = useServerFn(clearSuggestedVideos);
   const qc = useQueryClient();
 
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const key = ["suggested-videos", topic.id];
   const { data, isLoading } = useQuery({
@@ -568,15 +569,22 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const dailyMinutes = progress.dailyMinutes ?? 120;
 
   const suggestMutation = useMutation({
-    mutationFn: () =>
-      suggest({ data: { topicId: topic.id, maxMinutes: dailyMinutes } }),
-    onSuccess: (r) => {
+    mutationFn: (forceRefresh: boolean) =>
+      suggest({
+        data: { topicId: topic.id, maxMinutes: dailyMinutes, forceRefresh },
+      }),
+    onSuccess: (r, forceRefresh) => {
       qc.invalidateQueries({ queryKey: key });
-      if (r?.added > 0)
+      qc.invalidateQueries({ queryKey: ["suggestion-history", topic.id] });
+      if (r?.added > 0) {
         toast.success(
-          `${r.added} vídeos sugeridos · ${r.totalMinutes}min de ${r.maxMinutes}min disponíveis`,
+          forceRefresh
+            ? `${r.added} novos vídeos · ${r.totalMinutes}min`
+            : `${r.added} vídeos sugeridos · ${r.totalMinutes}min de ${r.maxMinutes}min disponíveis`,
         );
-      else toast.info("Nenhuma sugestão nova desta vez");
+      } else {
+        toast.info("Nenhuma sugestão nova desta vez");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -596,6 +604,9 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const hasVideos = videos.length > 0;
+  const busy = suggestMutation.isPending;
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3 gap-2">
@@ -613,31 +624,63 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
               Iniciar aula
             </Link>
           )}
-          {videos.length > 0 && (
+          {hasVideos && (
+            <>
+              <button
+                onClick={() => suggestMutation.mutate(true)}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
+                title="Buscar vídeos diferentes"
+              >
+                <RefreshCw size={14} className={busy ? "animate-spin" : ""} />
+                {busy ? "Buscando…" : "Trocar sugestões"}
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
+                    clearMutation.mutate();
+                  }
+                }}
+                disabled={clearMutation.isPending}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
+              </button>
+            </>
+          )}
+          {!hasVideos && (
             <button
-              onClick={() => {
-                if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
-                  clearMutation.mutate();
-                }
-              }}
-              disabled={clearMutation.isPending}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+              onClick={() => suggestMutation.mutate(false)}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
             >
-              <Trash2 size={14} />
-              {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
+              <Sparkles size={14} />
+              {busy ? "Buscando…" : "Sugerir com IA"}
             </button>
           )}
-          <button
-            onClick={() => suggestMutation.mutate()}
-            disabled={suggestMutation.isPending}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
-          >
-            <Sparkles size={14} />
-            {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
-          </button>
         </div>
 
       </div>
+
+      {/* Link discreto de histórico */}
+      <div className="mb-3">
+        <button
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+        >
+          <History size={11} />
+          Histórico de sugestões
+        </button>
+      </div>
+
+      {historyOpen && (
+        <SuggestionHistoryModal
+          topic={topic}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+
 
 
       {isLoading ? (
