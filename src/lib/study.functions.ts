@@ -711,5 +711,203 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
   });
 
 
+// ============================================================
+// Lesson essay practice (redação focada no que o vídeo ensinou)
+// ============================================================
 
+const getEssayTaskInput = z.object({ topicId: z.string().uuid() });
+
+export const getLessonEssayTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => getEssayTaskInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
+    const { data: cached } = await supabase
+      .from("ai_response_cache")
+      .select("response")
+      .eq("cache_key", cacheKey)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (!cached) throw new Error("Atividade não encontrada. Faça a atividade primeiro.");
+    const quiz = cached.response as unknown as LessonQuizPayload;
+    return { essayTask: quiz.essayTask };
+  });
+
+const submitEssayInput = z.object({
+  topicId: z.string().uuid(),
+  essayText: z.string().min(20).max(5000),
+});
+
+interface EssayFeedback {
+  score: number;
+  overall: string;
+  criteria: {
+    criterion: string;
+    status: "atendido" | "parcial" | "nao_atendido";
+    evidence: string;
+    suggestion?: string;
+  }[];
+  tips: string[];
+  rewriteExample?: { original: string; improved: string };
+}
+
+export const submitLessonEssay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => submitEssayInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // Busca a essayTask do cache do quiz
+    const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
+    const { data: cached } = await supabase
+      .from("ai_response_cache")
+      .select("response")
+      .eq("cache_key", cacheKey)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (!cached) throw new Error("Tarefa expirou. Volte à aula e refaça a atividade.");
+    const quiz = cached.response as unknown as LessonQuizPayload;
+    const task = quiz.essayTask;
+    if (!task) throw new Error("Esta aula não tem tarefa de escrita.");
+
+    // Chama Gemini para avaliar SOMENTE pela rubrica
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) throw new Error("GOOGLE_AI_API_KEY não configurada.");
+
+    const rubricList = task.rubric.map((r, i) => `${i + 1}. ${r}`).join("\n");
+    const prompt = `Você é professor(a) corrigindo um exercício de escrita FOCADO. Avalie o texto do aluno SOMENTE pelos critérios da rubrica abaixo.
+
+REGRAS ABSOLUTAS:
+- NÃO comente ortografia, acentuação, concordância, coesão geral, estilo, criatividade ou qualquer aspecto FORA da rubrica.
+- Cada critério recebe status: "atendido", "parcial" ou "nao_atendido".
+- Para cada critério, cite trecho literal do texto do aluno como evidência (campo "evidence").
+- Se "parcial" ou "nao_atendido", inclua uma "suggestion" curta e específica.
+- Nota final 0.0 a 10.0 calculada SOMENTE pela rubrica (atendido=1, parcial=0.5, nao_atendido=0), normalizada.
+- "tips": 1 a 3 dicas objetivas SÓ sobre a habilidade "${task.focusSkill}".
+- Se conseguir mostrar uma reescrita curta de UM trecho do próprio aluno melhorando exatamente essa habilidade, preencha "rewriteExample". Senão, omita.
+- "overall": 1 frase resumindo o desempenho SÓ na habilidade.
+
+HABILIDADE PRATICADA: ${task.focusSkill}
+TAREFA DADA AO ALUNO: ${task.prompt}
+
+RUBRICA (avalie APENAS estes itens):
+${rubricList}
+
+TEXTO DO ALUNO:
+"""
+${data.essayText}
+"""
+
+Responda APENAS com JSON válido:
+{
+  "score": 7.5,
+  "overall": "...",
+  "criteria": [
+    {"criterion": "texto exato do critério", "status": "atendido|parcial|nao_atendido", "evidence": "trecho citado", "suggestion": "opcional"}
+  ],
+  "tips": ["..."],
+  "rewriteExample": {"original": "trecho do aluno", "improved": "versão corrigida"}
+}`;
+
+    // Reusa o helper interno chamando Gemini direto
+    const GOOGLE_MODEL = "gemini-2.5-flash";
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
+    const res = await fetch(`${endpoint}?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+      }),
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      throw new Error(`Falha na correção (Gemini ${res.status}): ${raw.slice(0, 200)}`);
+    }
+    let text = "";
+    try {
+      const body = JSON.parse(raw) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      text =
+        body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    } catch {
+      throw new Error("Resposta inválida do Gemini.");
+    }
+    if (!text.trim()) throw new Error("Gemini não retornou correção.");
+
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+
+    let parsed: EssayFeedback;
+    try {
+      const j = JSON.parse(slice) as Partial<EssayFeedback>;
+      if (
+        typeof j.score !== "number" ||
+        typeof j.overall !== "string" ||
+        !Array.isArray(j.criteria) ||
+        !Array.isArray(j.tips)
+      ) {
+        throw new Error("shape inválido");
+      }
+      parsed = {
+        score: Math.max(0, Math.min(10, j.score)),
+        overall: j.overall,
+        criteria: j.criteria.map((c) => ({
+          criterion: String(c.criterion ?? ""),
+          status:
+            c.status === "atendido" || c.status === "parcial" || c.status === "nao_atendido"
+              ? c.status
+              : "parcial",
+          evidence: String(c.evidence ?? ""),
+          suggestion: c.suggestion ? String(c.suggestion) : undefined,
+        })),
+        tips: j.tips.map((t) => String(t)).filter(Boolean).slice(0, 3),
+        rewriteExample:
+          j.rewriteExample &&
+          typeof j.rewriteExample.original === "string" &&
+          typeof j.rewriteExample.improved === "string"
+            ? j.rewriteExample
+            : undefined,
+      };
+    } catch {
+      throw new Error("Não foi possível interpretar a correção do Gemini.");
+    }
+
+    // Persiste
+    const { data: inserted, error: insErr } = await supabase
+      .from("lesson_essay_attempts")
+      .insert({
+        user_id: userId,
+        topic_id: data.topicId,
+        task: JSON.parse(JSON.stringify(task)),
+        essay_text: data.essayText,
+        score: parsed.score,
+        feedback: JSON.parse(JSON.stringify(parsed)),
+      })
+      .select("id")
+      .single();
+    if (insErr) throw new Error(insErr.message);
+
+    return { id: inserted.id, task, feedback: parsed };
+  });
+
+export const listLessonEssayAttempts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => getEssayTaskInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: rows, error } = await supabase
+      .from("lesson_essay_attempts")
+      .select("id, essay_text, score, feedback, created_at")
+      .eq("user_id", userId)
+      .eq("topic_id", data.topicId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) throw new Error(error.message);
+    return { attempts: rows ?? [] };
+  });
 
