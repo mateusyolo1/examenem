@@ -194,6 +194,14 @@ function LessonPlayer({
   const video = videos[current];
   const allWatched = watched.size === total;
 
+  // Dispara o prefetch quando o aluno concluir o 1º vídeo (ou se já
+  // entrou na aula com algum vídeo assistido de sessão anterior).
+  useEffect(() => {
+    if (watched.size >= 1) startPrefetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watched.size >= 1]);
+
+
   const markCurrentWatched = () => {
     setWatched((prev) => {
       if (prev.has(current)) return prev;
