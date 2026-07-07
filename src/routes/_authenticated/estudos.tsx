@@ -18,6 +18,7 @@ import {
 } from "@/lib/study.functions";
 import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
+import { useProgress } from "@/lib/storage";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
