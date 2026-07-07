@@ -81,6 +81,7 @@ type Phase = "watching" | "quiz" | "result";
 
 function LessonPage() {
   const { topicId } = Route.useParams();
+  const { taskId } = Route.useSearch();
   const getPlaylist = useServerFn(getLessonPlaylist);
 
   const { data, isLoading } = useQuery({
@@ -115,7 +116,15 @@ function LessonPage() {
     );
   }
 
-  return <LessonPlayer topicId={topicId} topicTitle={data.topic.title} videos={data.videos} />;
+  return (
+    <LessonPlayer
+      topicId={topicId}
+      topicTitle={data.topic.title}
+      topicArea={data.topic.area}
+      videos={data.videos}
+      taskId={taskId}
+    />
+  );
 }
 
 interface Video {
