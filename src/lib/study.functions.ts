@@ -292,3 +292,25 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     return { added: suggestions.length };
   });
 
+// ============================================================
+// Clear AI-suggested videos for a topic (also clears cache)
+// ============================================================
+export const clearSuggestedVideos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ topicId: z.string().uuid() }).parse(data))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: delErr } = await supabaseAdmin
+      .from("study_videos")
+      .delete()
+      .eq("topic_id", data.topicId)
+      .eq("source", "ai");
+    if (delErr) throw new Error(delErr.message);
+    await supabaseAdmin
+      .from("ai_response_cache")
+      .delete()
+      .eq("cache_key", `video-suggestions:${data.topicId}`);
+    return { ok: true };
+  });
+
+
