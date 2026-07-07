@@ -12,7 +12,7 @@ import {
   XP,
 } from "@/lib/gamification";
 
-export const Route = createFileRoute("/conquistas")({
+export const Route = createFileRoute("/_authenticated/conquistas")({
   head: () => ({
     meta: [
       { title: "Conquistas — Exame ENEM" },

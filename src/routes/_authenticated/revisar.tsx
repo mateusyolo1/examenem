@@ -21,7 +21,7 @@ import {
 import { subjectIdForQuestion } from "@/lib/subjects";
 import { recordReviewAnswer as recordLearningReview } from "@/lib/learning-progress";
 
-export const Route = createFileRoute("/revisar")({
+export const Route = createFileRoute("/_authenticated/revisar")({
   head: () => ({
     meta: [
       { title: "Revisar erros — Exame ENEM" },

@@ -26,7 +26,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 
-export const Route = createFileRoute("/perfil")({
+export const Route = createFileRoute("/_authenticated/perfil")({
   head: () => ({
     meta: [
       { title: "Perfil do Aluno — Exame" },

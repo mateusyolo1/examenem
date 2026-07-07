@@ -12,7 +12,7 @@ import {
 import { AREAS, recordAnswer, useProgress, type Area, type SimuladoRecord } from "@/lib/storage";
 import { recordReviewAnswer } from "@/lib/review";
 
-export const Route = createFileRoute("/simulados")({
+export const Route = createFileRoute("/_authenticated/simulados")({
   head: () => ({
     meta: [
       { title: "Simulados Cronometrados — Exame ENEM" },

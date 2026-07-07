@@ -17,7 +17,7 @@ const CHARS_PER_LINE = 70; // aprox. linhas da folha oficial
 
 const searchSchema = z.object({ tema: z.string().optional() });
 
-export const Route = createFileRoute("/redacao")({
+export const Route = createFileRoute("/_authenticated/redacao")({
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [

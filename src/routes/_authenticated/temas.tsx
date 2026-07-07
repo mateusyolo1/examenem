@@ -17,7 +17,7 @@ const searchSchema = z.object({
   open: z.string().optional(),
 });
 
-export const Route = createFileRoute("/temas")({
+export const Route = createFileRoute("/_authenticated/temas")({
   validateSearch: (s) => searchSchema.parse(s),
   head: () => ({
     meta: [

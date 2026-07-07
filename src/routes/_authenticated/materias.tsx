@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { SUBJECTS, SUBJECT_AREAS, type Subject } from "@/lib/subjects";
 import { useSubjectStats, statFor } from "@/lib/subject-stats";
 
-export const Route = createFileRoute("/materias")({
+export const Route = createFileRoute("/_authenticated/materias")({
   head: () => ({
     meta: [
       { title: "Matérias e Assuntos — Exame ENEM" },
