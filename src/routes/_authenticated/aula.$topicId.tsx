@@ -519,7 +519,7 @@ function ResultView({
           Voltar aos estudos
         </Link>
         <Link
-          to="/estudos/aula/$topicId"
+          to="/aula/$topicId"
           params={{ topicId }}
           reloadDocument
           className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
