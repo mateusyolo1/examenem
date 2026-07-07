@@ -41,11 +41,14 @@ import {
   type StudyTask,
   type TaskType,
   type TopicCatalogEntry,
+  type TopicMastery,
   resolvedStatus,
   weekDates,
   dateLabel,
   areaLabel,
   typeLabel,
+  rescheduleOverdue,
+  countOverdue,
 } from "@/lib/study-plan";
 import { StageTasksSection } from "@/components/StageTasksSection";
 
