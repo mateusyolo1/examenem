@@ -144,19 +144,29 @@ function EstudosPage() {
       <main id="main" className="lg:ml-64">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 pb-24 lg:pb-8">
           <header className="mb-8 border-b border-border pb-6">
-            <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
-              Área de Estudos
-            </span>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
-              Aprenda por vídeo.
-            </h1>
-            <p className="text-muted-foreground mt-3 max-w-2xl">
-              Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
-              brasileiros para o ENEM.
-            </p>
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Área de Estudos
+                </span>
+                <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
+                  Aprenda por vídeo.
+                </h1>
+                <p className="text-muted-foreground mt-3 max-w-2xl">
+                  Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
+                  brasileiros para o ENEM.
+                </p>
+              </div>
+              <div className="hidden md:block shrink-0">
+                <MiniWeekCalendar />
+              </div>
+            </div>
+            <div className="md:hidden mt-4">
+              <MiniWeekCalendar />
+            </div>
           </header>
 
-          <WeekPlanTopics />
+
 
           {/* Assuntos - barra horizontal no topo */}
           <div className="border border-border bg-card p-4 rounded-md mb-6">
