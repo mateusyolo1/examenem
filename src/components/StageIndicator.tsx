@@ -58,7 +58,7 @@ export function StageIndicator() {
         <div
           role="dialog"
           aria-label="Resumo da etapa atual"
-          className="absolute left-0 top-full mt-2 lg:left-full lg:top-0 lg:mt-0 lg:ml-2 w-72 max-w-[calc(100vw-2rem)] bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50"
+          className="absolute left-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50"
         >
           {!active ? (
             <div className="p-4 text-sm text-muted-foreground">
