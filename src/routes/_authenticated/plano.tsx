@@ -118,6 +118,39 @@ function Plano() {
   const [editing, setEditing] = useState(false);
   const [askClear, setAskClear] = useState(false);
 
+  // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
+  const listTopicsFn = useServerFn(listStudyTopics);
+  const needsCatalog = !plan || editing;
+  const { data: topicsData } = useQuery({
+    queryKey: ["study-topics"],
+    queryFn: () => listTopicsFn(),
+    enabled: needsCatalog,
+    staleTime: 5 * 60 * 1000,
+  });
+  const topicCatalog: TopicCatalogEntry[] = useMemo(() => {
+    const rows = (topicsData?.topics ?? []) as Array<{
+      slug: string;
+      area: string;
+      title: string;
+      subject: string | null;
+      sort_order: number;
+      parent_id: string | null;
+    }>;
+    return rows
+      .filter(
+        (t) =>
+          t.parent_id !== null &&
+          ["linguagens", "humanas", "natureza", "matematica"].includes(t.area),
+      )
+      .map((t) => ({
+        slug: t.slug,
+        area: t.area as TopicCatalogEntry["area"],
+        title: t.title,
+        subject: t.subject,
+        sort_order: t.sort_order,
+      }));
+  }, [topicsData]);
+
   if (!plan || editing) {
     return (
       <Shell plan={plan}>
@@ -126,13 +159,14 @@ function Plano() {
           defaultExamDate={progress.examDate}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
-            savePlan(cfg);
+            savePlan(cfg, topicCatalog.length ? topicCatalog : undefined);
             setEditing(false);
           }}
         />
       </Shell>
     );
   }
+
 
   return (
     <Shell plan={plan}>
