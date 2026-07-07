@@ -147,8 +147,31 @@ function LessonPlayer({
   const savePos = useServerFn(saveVideoPosition);
   const markWatchedFn = useServerFn(markVideoWatched);
 
+  // Pré-geração da atividade em background: assim que o aluno conclui
+  // o 1º vídeo, começamos a montar o quiz (Gemini transcreve + gera perguntas
+  // e cacheia no banco). Quando ele clicar em "Fazer atividade" no fim da
+  // playlist, reaproveitamos a mesma promessa — instantâneo se já pronto.
+  const prefetchRef = useRef<Promise<Awaited<ReturnType<typeof buildQuiz>>> | null>(null);
+  const [prefetchReady, setPrefetchReady] = useState(false);
+  const startPrefetch = () => {
+    if (prefetchRef.current) return;
+    prefetchRef.current = buildQuiz({ data: { topicId } })
+      .then((r) => {
+        setPrefetchReady(true);
+        return r;
+      })
+      .catch((e) => {
+        // libera para nova tentativa quando o aluno clicar em "Fazer atividade"
+        prefetchRef.current = null;
+        throw e;
+      });
+  };
+
   const quizMutation = useMutation({
-    mutationFn: () => buildQuiz({ data: { topicId } }),
+    mutationFn: () => {
+      startPrefetch();
+      return prefetchRef.current!;
+    },
     onSuccess: (r) => {
       if (r.questions.length === 0) {
         toast.error("Não foi possível gerar a atividade agora. Tente novamente em instantes.");
@@ -158,6 +181,7 @@ function LessonPlayer({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
