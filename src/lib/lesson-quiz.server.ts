@@ -1,8 +1,9 @@
-import { generateText } from "ai";
-import { createGateway } from "./ai-gateway.server";
-import { fetchYoutubeTranscriptText } from "./youtube-transcripts.server";
+// Gera atividade de aula chamando Gemini direto no Google AI Studio.
+// O Gemini tem suporte nativo a URLs do YouTube (áudio + vídeo), então
+// não dependemos de scraping de legenda (que o YouTube bloqueia por IP).
 
-const VIDEO_MODEL = "google/gemini-2.5-flash-lite";
+const GOOGLE_MODEL = "gemini-2.5-flash";
+const GOOGLE_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
 
 interface VideoSummary {
   keyConcepts: string[];
@@ -48,20 +49,67 @@ function parseJsonLoose<T>(text: string): T {
   return JSON.parse(slice) as T;
 }
 
-function normalizeGatewayError(error: unknown) {
-  const message = error instanceof Error ? error.message : "erro desconhecido";
-  if (message.includes("429") || message.toLowerCase().includes("rate")) return "rate_limit";
-  if (message.includes("402") || message.toLowerCase().includes("credit")) return "credits_exhausted";
-  return message;
+interface GoogleGenerateContentResponse {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string }> };
+    finishReason?: string;
+  }>;
+  promptFeedback?: { blockReason?: string };
+  error?: { code?: number; message?: string; status?: string };
+}
+
+async function callGemini(
+  apiKey: string,
+  parts: Array<Record<string, unknown>>,
+): Promise<string> {
+  const res = await fetch(`${GOOGLE_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.4,
+      },
+    }),
+  });
+
+  const raw = await res.text();
+  let body: GoogleGenerateContentResponse = {};
+  try {
+    body = JSON.parse(raw) as GoogleGenerateContentResponse;
+  } catch {
+    // fallback: leave body empty
+  }
+
+  if (!res.ok) {
+    const msg = body.error?.message ?? raw.slice(0, 200);
+    if (res.status === 429) throw new Error("rate_limit");
+    if (res.status === 403) throw new Error(`google_forbidden: ${msg}`);
+    if (res.status === 400) throw new Error(`google_bad_request: ${msg}`);
+    throw new Error(`google_${res.status}: ${msg}`);
+  }
+
+  if (body.promptFeedback?.blockReason) {
+    throw new Error(`google_blocked: ${body.promptFeedback.blockReason}`);
+  }
+
+  const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  if (!text.trim()) {
+    const reason = body.candidates?.[0]?.finishReason ?? "sem retorno";
+    throw new Error(`google_empty: ${reason}`);
+  }
+  return text;
 }
 
 async function summarizeVideo(
+  apiKey: string,
   youtubeId: string,
   videoTitle: string,
   topicCtx: string,
   supabaseAdmin: SupabaseAdmin,
 ): Promise<VideoSummary> {
-  const cacheKey = `video-summary:transcript:v2:${youtubeId}`;
+  const cacheKey = `video-summary:gemini-yt:v1:${youtubeId}`;
   const { data: cached } = await supabaseAdmin
     .from("ai_response_cache")
     .select("response")
@@ -70,45 +118,39 @@ async function summarizeVideo(
     .maybeSingle();
   if (cached) return cached.response as unknown as VideoSummary;
 
-  const transcript = await fetchYoutubeTranscriptText(youtubeId);
-  const gateway = createGateway();
+  const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
+  const prompt = `Você é um assistente que analisa vídeos-aula do YouTube para gerar atividades de estudo.
 
-  const prompt = `Você é um assistente que resume vídeos-aula para gerar atividades de estudo.
-
-Use APENAS a transcrição real abaixo. Não use o título para inventar conteúdo.
+Assista ao vídeo (áudio e imagem) e resuma o que foi ensinado.
 
 Aula: "${topicCtx}"
 Vídeo: "${videoTitle}"
-Idioma da legenda: ${transcript.lang ?? "desconhecido"}
-Trechos da transcrição com timestamps:
-${transcript.text}
 
-Devolva JSON puro, sem cercas de código, nesta estrutura:
+Devolva JSON puro nesta estrutura:
 {
-  "keyConcepts": ["conceito explicado na transcrição", "..."],
-  "definitions": ["definição ou distinção conceitual presente na fala", "..."],
-  "examples": ["exemplo, exercício, caso ou comparação citado", "..."],
-  "timestamps": [{"at": "MM:SS", "note": "conceito dito nesse momento"}]
+  "keyConcepts": ["conceito ensinado no vídeo", "..."],
+  "definitions": ["definição ou distinção conceitual explicada", "..."],
+  "examples": ["exemplo, exercício resolvido ou caso citado", "..."],
+  "timestamps": [{"at": "MM:SS", "note": "conceito explicado nesse momento"}]
 }
 
 Regras:
-- Inclua 3 a 8 conceitos-chave.
-- Inclua exemplos concretos quando existirem.
-- Timestamps devem existir apenas se aparecerem nos trechos acima.
-- Se a transcrição não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
+- Inclua 3 a 8 conceitos-chave realmente presentes no vídeo.
+- Timestamps devem refletir momentos reais do vídeo (formato "MM:SS" ou "H:MM:SS").
+- Se o vídeo não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
 - Responda em português.`;
 
-  let parsed: VideoSummary;
+  let text: string;
   try {
-    const { text } = await generateText({
-      model: gateway(VIDEO_MODEL),
-      prompt,
-    });
-    parsed = parseJsonLoose<VideoSummary>(text);
+    text = await callGemini(apiKey, [
+      { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
+      { text: prompt },
+    ]);
   } catch (error) {
-    throw new Error(normalizeGatewayError(error));
+    throw error instanceof Error ? error : new Error("falha ao analisar vídeo");
   }
 
+  const parsed = parseJsonLoose<VideoSummary>(text);
   const summary: VideoSummary = {
     keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
     definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
@@ -136,12 +178,18 @@ export async function buildLessonQuizPayload({
   videos: LessonVideo[];
   supabaseAdmin: SupabaseAdmin;
 }): Promise<LessonQuizPayload> {
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Chave do Google AI Studio não configurada. Adicione o secret GOOGLE_AI_API_KEY.",
+    );
+  }
+
   const summaryResults = await Promise.allSettled(
     videos.map((v) =>
-      summarizeVideo(v.youtube_id, v.title ?? "Vídeo", topicCtx, supabaseAdmin).then((summary) => ({
-        video: v,
-        summary,
-      })),
+      summarizeVideo(apiKey, v.youtube_id, v.title ?? "Vídeo", topicCtx, supabaseAdmin).then(
+        (summary) => ({ video: v, summary }),
+      ),
     ),
   );
 
@@ -156,34 +204,42 @@ export async function buildLessonQuizPayload({
       continue;
     }
 
-    const reason =
+    const rawReason =
       result.status === "rejected"
         ? result.reason instanceof Error
           ? result.reason.message
           : "erro"
-        : "legenda sem conteúdo analisável";
+        : "vídeo sem conteúdo analisável";
 
-    if (reason === "credits_exhausted") {
+    if (rawReason.startsWith("google_forbidden")) {
       throw new Error(
-        "Créditos de IA esgotados neste mês. Adicione créditos ou tente novamente no próximo ciclo.",
+        "Chave do Google AI Studio inválida ou sem permissão. Verifique a GOOGLE_AI_API_KEY.",
       );
     }
+
+    const friendly =
+      rawReason === "rate_limit"
+        ? "Gemini sobrecarregado — tente de novo em instantes"
+        : rawReason.startsWith("google_bad_request")
+          ? "Gemini recusou o vídeo (formato não suportado)"
+          : rawReason.startsWith("google_blocked")
+            ? "Vídeo bloqueado por política de segurança"
+            : rawReason.startsWith("google_empty")
+              ? "Gemini não conseguiu processar o vídeo"
+              : rawReason.startsWith("google_")
+                ? "Erro temporário no Gemini"
+                : rawReason;
 
     skipped.push({
       youtubeId: video.youtube_id,
       title: video.title ?? "Vídeo",
-      reason:
-        reason === "rate_limit"
-          ? "IA sobrecarregada — tente de novo em instantes"
-          : reason.startsWith("gateway_")
-            ? "Legenda não pôde ser processada"
-            : reason,
+      reason: friendly,
     });
   }
 
   if (successfulSummaries.length === 0) {
     throw new Error(
-      "Nenhum vídeo da aula possui legenda analisável. Sugira novos vídeos e tente novamente.",
+      "Nenhum vídeo da aula pôde ser analisado pelo Gemini. Sugira novos vídeos e tente novamente.",
     );
   }
 
@@ -200,17 +256,17 @@ Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`
 
   const quizPrompt = `Você é professor(a) preparando uma atividade ENEM sobre o tópico "${topicCtx}".
 
-Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE das legendas dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE 3 questões de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE no conteúdo desses resumos.
+Abaixo estão RESUMOS EXTRAÍDOS DIRETAMENTE dos vídeos-aula que o aluno acabou de assistir. Gere EXATAMENTE 3 questões de múltipla escolha (4 alternativas cada, apenas uma correta) baseadas RIGOROSAMENTE nesses resumos.
 
 REGRAS OBRIGATÓRIAS:
-- As 3 questões devem cobrir conceitos DIFERENTES apresentados nos vídeos (não repetir o mesmo tema).
-- Use SOMENTE informações presentes nos resumos abaixo. Não invente conteúdo.
+- As 3 questões devem cobrir conceitos DIFERENTES apresentados nos vídeos.
+- Use SOMENTE informações presentes nos resumos abaixo. Não invente.
 - Cada questão deve indicar qual vídeo a inspirou (campo "videoId" com o id EXATO mostrado).
 - Se houver timestamp relevante, inclua no campo "timestamp" (formato "MM:SS").
-- Nível ENEM: contextualizada, autocontida, testando compreensão (não memorização literal).
+- Nível ENEM: contextualizada, autocontida, testando compreensão.
 - Alternativas plausíveis; distratores baseados em erros conceituais comuns.
 - A explicação deve citar o conceito/exemplo do vídeo que justifica a resposta.
-- Responda APENAS com JSON válido, sem cercas de código, no formato:
+- Responda APENAS com JSON válido no formato:
 {"questions":[
   {"videoId":"...","timestamp":"MM:SS","question":"...","options":["a","b","c","d"],"correctIndex":0,"explanation":"..."},
   {...},
@@ -232,14 +288,11 @@ ${combined}`;
   } = {};
 
   try {
-    const gateway = createGateway();
-    const { text } = await generateText({
-      model: gateway(VIDEO_MODEL),
-      prompt: quizPrompt,
-    });
+    const text = await callGemini(apiKey, [{ text: quizPrompt }]);
     quizJson = parseJsonLoose(text);
   } catch (error) {
-    throw new Error(`Falha ao gerar questões: ${normalizeGatewayError(error)}`);
+    const msg = error instanceof Error ? error.message : "erro";
+    throw new Error(`Falha ao gerar questões: ${msg}`);
   }
 
   const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
@@ -277,7 +330,7 @@ ${combined}`;
   }
 
   if (questions.length === 0) {
-    throw new Error("A IA não gerou questões válidas. Tente novamente em instantes.");
+    throw new Error("O Gemini não gerou questões válidas. Tente novamente em instantes.");
   }
 
   return { questions, skipped };
