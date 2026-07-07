@@ -661,17 +661,14 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
                 {busy ? "Buscando…" : "Trocar sugestões"}
               </button>
               <button
-                onClick={() => {
-                  if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
-                    clearMutation.mutate();
-                  }
-                }}
+                onClick={() => setClearConfirmOpen(true)}
                 disabled={clearMutation.isPending}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
               >
                 <Trash2 size={14} />
                 {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
               </button>
+
             </>
           )}
           {!hasVideos && (
