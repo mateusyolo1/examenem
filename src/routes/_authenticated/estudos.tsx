@@ -337,6 +337,9 @@ function TopicSearches({ topic }: { topic: Topic }) {
         )}
       </div>
 
+      {/* Vídeos sugeridos (curados + IA) com player embutido */}
+      <SuggestedVideos topic={topic} />
+
       {/* Busca geral em destaque */}
       <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
         Descubra no YouTube
