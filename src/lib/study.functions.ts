@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { fetchYoutubeTranscriptText } from "./youtube-transcripts.server";
 
 // ============================================================
 // List topics (full tree)
@@ -528,6 +527,7 @@ async function summarizeVideo(
     .maybeSingle();
   if (cached) return cached.response as unknown as VideoSummary;
 
+  const { fetchYoutubeTranscriptText } = await import("./youtube-transcripts.server");
   const transcript = await fetchYoutubeTranscriptText(youtubeId);
   const { generateText } = await import("ai");
   const { createGateway } = await import("./ai-gateway.server");
