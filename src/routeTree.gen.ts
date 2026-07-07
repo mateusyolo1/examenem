@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedTutorRouteImport } from './routes/_authenticated/tutor'
 import { Route as AuthenticatedTemasRouteImport } from './routes/_authenticated/temas'
+import { Route as AuthenticatedSimuladosReaisRouteImport } from './routes/_authenticated/simulados-reais'
 import { Route as AuthenticatedSimuladosRouteImport } from './routes/_authenticated/simulados'
 import { Route as AuthenticatedRevisarRouteImport } from './routes/_authenticated/revisar'
 import { Route as AuthenticatedRedacaoRouteImport } from './routes/_authenticated/redacao'
@@ -21,6 +22,7 @@ import { Route as AuthenticatedQuestoesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedMateriasRouteImport } from './routes/_authenticated/materias'
+import { Route as AuthenticatedEstudosRouteImport } from './routes/_authenticated/estudos'
 import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 
@@ -48,6 +50,12 @@ const AuthenticatedTemasRoute = AuthenticatedTemasRouteImport.update({
   path: '/temas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSimuladosReaisRoute =
+  AuthenticatedSimuladosReaisRouteImport.update({
+    id: '/simulados-reais',
+    path: '/simulados-reais',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSimuladosRoute = AuthenticatedSimuladosRouteImport.update({
   id: '/simulados',
   path: '/simulados',
@@ -83,6 +91,11 @@ const AuthenticatedMateriasRoute = AuthenticatedMateriasRouteImport.update({
   path: '/materias',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEstudosRoute = AuthenticatedEstudosRouteImport.update({
+  id: '/estudos',
+  path: '/estudos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConquistasRoute = AuthenticatedConquistasRouteImport.update({
   id: '/conquistas',
   path: '/conquistas',
@@ -100,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
+  '/estudos': typeof AuthenticatedEstudosRoute
   '/materias': typeof AuthenticatedMateriasRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -107,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/redacao': typeof AuthenticatedRedacaoRoute
   '/revisar': typeof AuthenticatedRevisarRoute
   '/simulados': typeof AuthenticatedSimuladosRoute
+  '/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
 }
@@ -114,6 +129,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
+  '/estudos': typeof AuthenticatedEstudosRoute
   '/materias': typeof AuthenticatedMateriasRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -121,6 +137,7 @@ export interface FileRoutesByTo {
   '/redacao': typeof AuthenticatedRedacaoRoute
   '/revisar': typeof AuthenticatedRevisarRoute
   '/simulados': typeof AuthenticatedSimuladosRoute
+  '/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
   '/': typeof AuthenticatedIndexRoute
@@ -131,6 +148,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
+  '/_authenticated/estudos': typeof AuthenticatedEstudosRoute
   '/_authenticated/materias': typeof AuthenticatedMateriasRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
@@ -138,6 +156,7 @@ export interface FileRoutesById {
   '/_authenticated/redacao': typeof AuthenticatedRedacaoRoute
   '/_authenticated/revisar': typeof AuthenticatedRevisarRoute
   '/_authenticated/simulados': typeof AuthenticatedSimuladosRoute
+  '/_authenticated/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/_authenticated/temas': typeof AuthenticatedTemasRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -149,6 +168,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/conquistas'
+    | '/estudos'
     | '/materias'
     | '/perfil'
     | '/plano'
@@ -156,6 +176,7 @@ export interface FileRouteTypes {
     | '/redacao'
     | '/revisar'
     | '/simulados'
+    | '/simulados-reais'
     | '/temas'
     | '/tutor'
   fileRoutesByTo: FileRoutesByTo
@@ -163,6 +184,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/conquistas'
+    | '/estudos'
     | '/materias'
     | '/perfil'
     | '/plano'
@@ -170,6 +192,7 @@ export interface FileRouteTypes {
     | '/redacao'
     | '/revisar'
     | '/simulados'
+    | '/simulados-reais'
     | '/temas'
     | '/tutor'
     | '/'
@@ -179,6 +202,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/configuracoes'
     | '/_authenticated/conquistas'
+    | '/_authenticated/estudos'
     | '/_authenticated/materias'
     | '/_authenticated/perfil'
     | '/_authenticated/plano'
@@ -186,6 +210,7 @@ export interface FileRouteTypes {
     | '/_authenticated/redacao'
     | '/_authenticated/revisar'
     | '/_authenticated/simulados'
+    | '/_authenticated/simulados-reais'
     | '/_authenticated/temas'
     | '/_authenticated/tutor'
     | '/_authenticated/'
@@ -231,6 +256,13 @@ declare module '@tanstack/react-router' {
       path: '/temas'
       fullPath: '/temas'
       preLoaderRoute: typeof AuthenticatedTemasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/simulados-reais': {
+      id: '/_authenticated/simulados-reais'
+      path: '/simulados-reais'
+      fullPath: '/simulados-reais'
+      preLoaderRoute: typeof AuthenticatedSimuladosReaisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/simulados': {
@@ -282,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMateriasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/estudos': {
+      id: '/_authenticated/estudos'
+      path: '/estudos'
+      fullPath: '/estudos'
+      preLoaderRoute: typeof AuthenticatedEstudosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/conquistas': {
       id: '/_authenticated/conquistas'
       path: '/conquistas'
@@ -302,6 +341,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
+  AuthenticatedEstudosRoute: typeof AuthenticatedEstudosRoute
   AuthenticatedMateriasRoute: typeof AuthenticatedMateriasRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
@@ -309,6 +349,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRedacaoRoute: typeof AuthenticatedRedacaoRoute
   AuthenticatedRevisarRoute: typeof AuthenticatedRevisarRoute
   AuthenticatedSimuladosRoute: typeof AuthenticatedSimuladosRoute
+  AuthenticatedSimuladosReaisRoute: typeof AuthenticatedSimuladosReaisRoute
   AuthenticatedTemasRoute: typeof AuthenticatedTemasRoute
   AuthenticatedTutorRoute: typeof AuthenticatedTutorRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -317,6 +358,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
+  AuthenticatedEstudosRoute: AuthenticatedEstudosRoute,
   AuthenticatedMateriasRoute: AuthenticatedMateriasRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
@@ -324,6 +366,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRedacaoRoute: AuthenticatedRedacaoRoute,
   AuthenticatedRevisarRoute: AuthenticatedRevisarRoute,
   AuthenticatedSimuladosRoute: AuthenticatedSimuladosRoute,
+  AuthenticatedSimuladosReaisRoute: AuthenticatedSimuladosReaisRoute,
   AuthenticatedTemasRoute: AuthenticatedTemasRoute,
   AuthenticatedTutorRoute: AuthenticatedTutorRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
@@ -339,13 +382,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

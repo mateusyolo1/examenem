@@ -38,6 +38,98 @@ export type Database = {
         }
         Relationships: []
       }
+      enem_exams: {
+        Row: {
+          created_at: string
+          day: number
+          duration_minutes: number
+          id: string
+          title: string
+          total_questions: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          day: number
+          duration_minutes?: number
+          id?: string
+          title: string
+          total_questions?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          day?: number
+          duration_minutes?: number
+          id?: string
+          title?: string
+          total_questions?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      enem_questions: {
+        Row: {
+          alternative_introduction: string | null
+          alternatives: Json
+          area: string
+          context: string | null
+          correct_alternative: string
+          created_at: string
+          day: number
+          discipline: string
+          exam_id: string
+          files: Json
+          id: string
+          language: string | null
+          question_index: number
+          year: number
+        }
+        Insert: {
+          alternative_introduction?: string | null
+          alternatives?: Json
+          area: string
+          context?: string | null
+          correct_alternative: string
+          created_at?: string
+          day: number
+          discipline: string
+          exam_id: string
+          files?: Json
+          id?: string
+          language?: string | null
+          question_index: number
+          year: number
+        }
+        Update: {
+          alternative_introduction?: string | null
+          alternatives?: Json
+          area?: string
+          context?: string | null
+          correct_alternative?: string
+          created_at?: string
+          day?: number
+          discipline?: string
+          exam_id?: string
+          files?: Json
+          id?: string
+          language?: string | null
+          question_index?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enem_questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "enem_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -61,6 +153,214 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      simulado_answers: {
+        Row: {
+          answered_at: string
+          id: string
+          is_correct: boolean | null
+          question_id: string
+          selected_alternative: string | null
+          session_id: string
+          time_spent_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          answered_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_id: string
+          selected_alternative?: string | null
+          session_id: string
+          time_spent_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          answered_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_id?: string
+          selected_alternative?: string | null
+          session_id?: string
+          time_spent_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulado_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "enem_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulado_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "simulado_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulado_sessions: {
+        Row: {
+          area: string | null
+          correct_count: number | null
+          created_at: string
+          day: number | null
+          duration_minutes: number
+          finished_at: string | null
+          id: string
+          mode: string
+          question_ids: string[]
+          score_tri: number | null
+          started_at: string
+          time_spent_seconds: number | null
+          total_questions: number
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          area?: string | null
+          correct_count?: number | null
+          created_at?: string
+          day?: number | null
+          duration_minutes: number
+          finished_at?: string | null
+          id?: string
+          mode: string
+          question_ids?: string[]
+          score_tri?: number | null
+          started_at?: string
+          time_spent_seconds?: number | null
+          total_questions: number
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          area?: string | null
+          correct_count?: number | null
+          created_at?: string
+          day?: number | null
+          duration_minutes?: number
+          finished_at?: string | null
+          id?: string
+          mode?: string
+          question_ids?: string[]
+          score_tri?: number | null
+          started_at?: string
+          time_spent_seconds?: number | null
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      study_topics: {
+        Row: {
+          area: string
+          created_at: string
+          description: string | null
+          id: string
+          parent_id: string | null
+          slug: string
+          sort_order: number
+          subject: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          slug: string
+          sort_order?: number
+          subject?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          slug?: string
+          sort_order?: number
+          subject?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_topics_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_videos: {
+        Row: {
+          channel_id: string | null
+          channel_name: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          sort_order: number
+          source: string
+          suggested_at: string | null
+          thumbnail_url: string | null
+          title: string
+          topic_id: string
+          updated_at: string
+          youtube_id: string
+        }
+        Insert: {
+          channel_id?: string | null
+          channel_name?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          sort_order?: number
+          source?: string
+          suggested_at?: string | null
+          thumbnail_url?: string | null
+          title: string
+          topic_id: string
+          updated_at?: string
+          youtube_id: string
+        }
+        Update: {
+          channel_id?: string | null
+          channel_name?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          sort_order?: number
+          source?: string
+          suggested_at?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          topic_id?: string
+          updated_at?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_videos_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_essays: {
         Row: {
@@ -151,6 +451,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_video_progress: {
+        Row: {
+          created_at: string
+          id: string
+          last_watched_at: string | null
+          updated_at: string
+          user_id: string
+          video_id: string
+          watch_seconds: number
+          watched: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_watched_at?: string | null
+          updated_at?: string
+          user_id: string
+          video_id: string
+          watch_seconds?: number
+          watched?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_watched_at?: string | null
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+          watch_seconds?: number
+          watched?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_video_progress_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "study_videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
