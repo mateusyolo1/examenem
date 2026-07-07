@@ -337,14 +337,13 @@ function TopicSearches({ topic }: { topic: Topic }) {
                     {v.title ?? "Vídeo do YouTube"}
                   </div>
                   <button
-                    onClick={() => {
-                      if (confirm("Remover este vídeo?")) deleteMutation.mutate(v.id);
-                    }}
+                    onClick={() => setVideoToDelete(v.id)}
                     className="text-muted-foreground hover:text-red-600 transition-colors shrink-0"
                     aria-label="Remover vídeo"
                   >
                     <Trash2 size={16} />
                   </button>
+
                 </div>
               </div>
             ))}
