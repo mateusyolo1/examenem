@@ -144,19 +144,29 @@ function EstudosPage() {
       <main id="main" className="lg:ml-64">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 pb-24 lg:pb-8">
           <header className="mb-8 border-b border-border pb-6">
-            <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
-              Área de Estudos
-            </span>
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
-              Aprenda por vídeo.
-            </h1>
-            <p className="text-muted-foreground mt-3 max-w-2xl">
-              Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
-              brasileiros para o ENEM.
-            </p>
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Área de Estudos
+                </span>
+                <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
+                  Aprenda por vídeo.
+                </h1>
+                <p className="text-muted-foreground mt-3 max-w-2xl">
+                  Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
+                  brasileiros para o ENEM.
+                </p>
+              </div>
+              <div className="hidden md:block shrink-0">
+                <MiniWeekCalendar />
+              </div>
+            </div>
+            <div className="md:hidden mt-4">
+              <MiniWeekCalendar />
+            </div>
           </header>
 
-          <WeekPlanTopics />
+
 
           {/* Assuntos - barra horizontal no topo */}
           <div className="border border-border bg-card p-4 rounded-md mb-6">
@@ -235,12 +245,14 @@ function EstudosPage() {
   );
 }
 
-function WeekPlanTopics() {
+
+function MiniWeekCalendar() {
   const { plan } = useStudyPlan();
   const navigate = useNavigate();
   const resolveFn = useServerFn(resolveStudyTopic);
   const listMasteryFn = useServerFn(listTopicMastery);
   const [openingSlug, setOpeningSlug] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const { data: masteryData } = useQuery({
     queryKey: ["topic-mastery"],
@@ -255,34 +267,37 @@ function WeekPlanTopics() {
     return map;
   }, [masteryData]);
 
-  const items = useMemo(() => {
-    if (!plan) return [] as Array<{ task: StudyTask; key: string }>;
-    const week = new Set(weekDates());
-    const seen = new Set<string>();
-    const out: Array<{ task: StudyTask; key: string }> = [];
+  const week = useMemo(() => weekDates(), []);
+  const today = week.find((d) => {
+    const [y, m, day] = d.split("-").map(Number);
+    const t = new Date();
+    return y === t.getFullYear() && m === t.getMonth() + 1 && day === t.getDate();
+  });
+
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, StudyTask[]>();
+    if (!plan) return map;
+    const weekSet = new Set(week);
     for (const t of plan.tasks) {
       if (t.type !== "teoria" && t.type !== "revisao") continue;
-      if (!week.has(t.date)) continue;
-      const key = t.topicSlug ?? `${t.area}:${t.title}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ task: t, key });
+      if (!weekSet.has(t.date)) continue;
+      const arr = map.get(t.date) ?? [];
+      arr.push(t);
+      map.set(t.date, arr);
     }
-    // Ordena por data (crescente)
-    out.sort((a, b) => (a.task.date < b.task.date ? -1 : 1));
-    return out;
-  }, [plan]);
+    return map;
+  }, [plan, week]);
 
-  if (!plan || items.length === 0) return null;
+  if (!plan) return null;
+
+  const activeDate = selectedDate ?? today ?? week.find((d) => tasksByDate.has(d)) ?? null;
+  const activeTasks = activeDate ? tasksByDate.get(activeDate) ?? [] : [];
 
   async function openTopic(t: StudyTask) {
     try {
       setOpeningSlug(t.topicSlug ?? t.id);
       const topic = await resolveFn({
-        data: {
-          slug: t.topicSlug,
-          area: t.topicArea,
-        },
+        data: { slug: t.topicSlug, area: t.topicArea },
       });
       navigate({
         to: "/aula/$topicId",
@@ -295,80 +310,106 @@ function WeekPlanTopics() {
     }
   }
 
-  function masteryBadge(slug: string | undefined) {
-    if (!slug) return null;
-    const m = masteryBySlug.get(slug);
-    if (!m) {
-      return (
-        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-          Novo
-        </span>
-      );
+  function statusDot(tasks: StudyTask[]) {
+    if (tasks.length === 0) return null;
+    // pega o "pior" status entre as tasks do dia
+    let color = "bg-muted-foreground/40";
+    for (const t of tasks) {
+      const m = t.topicSlug ? masteryBySlug.get(t.topicSlug) : undefined;
+      if (!m) { color = "bg-foreground"; }
+      else if (!m.mastered && m.last_score < 0.6) { color = "bg-rose-500"; break; }
+      else if (!m.mastered) { color = "bg-amber-500"; }
+      else if (color === "bg-muted-foreground/40") color = "bg-emerald-500";
     }
-    if (m.mastered) {
-      return (
-        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-          Dominado
-        </span>
-      );
-    }
-    if (m.last_score < 0.6) {
-      return (
-        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-300">
-          Reforço
-        </span>
-      );
-    }
-    return (
-      <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300">
-        Revisão
-      </span>
-    );
+    return <span className={`block w-1 h-1 rounded-full mx-auto mt-0.5 ${color}`} />;
   }
 
+  const WEEKDAY_INITIALS = ["S", "T", "Q", "Q", "S", "S", "D"];
+
   return (
-    <div className="border border-border bg-card p-4 rounded-md mb-6">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-          <CalendarCheck size={14} /> Seus tópicos desta semana
-        </h2>
+    <div className="border border-border bg-card rounded-md p-2 w-full md:w-[280px]">
+      <div className="flex items-center justify-between gap-2 px-1 pb-1.5">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
+          <CalendarCheck size={11} /> Semana
+        </span>
         <Link
           to="/plano"
-          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground"
         >
-          Ver plano completo
+          Ver plano
         </Link>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map(({ task, key }) => {
-          const loading = openingSlug === (task.topicSlug ?? task.id);
-          const title = task.title.replace(/^(Teoria|Revisão):\s*/, "");
+      <div className="grid grid-cols-7 gap-0.5">
+        {week.map((d, i) => {
+          const tasks = tasksByDate.get(d) ?? [];
+          const isToday = d === today;
+          const isActive = d === activeDate;
+          const [, , day] = d.split("-");
           return (
             <button
-              key={key}
-              onClick={() => openTopic(task)}
-              disabled={loading}
-              className="text-left border border-border rounded-md p-3 hover:bg-accent transition-colors disabled:opacity-60"
+              key={d}
+              onClick={() => setSelectedDate(d)}
+              className={
+                "flex flex-col items-center py-1.5 rounded text-[10px] transition-colors " +
+                (isActive
+                  ? "bg-foreground text-background"
+                  : isToday
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground")
+              }
             >
-              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                <span>{dateLabel(task.date)}</span>
-                <span>·</span>
-                <span>
-                  {task.topicArea ? areaLabel(task.topicArea) : areaLabel(task.area)}
-                </span>
-                <span className="ml-auto">{masteryBadge(task.topicSlug)}</span>
-              </div>
-              <div className="mt-1 text-sm font-bold leading-tight">{title}</div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {loading ? "Abrindo aula…" : task.type === "revisao" ? "Revisar →" : "Abrir aula →"}
-              </div>
+              <span className="font-mono uppercase leading-none opacity-70">
+                {WEEKDAY_INITIALS[i]}
+              </span>
+              <span className="font-bold text-xs leading-none mt-1">{day}</span>
+              {statusDot(tasks)}
             </button>
           );
         })}
       </div>
+      <div className="mt-2 border-t border-border pt-2 min-h-[52px]">
+        {activeTasks.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground px-1 py-2">
+            Sem tarefas neste dia.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {activeTasks.slice(0, 3).map((task) => {
+              const loading = openingSlug === (task.topicSlug ?? task.id);
+              const title = task.title.replace(/^(Teoria|Revisão):\s*/, "");
+              return (
+                <li key={task.id}>
+                  <button
+                    onClick={() => openTopic(task)}
+                    disabled={loading}
+                    className="w-full text-left px-1.5 py-1 rounded hover:bg-accent transition-colors disabled:opacity-60 group"
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      <span>{task.type === "revisao" ? "Revisão" : "Teoria"}</span>
+                      <span>·</span>
+                      <span className="truncate">
+                        {task.topicArea ? areaLabel(task.topicArea) : areaLabel(task.area)}
+                      </span>
+                    </div>
+                    <div className="text-xs font-medium leading-tight truncate group-hover:underline">
+                      {loading ? "Abrindo…" : title}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+            {activeTasks.length > 3 && (
+              <li className="text-[10px] text-muted-foreground px-1.5">
+                +{activeTasks.length - 3} outra{activeTasks.length - 3 > 1 ? "s" : ""}
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
+
 
 
 
