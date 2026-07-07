@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
@@ -397,87 +398,142 @@ function TopicSearches({ topic }: { topic: Topic }) {
         </p>
       </div>
 
-      {/* Add video dialog */}
-      {dialogOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-          onClick={() => setDialogOpen(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-md w-full max-w-md p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-bold">Adicionar vídeo</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Salvo só na sua conta, em <strong>{topic.title}</strong>.
-                </p>
-              </div>
-              <button
-                onClick={() => setDialogOpen(false)}
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Fechar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!url.trim()) return;
-                addMutation.mutate({ url: url.trim(), title: title.trim() || undefined });
-              }}
-              className="space-y-3"
-            >
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
-                  Link do YouTube
-                </label>
-                <input
-                  type="url"
-                  required
-                  autoFocus
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
-                  Título (opcional)
-                </label>
-                <input
-                  type="text"
-                  maxLength={200}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex.: Aula de funções — Prof. Ferretto"
-                  className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDialogOpen(false)}
-                  className="px-4 py-2 text-sm rounded border border-border hover:bg-accent"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={addMutation.isPending || !url.trim()}
-                  className="px-4 py-2 text-sm font-semibold rounded bg-foreground text-background hover:opacity-90 disabled:opacity-50"
-                >
-                  {addMutation.isPending ? "Salvando…" : "Salvar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Add video dialog (portaled to body to escape any transform/overflow ancestor) */}
+      <AddVideoDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        topicTitle={topic.title}
+        url={url}
+        setUrl={setUrl}
+        title={title}
+        setTitle={setTitle}
+        isPending={addMutation.isPending}
+        onSubmit={() => {
+          if (!url.trim()) return;
+          addMutation.mutate({ url: url.trim(), title: title.trim() || undefined });
+        }}
+      />
     </div>
+  );
+}
+
+function AddVideoDialog({
+  open,
+  onClose,
+  topicTitle,
+  url,
+  setUrl,
+  title,
+  setTitle,
+  isPending,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  topicTitle: string;
+  url: string;
+  setUrl: (v: string) => void;
+  title: string;
+  setTitle: (v: string) => void;
+  isPending: boolean;
+  onSubmit: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-card border border-border rounded-md w-full max-w-md p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold">Adicionar vídeo</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Salvo só na sua conta, em <strong>{topicTitle}</strong>.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Fechar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit();
+          }}
+          className="space-y-3"
+        >
+          <div>
+            <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
+              Link do YouTube
+            </label>
+            <input
+              type="url"
+              required
+              autoFocus
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
+              Título (opcional)
+            </label>
+            <input
+              type="text"
+              maxLength={200}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex.: Aula de funções — Prof. Ferretto"
+              className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm rounded border border-border hover:bg-accent"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !url.trim()}
+              className="px-4 py-2 text-sm font-semibold rounded bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+            >
+              {isPending ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   );
 }
