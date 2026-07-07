@@ -293,7 +293,10 @@ function TopicSearches({ topic }: { topic: Topic }) {
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">{topic.title}</h2>
       </header>
 
-      {/* Meus vídeos (por usuário) */}
+      {/* Vídeos sugeridos (curados + IA) com player embutido */}
+      <SuggestedVideos topic={topic} />
+
+      {/* Meus vídeos (por usuário) — no fim da playlist visível */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
@@ -343,7 +346,6 @@ function TopicSearches({ topic }: { topic: Topic }) {
                   >
                     <Trash2 size={16} />
                   </button>
-
                 </div>
               </div>
             ))}
@@ -351,8 +353,7 @@ function TopicSearches({ topic }: { topic: Topic }) {
         )}
       </div>
 
-      {/* Vídeos sugeridos (curados + IA) com player embutido */}
-      <SuggestedVideos topic={topic} />
+
 
       {/* Busca geral em destaque */}
       <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
