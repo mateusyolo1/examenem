@@ -354,7 +354,11 @@ ${combined}`;
     quizJson = parseJsonLoose(text);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "erro";
-    throw new Error(`Falha ao gerar questões: ${msg}`);
+    const friendly =
+      msg === "rate_limit"
+        ? "Gemini está sobrecarregado no momento. Aguarde alguns segundos e tente de novo."
+        : `Falha ao gerar questões: ${msg}`;
+    throw new Error(friendly);
   }
 
   const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
