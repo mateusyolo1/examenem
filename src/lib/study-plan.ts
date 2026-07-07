@@ -314,6 +314,23 @@ export function resolvedStatus(t: StudyTask): TaskStatus {
   return "pendente";
 }
 
+// Standalone helper (não precisa do hook) — usado por outras telas
+// (aula, prática) para marcar a tarefa vinculada como concluída assim
+// que o aluno termina a atividade que veio do cronograma.
+export function markPlanTaskDone(id: string) {
+  const cur = read();
+  if (!cur) return;
+  const target = cur.tasks.find((t) => t.id === id);
+  if (!target || target.status === "concluida") return;
+  const next: StudyPlan = {
+    ...cur,
+    tasks: cur.tasks.map((t) =>
+      t.id === id ? { ...t, status: "concluida" as const } : t,
+    ),
+  };
+  write(next);
+}
+
 export function useStudyPlan() {
   const [plan, setPlan] = useState<StudyPlan | null>(null);
 
