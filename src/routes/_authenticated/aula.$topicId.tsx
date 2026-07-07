@@ -568,6 +568,14 @@ interface QuizPayload {
     };
   }[];
   skipped: { youtubeId: string; title: string; reason: string }[];
+  essayTask: {
+    title: string;
+    prompt: string;
+    focusSkill: string;
+    rubric: string[];
+    minWords: number;
+    maxWords: number;
+  } | null;
 }
 
 function QuizView({
