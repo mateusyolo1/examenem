@@ -636,7 +636,7 @@ function ResultView({
   result: {
     score: number;
     total: number;
-    graded: { videoId: string; chosenIndex: number; correct: boolean }[];
+    graded: { questionId: string; chosenIndex: number; correct: boolean }[];
     quiz: QuizPayload;
   };
   topicId: string;
@@ -656,10 +656,10 @@ function ResultView({
 
       <ol className="space-y-4">
         {result.quiz.questions.map((q, i) => {
-          const g = result.graded.find((x) => x.videoId === q.videoId);
+          const g = result.graded.find((x) => x.questionId === q.id);
           const correct = g?.correct ?? false;
           return (
-            <li key={q.videoId} className="border border-border bg-card rounded-md p-4">
+            <li key={q.id} className="border border-border bg-card rounded-md p-4">
               <div className="flex items-start gap-2 mb-2">
                 <span
                   className={
