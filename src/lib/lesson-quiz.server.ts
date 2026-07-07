@@ -72,45 +72,58 @@ interface GoogleGenerateContentResponse {
 async function callGemini(
   apiKey: string,
   parts: Array<Record<string, unknown>>,
+  { retries = 2 }: { retries?: number } = {},
 ): Promise<string> {
-  const res = await fetch(`${GOOGLE_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.4,
-      },
-    }),
-  });
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(`${GOOGLE_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.4,
+        },
+      }),
+    });
 
-  const raw = await res.text();
-  let body: GoogleGenerateContentResponse = {};
-  try {
-    body = JSON.parse(raw) as GoogleGenerateContentResponse;
-  } catch {
-    // fallback: leave body empty
-  }
+    const raw = await res.text();
+    let body: GoogleGenerateContentResponse = {};
+    try {
+      body = JSON.parse(raw) as GoogleGenerateContentResponse;
+    } catch {
+      // fallback: leave body empty
+    }
 
-  if (!res.ok) {
-    const msg = body.error?.message ?? raw.slice(0, 200);
-    if (res.status === 429) throw new Error("rate_limit");
-    if (res.status === 403) throw new Error(`google_forbidden: ${msg}`);
-    if (res.status === 400) throw new Error(`google_bad_request: ${msg}`);
-    throw new Error(`google_${res.status}: ${msg}`);
-  }
+    if (!res.ok) {
+      const msg = body.error?.message ?? raw.slice(0, 200);
+      if (res.status === 429 || res.status === 503) {
+        lastErr = new Error("rate_limit");
+        if (attempt < retries) {
+          const wait = 1500 * (attempt + 1) + Math.random() * 500;
+          await new Promise((r) => setTimeout(r, wait));
+          continue;
+        }
+        throw lastErr;
+      }
+      if (res.status === 403) throw new Error(`google_forbidden: ${msg}`);
+      if (res.status === 400) throw new Error(`google_bad_request: ${msg}`);
+      throw new Error(`google_${res.status}: ${msg}`);
+    }
 
-  if (body.promptFeedback?.blockReason) {
-    throw new Error(`google_blocked: ${body.promptFeedback.blockReason}`);
-  }
+    if (body.promptFeedback?.blockReason) {
+      throw new Error(`google_blocked: ${body.promptFeedback.blockReason}`);
+    }
 
-  const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  if (!text.trim()) {
-    const reason = body.candidates?.[0]?.finishReason ?? "sem retorno";
-    throw new Error(`google_empty: ${reason}`);
+    const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!text.trim()) {
+      const reason = body.candidates?.[0]?.finishReason ?? "sem retorno";
+      throw new Error(`google_empty: ${reason}`);
+    }
+    return text;
   }
-  return text;
+  throw lastErr ?? new Error("rate_limit");
 }
 
 async function summarizeVideo(
@@ -341,7 +354,11 @@ ${combined}`;
     quizJson = parseJsonLoose(text);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "erro";
-    throw new Error(`Falha ao gerar questões: ${msg}`);
+    const friendly =
+      msg === "rate_limit"
+        ? "Gemini está sobrecarregado no momento. Aguarde alguns segundos e tente de novo."
+        : `Falha ao gerar questões: ${msg}`;
+    throw new Error(friendly);
   }
 
   const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
