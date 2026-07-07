@@ -17,6 +17,46 @@ export const listStudyTopics = createServerFn({ method: "GET" })
   });
 
 // ============================================================
+// Resolve a study topic by slug (preferred) or by area (fallback).
+// Used by the study plan CTA "Estudar" to open /aula/$topicId for a
+// task generated in the schedule.
+// ============================================================
+export const resolveStudyTopic = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        slug: z.string().min(1).max(80).optional(),
+        area: z.enum(["linguagens", "humanas", "natureza", "matematica"]).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.slug) {
+      const { data: bySlug, error } = await context.supabase
+        .from("study_topics")
+        .select("id, title, area, subject")
+        .eq("slug", data.slug)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (bySlug) return bySlug;
+    }
+    if (data.area) {
+      const { data: byArea, error } = await context.supabase
+        .from("study_topics")
+        .select("id, title, area, subject")
+        .eq("area", data.area)
+        .not("parent_id", "is", null)
+        .order("sort_order", { ascending: true })
+        .limit(1);
+      if (error) throw new Error(error.message);
+      if (byArea && byArea.length) return byArea[0];
+    }
+    throw new Error("Nenhum tópico correspondente foi encontrado.");
+  });
+
+
+// ============================================================
 // User-owned videos (per topic, saved to the user's account)
 // ============================================================
 function extractYoutubeId(input: string): string | null {
