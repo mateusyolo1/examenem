@@ -297,7 +297,10 @@ function WatchingView({
   allWatched,
   onStartQuiz,
   quizLoading,
+  quizPrefetching,
+  quizPrefetchReady,
   videos,
+
   onSaveProgress,
   resumeAt,
 }: {
