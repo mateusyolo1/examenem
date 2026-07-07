@@ -299,7 +299,7 @@ ${combined}`;
   const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
   const questions: QuizQuestion[] = [];
 
-  for (let i = 0; i < rawQuestions.length && questions.length < 3; i++) {
+  for (let i = 0; i < rawQuestions.length && questions.length < targetCount; i++) {
     const q = rawQuestions[i];
     if (
       typeof q.question !== "string" ||
