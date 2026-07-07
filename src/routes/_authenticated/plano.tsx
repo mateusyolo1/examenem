@@ -40,6 +40,7 @@ import {
   type Focus,
   type StudyTask,
   type TaskType,
+  type TopicCatalogEntry,
   resolvedStatus,
   weekDates,
   dateLabel,
