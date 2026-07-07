@@ -18,7 +18,7 @@ import {
   submitLessonAttempt,
 } from "@/lib/study.functions";
 
-export const Route = createFileRoute("/_authenticated/estudos/aula/$topicId")({
+export const Route = createFileRoute("/_authenticated/aula/$topicId")({
   component: LessonPage,
   errorComponent: ({ error, reset }) => {
     const router = useRouter();
