@@ -1,17 +1,38 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   ClipboardList,
+  Lock,
   Play,
   Sparkles,
   X,
 } from "lucide-react";
+
+// YouTube IFrame API loader (singleton)
+let ytApiPromise: Promise<any> | null = null;
+function loadYouTubeApi(): Promise<any> {
+  if (typeof window === "undefined") return Promise.reject(new Error("SSR"));
+  const w = window as any;
+  if (w.YT && w.YT.Player) return Promise.resolve(w.YT);
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const prev = w.onYouTubeIframeAPIReady;
+    w.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve(w.YT);
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  });
+  return ytApiPromise;
+}
 import {
   getLessonPlaylist,
   buildLessonQuiz,
@@ -229,24 +250,60 @@ function WatchingView({
 }) {
   const isWatched = watched.has(current);
   const isLast = current === total - 1;
+  const canGoNext = isWatched;
+  const iframeRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let player: any = null;
+    loadYouTubeApi().then((YT) => {
+      if (cancelled || !iframeRef.current) return;
+      player = new YT.Player(iframeRef.current, {
+        videoId: video.youtube_id,
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: {
+          onStateChange: (e: any) => {
+            // 0 = ended
+            if (e.data === 0) {
+              onMarkWatched();
+              toast.success("Vídeo concluído — marcado como assistido");
+            }
+          },
+        },
+      });
+      playerRef.current = player;
+    });
+    return () => {
+      cancelled = true;
+      try {
+        playerRef.current?.destroy?.();
+      } catch {}
+      playerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.youtube_id]);
 
   return (
     <div className="space-y-6">
       <div className="border border-border bg-card rounded-md overflow-hidden">
         <div className="relative aspect-video bg-black">
-          <iframe
-            key={video.youtube_id}
-            className="absolute inset-0 w-full h-full"
-            src={`https://www.youtube.com/embed/${video.youtube_id}?rel=0`}
-            title={video.title ?? "Vídeo do YouTube"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          <div ref={iframeRef} className="absolute inset-0 w-full h-full" />
         </div>
         <div className="p-4">
           <div className="text-sm font-medium">{video.title ?? "Vídeo do YouTube"}</div>
           {video.channel_name && (
             <div className="text-xs text-muted-foreground mt-0.5">{video.channel_name}</div>
+          )}
+          {!isWatched && (
+            <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+              <Lock size={12} /> Assista até o final para liberar o próximo vídeo.
+            </div>
+          )}
+          {isWatched && (
+            <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1.5">
+              <Check size={12} /> Assistido
+            </div>
           )}
         </div>
       </div>
@@ -258,20 +315,6 @@ function WatchingView({
           className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 border border-border rounded hover:bg-accent transition-colors disabled:opacity-40"
         >
           <ArrowLeft size={14} /> Anterior
-        </button>
-
-        <button
-          onClick={onMarkWatched}
-          disabled={isWatched}
-          className={
-            "inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded border transition-colors " +
-            (isWatched
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-              : "border-border hover:bg-accent")
-          }
-        >
-          <Check size={14} />
-          {isWatched ? "Assistido" : "Marcar como assistido"}
         </button>
 
         {isLast ? (
@@ -286,16 +329,25 @@ function WatchingView({
         ) : (
           <button
             onClick={onNext}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+            disabled={!canGoNext}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40"
           >
-            Próximo <ArrowRight size={14} />
+            {canGoNext ? (
+              <>
+                Próximo <ArrowRight size={14} />
+              </>
+            ) : (
+              <>
+                <Lock size={14} /> Assista até o final
+              </>
+            )}
           </button>
         )}
       </div>
 
       {!allWatched && isLast && (
         <p className="text-xs text-muted-foreground text-center">
-          Marque todos os vídeos como assistidos para liberar a atividade.
+          Assista todos os vídeos até o final para liberar a atividade.
         </p>
       )}
 
@@ -304,32 +356,44 @@ function WatchingView({
           Playlist
         </h3>
         <ol className="space-y-1.5">
-          {videos.map((v, i) => (
-            <li key={v.id}>
-              <button
-                onClick={() => onSelect(i)}
-                className={
-                  "w-full text-left flex items-center gap-3 px-3 py-2 rounded border transition-colors " +
-                  (i === current
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-accent")
-                }
-              >
-                <span
+          {videos.map((v, i) => {
+            const unlocked = i === 0 || watched.has(i - 1) || watched.has(i);
+            return (
+              <li key={v.id}>
+                <button
+                  onClick={() => unlocked && onSelect(i)}
+                  disabled={!unlocked}
                   className={
-                    "shrink-0 w-6 h-6 rounded-full grid place-items-center text-[10px] font-mono " +
-                    (watched.has(i)
-                      ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                      : "bg-muted text-muted-foreground")
+                    "w-full text-left flex items-center gap-3 px-3 py-2 rounded border transition-colors " +
+                    (i === current
+                      ? "border-primary bg-primary/5"
+                      : unlocked
+                        ? "border-border hover:bg-accent"
+                        : "border-border opacity-50 cursor-not-allowed")
                   }
                 >
-                  {watched.has(i) ? <Check size={12} /> : i + 1}
-                </span>
-                <span className="text-sm truncate">{v.title ?? `Vídeo ${i + 1}`}</span>
-                {i === current && <Play size={12} className="ml-auto shrink-0" />}
-              </button>
-            </li>
-          ))}
+                  <span
+                    className={
+                      "shrink-0 w-6 h-6 rounded-full grid place-items-center text-[10px] font-mono " +
+                      (watched.has(i)
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                        : "bg-muted text-muted-foreground")
+                    }
+                  >
+                    {watched.has(i) ? (
+                      <Check size={12} />
+                    ) : unlocked ? (
+                      i + 1
+                    ) : (
+                      <Lock size={10} />
+                    )}
+                  </span>
+                  <span className="text-sm truncate">{v.title ?? `Vídeo ${i + 1}`}</span>
+                  {i === current && <Play size={12} className="ml-auto shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
         </ol>
       </div>
     </div>
