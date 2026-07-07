@@ -168,6 +168,50 @@ export type Database = {
           },
         ]
       }
+      lesson_essay_attempts: {
+        Row: {
+          created_at: string
+          essay_text: string
+          feedback: Json | null
+          id: string
+          score: number | null
+          task: Json
+          topic_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          essay_text: string
+          feedback?: Json | null
+          id?: string
+          score?: number | null
+          task: Json
+          topic_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          essay_text?: string
+          feedback?: Json | null
+          id?: string
+          score?: number | null
+          task?: Json
+          topic_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_essay_attempts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
