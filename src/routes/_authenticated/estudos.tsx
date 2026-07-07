@@ -561,11 +561,18 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   });
   const videos = data?.videos ?? [];
 
+  const { progress } = useProgress();
+  const dailyMinutes = progress.dailyMinutes ?? 120;
+
   const suggestMutation = useMutation({
-    mutationFn: () => suggest({ data: { topicId: topic.id } }),
+    mutationFn: () =>
+      suggest({ data: { topicId: topic.id, maxMinutes: dailyMinutes } }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: key });
-      if (r?.added > 0) toast.success(`${r.added} novos vídeos sugeridos`);
+      if (r?.added > 0)
+        toast.success(
+          `${r.added} vídeos sugeridos · ${r.totalMinutes}min de ${r.maxMinutes}min disponíveis`,
+        );
       else toast.info("Nenhuma sugestão nova desta vez");
     },
     onError: (e: Error) => toast.error(e.message),
