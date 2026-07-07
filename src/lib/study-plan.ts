@@ -46,7 +46,19 @@ export interface TopicCatalogEntry {
   title: string;
   subject: string | null;
   sort_order: number;
+
+// Desempenho por tópico (Abordagem 3) — alimentado por `topic_mastery`.
+export interface TopicMastery {
+  topic_slug: string;
+  area: Area;
+  last_score: number; // 0..1
+  attempts: number;
+  last_seen_at: string;
+  next_review_at: string;
+  mastered: boolean;
 }
+
+
 
 
 export interface StudyPlan {
