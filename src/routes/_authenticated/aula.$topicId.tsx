@@ -40,6 +40,7 @@ import {
   submitLessonAttempt,
   saveVideoPosition,
   markVideoWatched,
+  recordTopicMastery,
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
@@ -119,6 +120,7 @@ function LessonPage() {
   return (
     <LessonPlayer
       topicId={topicId}
+      topicSlug={data.topic.slug}
       topicTitle={data.topic.title}
       topicArea={data.topic.area}
       videos={data.videos}
@@ -138,12 +140,14 @@ interface Video {
 
 function LessonPlayer({
   topicId,
+  topicSlug,
   topicTitle,
   topicArea,
   videos,
   taskId,
 }: {
   topicId: string;
+  topicSlug: string;
   topicTitle: string;
   topicArea: string;
   videos: Video[];
@@ -165,6 +169,8 @@ function LessonPlayer({
   const submit = useServerFn(submitLessonAttempt);
   const savePos = useServerFn(saveVideoPosition);
   const markWatchedFn = useServerFn(markVideoWatched);
+  const recordMastery = useServerFn(recordTopicMastery);
+
 
   // Pré-geração da atividade em background: assim que o aluno conclui
   // o 1º vídeo, começamos a montar o quiz (Gemini transcreve + gera perguntas
@@ -217,14 +223,24 @@ function LessonPlayer({
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Auto-complete the linked schedule task, if this aula was opened
       // from /plano.
       if (taskId) markPlanTaskDone(taskId);
+      // Registra desempenho por tópico (Abordagem 3) — alimenta o cronograma
+      // (skip de dominados, revisão espaçada, pesos por área).
+      const total = Math.max(data.total, 1);
+      const score = data.score / total;
+      const area = topicArea as "linguagens" | "humanas" | "natureza" | "matematica";
+      if (["linguagens", "humanas", "natureza", "matematica"].includes(area)) {
+        recordMastery({ data: { topicSlug, area, score } }).catch(() => {});
+      }
       setPhase("result");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+
 
   const total = videos.length;
   const video = videos[current];

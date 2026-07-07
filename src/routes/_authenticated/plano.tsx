@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { resolveStudyTopic, listStudyTopics } from "@/lib/study.functions";
+import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 
 import {
@@ -41,11 +41,14 @@ import {
   type StudyTask,
   type TaskType,
   type TopicCatalogEntry,
+  type TopicMastery,
   resolvedStatus,
   weekDates,
   dateLabel,
   areaLabel,
   typeLabel,
+  rescheduleOverdue,
+  countOverdue,
 } from "@/lib/study-plan";
 import { StageTasksSection } from "@/components/StageTasksSection";
 
@@ -151,6 +154,20 @@ function Plano() {
       }));
   }, [topicsData]);
 
+  // Mastery (Abordagem 3): alimenta o gerador de plano com desempenho.
+  const listMasteryFn = useServerFn(listTopicMastery);
+  const { data: masteryData } = useQuery({
+    queryKey: ["topic-mastery"],
+    queryFn: () => listMasteryFn(),
+    staleTime: 60 * 1000,
+  });
+  const masteryList: TopicMastery[] = useMemo(() => {
+    return ((masteryData?.mastery ?? []) as TopicMastery[]).map((m) => ({
+      ...m,
+      area: m.area as TopicMastery["area"],
+    }));
+  }, [masteryData]);
+
   if (!plan || editing) {
     return (
       <Shell plan={plan}>
@@ -159,7 +176,11 @@ function Plano() {
           defaultExamDate={progress.examDate}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
-            savePlan(cfg, topicCatalog.length ? topicCatalog : undefined);
+            savePlan(
+              cfg,
+              topicCatalog.length ? topicCatalog : undefined,
+              masteryList.length ? masteryList : undefined,
+            );
             setEditing(false);
           }}
         />
@@ -172,6 +193,7 @@ function Plano() {
     <Shell plan={plan}>
       <PlanView
         plan={plan}
+        mastery={masteryList}
         onToggleDone={toggleDone}
         onEdit={() => setEditing(true)}
         onClear={() => setAskClear(true)}
@@ -190,6 +212,7 @@ function Plano() {
       />
     </Shell>
   );
+
 }
 
 function Shell({
@@ -565,11 +588,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function PlanView({
   plan,
+  mastery,
   onToggleDone,
   onEdit,
   onClear,
 }: {
   plan: NonNullable<ReturnType<typeof useStudyPlan>["plan"]>;
+  mastery: TopicMastery[];
   onToggleDone: (id: string) => void;
   onEdit: () => void;
   onClear: () => void;
@@ -639,6 +664,10 @@ function PlanView({
           tone="primary"
         />
       </section>
+
+      <MasteryPanel plan={plan} mastery={mastery} />
+
+
 
       {/* Week navigation */}
       <section className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5">
@@ -1114,3 +1143,62 @@ function Stat({
     </div>
   );
 }
+
+function MasteryPanel({
+  plan,
+  mastery,
+}: {
+  plan: NonNullable<ReturnType<typeof useStudyPlan>["plan"]>;
+  mastery: TopicMastery[];
+}) {
+  const overdue = countOverdue(plan);
+  const mastered = mastery.filter((m) => m.mastered).length;
+  const reforco = mastery.filter((m) => !m.mastered && m.last_score < 0.6).length;
+  const hoje = Date.now();
+  const revisoes = mastery.filter(
+    (m) => new Date(m.next_review_at).getTime() <= hoje,
+  ).length;
+
+  if (overdue === 0 && mastery.length === 0) return null;
+
+  return (
+    <section className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {mastery.length > 0 && (
+            <>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 ring-1 ring-inset ring-emerald-500/20">
+                <CheckCircle2 size={12} /> {mastered} dominados
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2.5 py-1 ring-1 ring-inset ring-amber-500/20">
+                <Repeat size={12} /> {revisoes} revisões devidas
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 px-2.5 py-1 ring-1 ring-inset ring-rose-500/20">
+                <AlertCircle size={12} /> {reforco} precisam reforço
+              </span>
+            </>
+          )}
+          {overdue > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 text-orange-700 dark:text-orange-300 px-2.5 py-1 ring-1 ring-inset ring-orange-500/25">
+              <Clock size={12} /> {overdue} {overdue === 1 ? "tarefa atrasada" : "tarefas atrasadas"}
+            </span>
+          )}
+        </div>
+        {overdue > 0 && (
+          <button
+            onClick={() => {
+              rescheduleOverdue(plan);
+              toast.success(
+                `${overdue} ${overdue === 1 ? "tarefa reagendada" : "tarefas reagendadas"} para os próximos dias.`,
+              );
+            }}
+            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-md bg-foreground text-background text-xs font-semibold px-3 py-1.5 hover:opacity-90 transition"
+          >
+            <CalendarDays size={14} /> Reagendar atrasadas
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+

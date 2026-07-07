@@ -19,10 +19,11 @@ import {
   listSuggestionHistory,
   clearSuggestionHistory,
   resolveStudyTopic,
+  listTopicMastery,
 
 } from "@/lib/study.functions";
 import { useStudyPlan, weekDates, dateLabel, areaLabel } from "@/lib/study-plan";
-import type { StudyTask } from "@/lib/study-plan";
+import type { StudyTask, TopicMastery } from "@/lib/study-plan";
 import { CalendarCheck } from "lucide-react";
 import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -238,7 +239,21 @@ function WeekPlanTopics() {
   const { plan } = useStudyPlan();
   const navigate = useNavigate();
   const resolveFn = useServerFn(resolveStudyTopic);
+  const listMasteryFn = useServerFn(listTopicMastery);
   const [openingSlug, setOpeningSlug] = useState<string | null>(null);
+
+  const { data: masteryData } = useQuery({
+    queryKey: ["topic-mastery"],
+    queryFn: () => listMasteryFn(),
+    staleTime: 60 * 1000,
+  });
+  const masteryBySlug = useMemo(() => {
+    const map = new Map<string, TopicMastery>();
+    for (const m of (masteryData?.mastery ?? []) as TopicMastery[]) {
+      map.set(m.topic_slug, m);
+    }
+    return map;
+  }, [masteryData]);
 
   const items = useMemo(() => {
     if (!plan) return [] as Array<{ task: StudyTask; key: string }>;
@@ -246,7 +261,7 @@ function WeekPlanTopics() {
     const seen = new Set<string>();
     const out: Array<{ task: StudyTask; key: string }> = [];
     for (const t of plan.tasks) {
-      if (t.type !== "teoria") continue;
+      if (t.type !== "teoria" && t.type !== "revisao") continue;
       if (!week.has(t.date)) continue;
       const key = t.topicSlug ?? `${t.area}:${t.title}`;
       if (seen.has(key)) continue;
@@ -280,6 +295,37 @@ function WeekPlanTopics() {
     }
   }
 
+  function masteryBadge(slug: string | undefined) {
+    if (!slug) return null;
+    const m = masteryBySlug.get(slug);
+    if (!m) {
+      return (
+        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+          Novo
+        </span>
+      );
+    }
+    if (m.mastered) {
+      return (
+        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+          Dominado
+        </span>
+      );
+    }
+    if (m.last_score < 0.6) {
+      return (
+        <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-300">
+          Reforço
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        Revisão
+      </span>
+    );
+  }
+
   return (
     <div className="border border-border bg-card p-4 rounded-md mb-6">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -296,9 +342,7 @@ function WeekPlanTopics() {
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {items.map(({ task, key }) => {
           const loading = openingSlug === (task.topicSlug ?? task.id);
-          const title = task.title.startsWith("Teoria:")
-            ? task.title.slice("Teoria:".length).trim()
-            : task.title;
+          const title = task.title.replace(/^(Teoria|Revisão):\s*/, "");
           return (
             <button
               key={key}
@@ -312,10 +356,11 @@ function WeekPlanTopics() {
                 <span>
                   {task.topicArea ? areaLabel(task.topicArea) : areaLabel(task.area)}
                 </span>
+                <span className="ml-auto">{masteryBadge(task.topicSlug)}</span>
               </div>
               <div className="mt-1 text-sm font-bold leading-tight">{title}</div>
               <div className="mt-2 text-xs text-muted-foreground">
-                {loading ? "Abrindo aula…" : "Abrir aula →"}
+                {loading ? "Abrindo aula…" : task.type === "revisao" ? "Revisar →" : "Abrir aula →"}
               </div>
             </button>
           );
@@ -324,6 +369,7 @@ function WeekPlanTopics() {
     </div>
   );
 }
+
 
 
 

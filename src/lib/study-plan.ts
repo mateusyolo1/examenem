@@ -48,6 +48,21 @@ export interface TopicCatalogEntry {
   sort_order: number;
 }
 
+// Desempenho por tópico (Abordagem 3) — alimentado por `topic_mastery`.
+export interface TopicMastery {
+  topic_slug: string;
+  area: Area;
+  last_score: number; // 0..1
+  attempts: number;
+  last_seen_at: string;
+  next_review_at: string;
+  mastered: boolean;
+}
+
+
+
+
+
 
 export interface StudyPlan {
   id: string;
@@ -96,7 +111,11 @@ function rid(): string {
 }
 
 // Build a weighted rotation of areas (hard + focus areas first).
-function buildAreaQueue(cfg: StudyPlanConfig): Area[] {
+// Mastery increases weight for areas whose average score is low (< 0.6).
+function buildAreaQueue(
+  cfg: StudyPlanConfig,
+  mastery?: TopicMastery[],
+): Area[] {
   const all = AREAS.map((a) => a.id);
   const weight: Record<Area, number> = {
     linguagens: 1,
@@ -108,12 +127,28 @@ function buildAreaQueue(cfg: StudyPlanConfig): Area[] {
   if (cfg.focus !== "balanced" && cfg.focus !== "redacao") {
     weight[cfg.focus] += 2;
   }
+  if (mastery && mastery.length) {
+    const byArea: Record<Area, number[]> = {
+      linguagens: [], humanas: [], natureza: [], matematica: [],
+    };
+    for (const m of mastery) {
+      if (m.area in byArea) byArea[m.area].push(m.last_score);
+    }
+    (Object.keys(byArea) as Area[]).forEach((a) => {
+      const scores = byArea[a];
+      if (!scores.length) return;
+      const avg = scores.reduce((s, x) => s + x, 0) / scores.length;
+      if (avg < 0.6) weight[a] += 2; // reforço
+      else if (avg >= 0.85) weight[a] = Math.max(1, weight[a] - 1); // já domina
+    });
+  }
   const queue: Area[] = [];
   all.forEach((a) => {
     for (let i = 0; i < weight[a]; i++) queue.push(a);
   });
   return queue;
 }
+
 
 interface Slot {
   type: TaskType;
@@ -135,6 +170,7 @@ type Pick = {
 
 function buildTopicQueuesByArea(
   catalog: TopicCatalogEntry[] | undefined,
+  mastery?: TopicMastery[],
 ): Record<Area, TopicCatalogEntry[]> {
   const out: Record<Area, TopicCatalogEntry[]> = {
     linguagens: [],
@@ -143,12 +179,34 @@ function buildTopicQueuesByArea(
     matematica: [],
   };
   if (!catalog) return out;
+  // Skip tópicos dominados cujo next_review_at ainda é no futuro.
+  const now = Date.now();
+  const skip = new Set<string>();
+  if (mastery) {
+    for (const m of mastery) {
+      if (m.mastered && new Date(m.next_review_at).getTime() > now) {
+        skip.add(m.topic_slug);
+      }
+    }
+  }
   for (const t of catalog) {
-    if (t.area in out) out[t.area].push(t);
+    if (!(t.area in out)) continue;
+    if (skip.has(t.slug)) continue;
+    out[t.area].push(t);
   }
   (Object.keys(out) as Area[]).forEach((a) =>
     out[a].sort((x, y) => x.sort_order - y.sort_order),
   );
+  // Se todos os tópicos de uma área foram pulados, cai no catálogo cheio
+  // dessa área (o aluno ainda precisa estudar algo lá).
+  (Object.keys(out) as Area[]).forEach((a) => {
+    if (out[a].length === 0) {
+      const fallback = catalog
+        .filter((t) => t.area === a)
+        .sort((x, y) => x.sort_order - y.sort_order);
+      out[a] = fallback;
+    }
+  });
   return out;
 }
 
@@ -169,8 +227,9 @@ function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
 function makePicker(
   cfg: StudyPlanConfig,
   catalog: TopicCatalogEntry[] | undefined,
+  mastery: TopicMastery[] | undefined,
 ): () => Pick {
-  const topicsByArea = buildTopicQueuesByArea(catalog);
+  const topicsByArea = buildTopicQueuesByArea(catalog, mastery);
   const topicIdx: Record<Area, number> = {
     linguagens: 0,
     humanas: 0,
@@ -204,7 +263,7 @@ function makePicker(
       };
     };
   }
-  const areaQueue = buildAreaQueue(cfg);
+  const areaQueue = buildAreaQueue(cfg, mastery);
   let i = 0;
   return () => {
     const a = areaQueue[i % areaQueue.length];
@@ -219,6 +278,7 @@ function makePicker(
     };
   };
 }
+
 
 function dayTemplate(
   weekday: number,
@@ -305,6 +365,7 @@ function dayTemplate(
 export function generatePlan(
   cfg: StudyPlanConfig,
   catalog?: TopicCatalogEntry[],
+  mastery?: TopicMastery[],
 ): StudyPlan {
   const tasks: StudyTask[] = [];
   const start = new Date();
@@ -312,12 +373,32 @@ export function generatePlan(
   const end = new Date(cfg.examDate);
   end.setHours(0, 0, 0, 0);
 
-  const pick = makePicker(cfg, catalog);
+  const pick = makePicker(cfg, catalog, mastery);
 
   const themes = [...ESSAY_THEMES];
   let themeIdx = 0;
 
   const targetMinPerDay = Math.max(30, Math.round(cfg.hoursPerDay * 60));
+
+  // Revisões devidas: para cada mastery cujo next_review_at <= hoje,
+  // criamos uma tarefa `revisao` com topicSlug apontando pra aula.
+  // Distribuímos ao longo dos primeiros dias úteis do plano.
+  const dueReviews: TopicMastery[] = [];
+  if (mastery && catalog) {
+    const now = Date.now();
+    const catalogBySlug = new Map(catalog.map((t) => [t.slug, t]));
+    for (const m of mastery) {
+      if (new Date(m.next_review_at).getTime() > now) continue;
+      if (!catalogBySlug.has(m.topic_slug)) continue;
+      dueReviews.push(m);
+    }
+    // Reforço primeiro (score baixo antes de score alto)
+    dueReviews.sort((a, b) => a.last_score - b.last_score);
+  }
+  const reviewCatalog = new Map(
+    (catalog ?? []).map((t) => [t.slug, t] as const),
+  );
+  let reviewIdx = 0;
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay();
@@ -328,7 +409,24 @@ export function generatePlan(
     const dateStr = isoDate(d);
     slots.forEach((s) => {
       let title = s.title("");
-      if (s.type === "redacao" && s.area === "redacao" && !title.includes(":")) {
+      let topicSlug = s.topicSlug;
+      let topicArea = s.topicArea;
+      let area: StudyTask["area"] = s.area;
+      let type = s.type;
+
+      // Se houver revisão devida e o slot atual é "revisao geral",
+      // troca por uma revisão focada num tópico.
+      if (s.type === "revisao" && reviewIdx < dueReviews.length) {
+        const due = dueReviews[reviewIdx++];
+        const t = reviewCatalog.get(due.topic_slug);
+        if (t) {
+          title = `Revisão: ${t.title}`;
+          topicSlug = t.slug;
+          topicArea = t.area;
+          area = t.area;
+          type = "revisao";
+        }
+      } else if (s.type === "redacao" && s.area === "redacao" && !title.includes(":")) {
         const t = themes[themeIdx % themes.length];
         themeIdx += 1;
         title = `Redação: ${t.titulo}`;
@@ -341,12 +439,12 @@ export function generatePlan(
         id: rid(),
         date: dateStr,
         title,
-        area: s.area,
-        type: s.type,
+        area,
+        type,
         minutes: Math.max(15, Math.round(s.minutes * scale)),
         status: "pendente",
-        topicSlug: s.topicSlug,
-        topicArea: s.topicArea,
+        topicSlug,
+        topicArea,
       });
     });
   }
@@ -358,6 +456,55 @@ export function generatePlan(
     tasks,
   };
 }
+
+/**
+ * Reagenda tarefas atrasadas: move as pendentes com data no passado para
+ * os próximos dias válidos (weekdays) do plano, respeitando o limite de
+ * minutos por dia. Retorna um novo StudyPlan.
+ */
+export function rescheduleOverdue(plan: StudyPlan): StudyPlan {
+  const today = todayIso();
+  const targetMin = Math.max(30, Math.round(plan.config.hoursPerDay * 60));
+  // Minutos já ocupados por dia (contando pendentes + concluídas no futuro).
+  const perDay = new Map<string, number>();
+  for (const t of plan.tasks) {
+    if (t.date < today) continue;
+    perDay.set(t.date, (perDay.get(t.date) ?? 0) + t.minutes);
+  }
+  const isWeekday = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return plan.config.weekdays.includes(new Date(y, m - 1, d).getDay());
+  };
+  const nextSlotFor = (mins: number): string | null => {
+    const d = new Date(today);
+    for (let i = 0; i < 120; i++) {
+      const iso = isoDate(d);
+      if (isWeekday(iso) && (perDay.get(iso) ?? 0) + mins <= targetMin * 1.25) {
+        perDay.set(iso, (perDay.get(iso) ?? 0) + mins);
+        return iso;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  };
+
+  const nextTasks = plan.tasks.map((t) => {
+    if (t.status !== "pendente" || t.date >= today) return t;
+    const dst = nextSlotFor(t.minutes);
+    if (!dst) return t;
+    return { ...t, date: dst };
+  });
+  const next: StudyPlan = { ...plan, tasks: nextTasks };
+  write(next);
+  return next;
+}
+
+/** Conta quantas tarefas estão atrasadas (pendentes com data < hoje). */
+export function countOverdue(plan: StudyPlan): number {
+  const today = todayIso();
+  return plan.tasks.filter((t) => t.status === "pendente" && t.date < today).length;
+}
+
 
 // ---- persistence + hook ----
 
@@ -416,14 +563,19 @@ export function useStudyPlan() {
   }, []);
 
   const savePlan = useCallback(
-    (cfg: StudyPlanConfig, catalog?: TopicCatalogEntry[]) => {
-      const p = generatePlan(cfg, catalog);
+    (
+      cfg: StudyPlanConfig,
+      catalog?: TopicCatalogEntry[],
+      mastery?: TopicMastery[],
+    ) => {
+      const p = generatePlan(cfg, catalog, mastery);
       write(p);
       setPlan(p);
       return p;
     },
     [],
   );
+
 
 
   const clearPlan = useCallback(() => {
