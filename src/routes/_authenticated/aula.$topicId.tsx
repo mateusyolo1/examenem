@@ -160,7 +160,7 @@ function LessonPlayer({
   });
 
   const submitMutation = useMutation({
-    mutationFn: (answers: { videoId: string; chosenIndex: number }[]) =>
+    mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
     onSuccess: () => setPhase("result"),
     onError: (e: Error) => toast.error(e.message),
