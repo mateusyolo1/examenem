@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { listStudyTopics } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search } from "lucide-react";
+import {
+  listStudyTopics,
+  listUserVideos,
+  addUserVideo,
+  deleteUserVideo,
+} from "@/lib/study.functions";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
@@ -209,6 +215,44 @@ function TopicSearches({ topic }: { topic: Topic }) {
   const channels = CHANNELS[topic.area] ?? [];
   const baseQuery = `${topic.title}${topic.subject ? " " + topic.subject : ""} ENEM`;
 
+  const listVideos = useServerFn(listUserVideos);
+  const addVideo = useServerFn(addUserVideo);
+  const removeVideo = useServerFn(deleteUserVideo);
+  const qc = useQueryClient();
+
+  const videosKey = ["user-study-videos", topic.id];
+  const { data: videosData } = useQuery({
+    queryKey: videosKey,
+    queryFn: () => listVideos({ data: { topicId: topic.id } }),
+  });
+  const videos = videosData?.videos ?? [];
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+
+  const addMutation = useMutation({
+    mutationFn: (input: { url: string; title?: string }) =>
+      addVideo({ data: { topicId: topic.id, url: input.url, title: input.title } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: videosKey });
+      setUrl("");
+      setTitle("");
+      setDialogOpen(false);
+      toast.success("Vídeo salvo na sua conta");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => removeVideo({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: videosKey });
+      toast.success("Vídeo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div>
       <header className="mb-6">
@@ -230,7 +274,69 @@ function TopicSearches({ topic }: { topic: Topic }) {
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">{topic.title}</h2>
       </header>
 
+      {/* Meus vídeos (por usuário) */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            Meus vídeos salvos
+          </h3>
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-foreground text-background rounded hover:opacity-90 transition-opacity"
+          >
+            <Plus size={14} />
+            Adicionar vídeo
+          </button>
+        </div>
+
+        {videos.length === 0 ? (
+          <div className="border border-dashed border-border rounded-md p-6 text-center bg-card">
+            <p className="text-sm text-muted-foreground">
+              Você ainda não salvou vídeos deste assunto. Cole um link do YouTube e assista aqui
+              mesmo.
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {videos.map((v) => (
+              <div
+                key={v.id}
+                className="border border-border bg-card rounded-md overflow-hidden group"
+              >
+                <div className="relative aspect-video bg-black">
+                  <iframe
+                    className="absolute inset-0 w-full h-full"
+                    src={`https://www.youtube.com/embed/${v.youtube_id}`}
+                    title={v.title ?? "Vídeo do YouTube"}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                  />
+                </div>
+                <div className="flex items-start justify-between gap-2 p-3">
+                  <div className="text-sm font-medium line-clamp-2 flex-1">
+                    {v.title ?? "Vídeo do YouTube"}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm("Remover este vídeo?")) deleteMutation.mutate(v.id);
+                    }}
+                    className="text-muted-foreground hover:text-red-600 transition-colors shrink-0"
+                    aria-label="Remover vídeo"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Busca geral em destaque */}
+      <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
+        Descubra no YouTube
+      </h3>
       <a
         href={ytSearchUrl(baseQuery)}
         target="_blank"
@@ -286,11 +392,92 @@ function TopicSearches({ topic }: { topic: Topic }) {
 
       <div className="mt-8 p-4 border border-dashed border-border rounded-md bg-card">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Dica:</strong> as buscas abrem direto no YouTube com
-          resultados reais e atualizados. Assim você sempre encontra as aulas mais recentes de cada
-          canal, sem risco de vídeos removidos ou links quebrados.
+          <strong className="text-foreground">Dica:</strong> encontrou um vídeo bom na busca?
+          Copie o link e clique em "Adicionar vídeo" acima para assistir direto no app.
         </p>
       </div>
+
+      {/* Add video dialog */}
+      {dialogOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => setDialogOpen(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-md w-full max-w-md p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold">Adicionar vídeo</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Salvo só na sua conta, em <strong>{topic.title}</strong>.
+                </p>
+              </div>
+              <button
+                onClick={() => setDialogOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!url.trim()) return;
+                addMutation.mutate({ url: url.trim(), title: title.trim() || undefined });
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
+                  Link do YouTube
+                </label>
+                <input
+                  type="url"
+                  required
+                  autoFocus
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
+                  Título (opcional)
+                </label>
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex.: Aula de funções — Prof. Ferretto"
+                  className="w-full px-3 py-2 border border-border bg-background rounded text-sm focus:outline-none focus:border-foreground"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDialogOpen(false)}
+                  className="px-4 py-2 text-sm rounded border border-border hover:bg-accent"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={addMutation.isPending || !url.trim()}
+                  className="px-4 py-2 text-sm font-semibold rounded bg-foreground text-background hover:opacity-90 disabled:opacity-50"
+                >
+                  {addMutation.isPending ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

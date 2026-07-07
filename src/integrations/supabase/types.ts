@@ -452,6 +452,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_study_videos: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          topic_id?: string
+          user_id?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_study_videos_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_video_progress: {
         Row: {
           created_at: string
