@@ -795,7 +795,6 @@ function TaskCard({
   const status = resolvedStatus(task);
   const done = status === "concluida";
   const late = status === "atrasada";
-  const cta = ctaFor(task);
   const style = TYPE_STYLES[task.type];
   const Icon = style.icon;
 
