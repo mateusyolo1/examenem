@@ -119,9 +119,11 @@ interface Slot {
   area: StudyTask["area"];
   minutes: number;
   title: (label: string) => string;
+  topicArea?: Area;
+  topicSlug?: string;
 }
 
-type Pick = { area: StudyTask["area"]; label: string };
+type Pick = { area: StudyTask["area"]; label: string; subjectId?: string };
 
 function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
   if (!cfg.subjects?.length) return null;
@@ -144,7 +146,7 @@ function makePicker(cfg: StudyPlanConfig): () => Pick {
     return () => {
       const s = subjectQueue[i % subjectQueue.length];
       i += 1;
-      return { area: s.area as Area, label: s.name };
+      return { area: s.area as Area, label: s.name, subjectId: s.id };
     };
   }
   const areaQueue = buildAreaQueue(cfg);
