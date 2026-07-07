@@ -256,18 +256,44 @@ function WatchingView({
 
   useEffect(() => {
     let cancelled = false;
-    let player: any = null;
+    let poll: ReturnType<typeof setInterval> | null = null;
     loadYouTubeApi().then((YT) => {
       if (cancelled || !iframeRef.current) return;
-      player = new YT.Player(iframeRef.current, {
+      const player = new YT.Player(iframeRef.current, {
         videoId: video.youtube_id,
-        playerVars: { rel: 0, modestbranding: 1 },
+        playerVars: {
+          rel: 0,
+          modestbranding: 1,
+          enablejsapi: 1,
+          origin: window.location.origin,
+        },
         events: {
+          onReady: () => {
+            poll = setInterval(() => {
+              try {
+                const p = playerRef.current;
+                if (!p || typeof p.getDuration !== "function") return;
+                const dur = p.getDuration();
+                const cur = p.getCurrentTime();
+                if (dur > 0 && cur > 0 && dur - cur <= 2) {
+                  onMarkWatched();
+                  if (poll) {
+                    clearInterval(poll);
+                    poll = null;
+                  }
+                }
+              } catch {}
+            }, 1000);
+          },
           onStateChange: (e: any) => {
             // 0 = ended
             if (e.data === 0) {
               onMarkWatched();
               toast.success("Vídeo concluído — marcado como assistido");
+              if (poll) {
+                clearInterval(poll);
+                poll = null;
+              }
             }
           },
         },
@@ -276,6 +302,7 @@ function WatchingView({
     });
     return () => {
       cancelled = true;
+      if (poll) clearInterval(poll);
       try {
         playerRef.current?.destroy?.();
       } catch {}
@@ -283,6 +310,7 @@ function WatchingView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.youtube_id]);
+
 
   return (
     <div className="space-y-6">
