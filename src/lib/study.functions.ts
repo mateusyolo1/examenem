@@ -251,7 +251,26 @@ Responda APENAS com JSON válido, sem cercas de código, no formato:
         suggestions = [];
       }
 
-      // Cache result for 30 days (default in table)
+      // Validate each video against YouTube oEmbed — filters removed,
+      // private, or non-embeddable IDs (the ones that render "Vídeo indisponível")
+      if (suggestions.length > 0) {
+        const checks = await Promise.all(
+          suggestions.map(async (s) => {
+            try {
+              const res = await fetch(
+                `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${s.youtube_id}&format=json`,
+                { method: "GET" },
+              );
+              return res.ok ? s : null;
+            } catch {
+              return null;
+            }
+          }),
+        );
+        suggestions = checks.filter((s): s is AiVideoSuggestion => s !== null);
+      }
+
+      // Cache result for 30 days (default in table) — only if we have valid videos
       if (suggestions.length > 0) {
         await supabaseAdmin.from("ai_response_cache").insert({
           cache_key: cacheKey,
@@ -260,6 +279,7 @@ Responda APENAS com JSON válido, sem cercas de código, no formato:
         });
       }
     }
+
 
     // Persist suggested videos (skip duplicates via unique constraint)
     if (suggestions.length > 0) {
