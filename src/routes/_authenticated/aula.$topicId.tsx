@@ -169,6 +169,8 @@ function LessonPlayer({
   const submit = useServerFn(submitLessonAttempt);
   const savePos = useServerFn(saveVideoPosition);
   const markWatchedFn = useServerFn(markVideoWatched);
+  const recordMastery = useServerFn(recordTopicMastery);
+
 
   // Pré-geração da atividade em background: assim que o aluno conclui
   // o 1º vídeo, começamos a montar o quiz (Gemini transcreve + gera perguntas
