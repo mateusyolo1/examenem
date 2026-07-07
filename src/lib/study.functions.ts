@@ -597,10 +597,21 @@ interface QuizQuestion {
   };
 }
 
+export interface LessonEssayTask {
+  title: string;
+  prompt: string;
+  focusSkill: string;
+  rubric: string[];
+  minWords: number;
+  maxWords: number;
+}
+
 interface LessonQuizPayload {
   questions: QuizQuestion[];
   skipped: { youtubeId: string; title: string; reason: string }[];
+  essayTask: LessonEssayTask | null;
 }
+
 
 export const buildLessonQuiz = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
