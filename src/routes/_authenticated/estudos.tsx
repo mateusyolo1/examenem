@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+
 import {
   listStudyTopics,
   listUserVideos,
@@ -245,6 +247,8 @@ function TopicSearches({ topic }: { topic: Topic }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
+  const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
+
 
   const addMutation = useMutation({
     mutationFn: (input: { url: string; title?: string }) =>
@@ -333,14 +337,13 @@ function TopicSearches({ topic }: { topic: Topic }) {
                     {v.title ?? "Vídeo do YouTube"}
                   </div>
                   <button
-                    onClick={() => {
-                      if (confirm("Remover este vídeo?")) deleteMutation.mutate(v.id);
-                    }}
+                    onClick={() => setVideoToDelete(v.id)}
                     className="text-muted-foreground hover:text-red-600 transition-colors shrink-0"
                     aria-label="Remover vídeo"
                   >
                     <Trash2 size={16} />
                   </button>
+
                 </div>
               </div>
             ))}
@@ -430,7 +433,21 @@ function TopicSearches({ topic }: { topic: Topic }) {
           addMutation.mutate({ url: url.trim(), title: title.trim() || undefined });
         }}
       />
+
+      <ConfirmDialog
+        open={videoToDelete !== null}
+        title="Remover este vídeo?"
+        description="O vídeo será apagado da sua lista de vídeos salvos deste assunto."
+        confirmLabel="Remover"
+        destructive
+        onConfirm={() => {
+          if (videoToDelete) deleteMutation.mutate(videoToDelete);
+          setVideoToDelete(null);
+        }}
+        onCancel={() => setVideoToDelete(null)}
+      />
     </div>
+
   );
 }
 
@@ -563,6 +580,8 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const qc = useQueryClient();
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
 
   const key = ["suggested-videos", topic.id];
   const { data, isLoading } = useQuery({
@@ -642,17 +661,14 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
                 {busy ? "Buscando…" : "Trocar sugestões"}
               </button>
               <button
-                onClick={() => {
-                  if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
-                    clearMutation.mutate();
-                  }
-                }}
+                onClick={() => setClearConfirmOpen(true)}
                 disabled={clearMutation.isPending}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
               >
                 <Trash2 size={14} />
                 {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
               </button>
+
             </>
           )}
           {!hasVideos && (
@@ -759,7 +775,21 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        title="Limpar lista de sugestões?"
+        description="Todos os vídeos sugeridos pela IA para este assunto serão removidos. Você poderá gerar novas sugestões depois."
+        confirmLabel="Limpar lista"
+        destructive
+        onConfirm={() => {
+          clearMutation.mutate();
+          setClearConfirmOpen(false);
+        }}
+        onCancel={() => setClearConfirmOpen(false)}
+      />
     </div>
+
   );
 }
 
@@ -789,6 +819,9 @@ function SuggestionHistoryModal({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -876,11 +909,7 @@ function SuggestionHistoryModal({
               Vídeos daqui não voltam a ser sugeridos.
             </p>
             <button
-              onClick={() => {
-                if (confirm("Apagar o histórico? Vídeos antigos poderão ser sugeridos novamente.")) {
-                  clearMutation.mutate();
-                }
-              }}
+              onClick={() => setConfirmClearOpen(true)}
               disabled={clearMutation.isPending}
               className="text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
             >
@@ -889,6 +918,20 @@ function SuggestionHistoryModal({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmClearOpen}
+        title="Apagar histórico de sugestões?"
+        description="Os vídeos removidos daqui poderão ser sugeridos novamente pela IA para este assunto."
+        confirmLabel="Apagar histórico"
+        destructive
+        onConfirm={() => {
+          clearMutation.mutate();
+          setConfirmClearOpen(false);
+        }}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
+
     </div>,
     document.body,
   );
