@@ -566,6 +566,47 @@ export type Database = {
           },
         ]
       }
+      user_video_suggestion_history: {
+        Row: {
+          channel_name: string | null
+          duration_seconds: number | null
+          id: string
+          suggested_at: string
+          title: string | null
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Insert: {
+          channel_name?: string | null
+          duration_seconds?: number | null
+          id?: string
+          suggested_at?: string
+          title?: string | null
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Update: {
+          channel_name?: string | null
+          duration_seconds?: number | null
+          id?: string
+          suggested_at?: string
+          title?: string | null
+          topic_id?: string
+          user_id?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_video_suggestion_history_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
