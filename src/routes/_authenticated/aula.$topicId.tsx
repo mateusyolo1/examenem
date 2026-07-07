@@ -263,6 +263,8 @@ function WatchingView({
   onStartQuiz,
   quizLoading,
   videos,
+  onSaveProgress,
+  resumeAt,
 }: {
   video: Video;
   current: number;
@@ -276,16 +278,33 @@ function WatchingView({
   onStartQuiz: () => void;
   quizLoading: boolean;
   videos: Video[];
+  onSaveProgress: (seconds: number) => void;
+  resumeAt: number;
 }) {
   const isWatched = watched.has(current);
   const isLast = current === total - 1;
   const canGoNext = isWatched;
   const iframeRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
+  const onSaveProgressRef = useRef(onSaveProgress);
+  onSaveProgressRef.current = onSaveProgress;
+  const resumeAtRef = useRef(resumeAt);
+  resumeAtRef.current = resumeAt;
 
   useEffect(() => {
     let cancelled = false;
     let poll: ReturnType<typeof setInterval> | null = null;
+    let saveTimer: ReturnType<typeof setInterval> | null = null;
+
+    const flush = () => {
+      try {
+        const p = playerRef.current;
+        if (!p || typeof p.getCurrentTime !== "function") return;
+        const cur = p.getCurrentTime();
+        if (cur > 1) onSaveProgressRef.current(cur);
+      } catch {}
+    };
+
     loadYouTubeApi().then((YT) => {
       if (cancelled || !iframeRef.current) return;
       const player = new YT.Player(iframeRef.current, {
@@ -295,9 +314,16 @@ function WatchingView({
           modestbranding: 1,
           enablejsapi: 1,
           origin: window.location.origin,
+          start: Math.max(0, Math.floor(resumeAtRef.current)),
         },
         events: {
-          onReady: () => {
+          onReady: (e: any) => {
+            try {
+              if (resumeAtRef.current > 3) e.target.seekTo(resumeAtRef.current, true);
+            } catch {}
+            // Save current position periodically
+            saveTimer = setInterval(flush, 5000);
+            // End-of-video detection fallback
             poll = setInterval(() => {
               try {
                 const p = playerRef.current;
@@ -315,7 +341,7 @@ function WatchingView({
             }, 1000);
           },
           onStateChange: (e: any) => {
-            // 0 = ended
+            // 0 = ended, 2 = paused
             if (e.data === 0) {
               onMarkWatched();
               toast.success("Vídeo concluído — marcado como assistido");
@@ -324,14 +350,24 @@ function WatchingView({
                 poll = null;
               }
             }
+            if (e.data === 2) flush();
           },
         },
       });
       playerRef.current = player;
     });
+
+    const onBeforeUnload = () => flush();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onBeforeUnload);
+
     return () => {
       cancelled = true;
+      flush();
       if (poll) clearInterval(poll);
+      if (saveTimer) clearInterval(saveTimer);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onBeforeUnload);
       try {
         playerRef.current?.destroy?.();
       } catch {}
@@ -339,6 +375,7 @@ function WatchingView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.youtube_id]);
+
 
 
   return (
