@@ -568,13 +568,15 @@ function parseJsonLoose<T>(text: string): T {
   return JSON.parse(slice) as T;
 }
 
+type SupabaseAdmin = Awaited<
+  typeof import("@/integrations/supabase/client.server")
+>["supabaseAdmin"];
+
 async function summarizeVideo(
   youtubeId: string,
   videoTitle: string,
   topicCtx: string,
-  supabaseAdmin: Awaited<
-    ReturnType<typeof import("@/integrations/supabase/client.server")>
-  >["supabaseAdmin"],
+  supabaseAdmin: SupabaseAdmin,
 ): Promise<VideoSummary> {
   const cacheKey = `video-summary:${youtubeId}`;
   const { data: cached } = await supabaseAdmin
