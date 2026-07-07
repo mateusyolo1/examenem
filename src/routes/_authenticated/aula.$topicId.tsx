@@ -255,6 +255,8 @@ function LessonPlayer({
             allWatched={allWatched}
             onStartQuiz={() => quizMutation.mutate()}
             quizLoading={quizMutation.isPending}
+            quizPrefetching={!!prefetchRef.current && !prefetchReady}
+            quizPrefetchReady={prefetchReady}
             videos={videos}
             onSaveProgress={(seconds) =>
               savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
@@ -263,6 +265,7 @@ function LessonPlayer({
             }
             resumeAt={video.watch_seconds ?? 0}
           />
+
 
         )}
 
