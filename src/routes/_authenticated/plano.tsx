@@ -866,19 +866,13 @@ function TaskCard({
             </>
           )}
         </button>
-        {cta && !done ? (
-          <Link
-            to={cta.to}
-            className="inline-flex items-center justify-center gap-1 w-full min-h-8 text-xs font-semibold text-primary hover:underline"
-          >
-            {cta.label}
-            <ArrowRight size={12} aria-hidden />
-          </Link>
-        ) : done ? (
+        {done ? (
           <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 size={12} aria-hidden /> Concluída
           </span>
-        ) : null}
+        ) : (
+          <TaskCta task={task} />
+        )}
       </div>
       {/* keep variable referenced for future highlight rules */}
       <span className="sr-only">{isPastDay ? "Dia passado" : ""}</span>
