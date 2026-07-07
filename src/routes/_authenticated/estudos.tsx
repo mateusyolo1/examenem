@@ -580,6 +580,8 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const qc = useQueryClient();
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
 
   const key = ["suggested-videos", topic.id];
   const { data, isLoading } = useQuery({
