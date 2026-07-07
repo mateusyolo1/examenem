@@ -176,12 +176,27 @@ export const markVideoWatched = createServerFn({ method: "POST" })
 // Uses Gemini via Lovable AI Gateway to return YouTube video IDs from
 // known BR education channels. Cached in ai_response_cache to save credits.
 // ============================================================
-const suggestInput = z.object({ topicId: z.string().uuid() });
+const suggestInput = z.object({
+  topicId: z.string().uuid(),
+  maxMinutes: z.number().int().min(5).max(720).optional(),
+});
 
 interface AiVideoSuggestion {
   youtube_id: string;
   title: string;
   channel_name: string;
+  duration_seconds: number | null;
+}
+
+// Parses YouTube length strings like "10:32" or "1:02:15" → seconds.
+function parseLengthText(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const parts = text.split(":").map((p) => parseInt(p, 10));
+  if (parts.some((n) => !Number.isFinite(n))) return null;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1) return parts[0];
+  return null;
 }
 
 export const suggestVideosForTopic = createServerFn({ method: "POST" })
@@ -189,6 +204,8 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => suggestInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    const maxMinutes = data.maxMinutes ?? 120;
+    const maxSeconds = maxMinutes * 60;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: topic, error: tErr } = await supabase
@@ -198,7 +215,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       .single();
     if (tErr) throw new Error(tErr.message);
 
-    const cacheKey = `video-suggestions:${topic.id}`;
+    const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
     const { data: cached } = await supabase
       .from("ai_response_cache")
       .select("response")
@@ -250,14 +267,21 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
                 v.longBylineText?.runs?.[0]?.text ??
                 "";
               if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
+              const lengthText: string | undefined =
+                v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
+              const duration = parseLengthText(lengthText);
+              // Skip live streams / unknown-length entries — they can't be
+              // budgeted against the daily study time.
+              if (duration == null || duration <= 0) continue;
               parsed.push({
                 youtube_id: v.videoId,
                 title,
                 channel_name: channel,
+                duration_seconds: duration,
               });
-              if (parsed.length >= 20) break;
+              if (parsed.length >= 30) break;
             }
-            if (parsed.length >= 20) break;
+            if (parsed.length >= 30) break;
           }
         } catch {
           /* ignore parse errors */
@@ -279,7 +303,31 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       }
 
       const unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
-      suggestions = unique.slice(0, 6);
+
+      // Budget selection: fit as many videos as possible under maxSeconds,
+      // skipping any single video that already exceeds the daily budget.
+      // Always try to keep at least 3 to unlock "Iniciar aula".
+      const fits: AiVideoSuggestion[] = [];
+      let running = 0;
+      for (const v of unique) {
+        const d = v.duration_seconds ?? 0;
+        if (d > maxSeconds) continue;
+        if (running + d > maxSeconds) break;
+        fits.push(v);
+        running += d;
+        if (fits.length >= 6) break;
+      }
+      // Fallback: if the budget is very tight and we got <3, take the 3
+      // shortest videos so the lesson can still be started.
+      if (fits.length < 3) {
+        const shortest = [...unique]
+          .filter((v) => (v.duration_seconds ?? Infinity) <= maxSeconds)
+          .sort((a, b) => (a.duration_seconds ?? 0) - (b.duration_seconds ?? 0))
+          .slice(0, 3);
+        suggestions = shortest;
+      } else {
+        suggestions = fits;
+      }
 
       if (suggestions.length > 0) {
         await supabaseAdmin.from("ai_response_cache").insert({
@@ -297,6 +345,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         youtube_id: s.youtube_id,
         title: s.title,
         channel_name: s.channel_name,
+        duration_seconds: s.duration_seconds ?? null,
         source: "ai" as const,
         sort_order: 100 + i,
         suggested_at: new Date().toISOString(),
@@ -306,7 +355,12 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         .upsert(rows, { onConflict: "topic_id,youtube_id", ignoreDuplicates: true });
     }
 
-    return { added: suggestions.length };
+    const totalSeconds = suggestions.reduce((s, v) => s + (v.duration_seconds ?? 0), 0);
+    return {
+      added: suggestions.length,
+      totalMinutes: Math.round(totalSeconds / 60),
+      maxMinutes,
+    };
   });
 
 // ============================================================
@@ -326,7 +380,7 @@ export const clearSuggestedVideos = createServerFn({ method: "POST" })
     await supabaseAdmin
       .from("ai_response_cache")
       .delete()
-      .eq("cache_key", `video-suggestions:${data.topicId}`);
+      .like("cache_key", `video-suggestions:${data.topicId}%`);
     return { ok: true };
   });
 
