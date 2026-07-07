@@ -89,7 +89,9 @@ function ChooseSimulado({ onStart }: { onStart: (id: string) => void }) {
   const exams = examsData?.exams ?? [];
   const years = useMemo(() => {
     const set = new Set<number>();
-    exams.forEach((e) => set.add(e.year));
+    exams.forEach((e) => {
+      if (e.year >= 2016 && e.year <= 2025) set.add(e.year);
+    });
     return Array.from(set).sort((a, b) => b - a);
   }, [exams]);
 
