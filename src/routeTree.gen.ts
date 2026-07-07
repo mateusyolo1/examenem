@@ -25,6 +25,7 @@ import { Route as AuthenticatedMateriasRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedEstudosRouteImport } from './routes/_authenticated/estudos'
 import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
+import { Route as AuthenticatedEstudosAulaTopicIdRouteImport } from './routes/_authenticated/estudos.aula.$topicId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -107,13 +108,19 @@ const AuthenticatedConfiguracoesRoute =
     path: '/configuracoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedEstudosAulaTopicIdRoute =
+  AuthenticatedEstudosAulaTopicIdRouteImport.update({
+    id: '/aula/$topicId',
+    path: '/aula/$topicId',
+    getParentRoute: () => AuthenticatedEstudosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
-  '/estudos': typeof AuthenticatedEstudosRoute
+  '/estudos': typeof AuthenticatedEstudosRouteWithChildren
   '/materias': typeof AuthenticatedMateriasRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -124,12 +131,13 @@ export interface FileRoutesByFullPath {
   '/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
+  '/estudos/aula/$topicId': typeof AuthenticatedEstudosAulaTopicIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
-  '/estudos': typeof AuthenticatedEstudosRoute
+  '/estudos': typeof AuthenticatedEstudosRouteWithChildren
   '/materias': typeof AuthenticatedMateriasRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -141,6 +149,7 @@ export interface FileRoutesByTo {
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
   '/': typeof AuthenticatedIndexRoute
+  '/estudos/aula/$topicId': typeof AuthenticatedEstudosAulaTopicIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,7 +157,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
-  '/_authenticated/estudos': typeof AuthenticatedEstudosRoute
+  '/_authenticated/estudos': typeof AuthenticatedEstudosRouteWithChildren
   '/_authenticated/materias': typeof AuthenticatedMateriasRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
@@ -160,6 +169,7 @@ export interface FileRoutesById {
   '/_authenticated/temas': typeof AuthenticatedTemasRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/estudos/aula/$topicId': typeof AuthenticatedEstudosAulaTopicIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/simulados-reais'
     | '/temas'
     | '/tutor'
+    | '/estudos/aula/$topicId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/tutor'
     | '/'
+    | '/estudos/aula/$topicId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -214,6 +226,7 @@ export interface FileRouteTypes {
     | '/_authenticated/temas'
     | '/_authenticated/tutor'
     | '/_authenticated/'
+    | '/_authenticated/estudos/aula/$topicId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -335,13 +348,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/estudos/aula/$topicId': {
+      id: '/_authenticated/estudos/aula/$topicId'
+      path: '/aula/$topicId'
+      fullPath: '/estudos/aula/$topicId'
+      preLoaderRoute: typeof AuthenticatedEstudosAulaTopicIdRouteImport
+      parentRoute: typeof AuthenticatedEstudosRoute
+    }
   }
 }
+
+interface AuthenticatedEstudosRouteChildren {
+  AuthenticatedEstudosAulaTopicIdRoute: typeof AuthenticatedEstudosAulaTopicIdRoute
+}
+
+const AuthenticatedEstudosRouteChildren: AuthenticatedEstudosRouteChildren = {
+  AuthenticatedEstudosAulaTopicIdRoute: AuthenticatedEstudosAulaTopicIdRoute,
+}
+
+const AuthenticatedEstudosRouteWithChildren =
+  AuthenticatedEstudosRoute._addFileChildren(AuthenticatedEstudosRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
-  AuthenticatedEstudosRoute: typeof AuthenticatedEstudosRoute
+  AuthenticatedEstudosRoute: typeof AuthenticatedEstudosRouteWithChildren
   AuthenticatedMateriasRoute: typeof AuthenticatedMateriasRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
@@ -358,7 +389,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
-  AuthenticatedEstudosRoute: AuthenticatedEstudosRoute,
+  AuthenticatedEstudosRoute: AuthenticatedEstudosRouteWithChildren,
   AuthenticatedMateriasRoute: AuthenticatedMateriasRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
