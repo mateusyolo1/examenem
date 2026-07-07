@@ -453,15 +453,33 @@ function WatchingView({
         </button>
 
         {isLast ? (
-          <button
-            onClick={onStartQuiz}
-            disabled={!allWatched || quizLoading}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40"
-          >
-            <ClipboardList size={14} />
-            {quizLoading ? "Preparando atividade…" : "Fazer atividade"}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={onStartQuiz}
+              disabled={!allWatched || quizLoading}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              <ClipboardList size={14} />
+              {quizLoading ? "Preparando atividade…" : "Fazer atividade"}
+            </button>
+            {allWatched && !quizLoading && (
+              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                {quizPrefetchReady ? (
+                  <>
+                    <Check size={10} className="text-emerald-600 dark:text-emerald-400" />
+                    Atividade pronta
+                  </>
+                ) : quizPrefetching ? (
+                  <>
+                    <Sparkles size={10} className="animate-pulse" />
+                    Preparando em segundo plano…
+                  </>
+                ) : null}
+              </span>
+            )}
+          </div>
         ) : (
+
           <button
             onClick={onNext}
             disabled={!canGoNext}
