@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ import {
   clearSuggestedVideos,
 
 } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
@@ -592,7 +592,17 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
         <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
           Vídeos sugeridos
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {videos.length >= 3 && (
+            <Link
+              to="/estudos/aula/$topicId"
+              params={{ topicId: topic.id }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+            >
+              <GraduationCap size={14} />
+              Iniciar aula
+            </Link>
+          )}
           {videos.length > 0 && (
             <button
               onClick={() => {
@@ -616,6 +626,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
             {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
           </button>
         </div>
+
       </div>
 
 
