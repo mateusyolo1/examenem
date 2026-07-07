@@ -529,10 +529,15 @@ function QuizView({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Sparkles size={16} className="text-primary" />
-        <h2 className="text-lg font-semibold">Atividade baseada nas aulas</h2>
+    <div className="max-w-3xl mx-auto space-y-8">
+      <div className="space-y-2">
+        <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary">
+          <Sparkles size={14} /> Atividade
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight">Atividade baseada nas aulas</h2>
+        <p className="text-sm text-muted-foreground">
+          Responda uma questão por vídeo. Escolha a alternativa que melhor completa o enunciado.
+        </p>
       </div>
 
       {payload.skipped.length > 0 && (
@@ -542,38 +547,69 @@ function QuizView({
         </div>
       )}
 
-      <ol className="space-y-5">
-        {payload.questions.map((q, i) => (
-          <li key={q.videoId} className="border border-border bg-card rounded-md p-4">
-            <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1">
-              Questão {i + 1} · sobre "{q.videoTitle}"
-            </div>
-            <p className="text-sm font-medium mb-3">{q.question}</p>
-            <div className="space-y-1.5">
-              {q.options.map((opt, idx) => {
-                const selected = choices[q.videoId] === idx;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setChoices({ ...choices, [q.videoId]: idx })}
-                    className={
-                      "w-full text-left px-3 py-2 rounded border text-sm transition-colors " +
-                      (selected
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-accent")
-                    }
-                  >
-                    <span className="font-mono text-xs text-muted-foreground mr-2">
-                      {String.fromCharCode(65 + idx)})
+      <ol className="space-y-8">
+        {payload.questions.map((q, i) => {
+          const answered = choices[q.videoId] !== undefined;
+          return (
+            <li
+              key={q.videoId}
+              className="border border-border bg-card rounded-lg p-6 sm:p-8 space-y-5 shadow-sm"
+            >
+              <header className="space-y-3 pb-4 border-b border-border">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <span className="inline-grid place-items-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold">
+                      {i + 1}
                     </span>
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          </li>
-        ))}
+                    Questão {i + 1} de {payload.questions.length}
+                  </span>
+                  {answered && (
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                      <Check size={12} /> Respondida
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70 line-clamp-1">
+                  Sobre: {q.videoTitle}
+                </p>
+              </header>
+
+              <p className="text-base leading-relaxed text-foreground">{q.question}</p>
+
+              <div className="space-y-2.5 pt-1">
+                {q.options.map((opt, idx) => {
+                  const selected = choices[q.videoId] === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setChoices({ ...choices, [q.videoId]: idx })}
+                      className={
+                        "w-full text-left flex items-start gap-3 px-4 py-3.5 rounded-md border transition-colors " +
+                        (selected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "border-border hover:bg-accent hover:border-border")
+                      }
+                    >
+                      <span
+                        className={
+                          "shrink-0 mt-0.5 w-7 h-7 rounded-full grid place-items-center text-xs font-mono font-semibold border transition-colors " +
+                          (selected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted text-muted-foreground")
+                        }
+                      >
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span className="text-sm leading-relaxed pt-1">{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </li>
+          );
+        })}
       </ol>
+
 
       <div className="flex justify-end">
         <button
