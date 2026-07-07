@@ -548,7 +548,7 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
     const { supabase } = context;
     const { data: topic, error: tErr } = await supabase
       .from("study_topics")
-      .select("id, title, subject")
+      .select("id, title, subject, area")
       .eq("id", data.topicId)
       .single();
     if (tErr) throw new Error(tErr.message);
