@@ -279,6 +279,9 @@ export function Nav() {
                 );
               })}
             </ul>
+            <div className="px-3 pb-3 border-t border-border pt-3">
+              <UserMenu />
+            </div>
           </div>
         </div>
       )}
