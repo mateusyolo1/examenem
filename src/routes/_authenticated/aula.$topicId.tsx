@@ -517,17 +517,17 @@ function QuizView({
   submitting,
 }: {
   payload: QuizPayload;
-  onSubmit: (a: { videoId: string; chosenIndex: number }[]) => void;
+  onSubmit: (a: { questionId: string; chosenIndex: number }[]) => void;
   submitting: boolean;
 }) {
   const [choices, setChoices] = useState<Record<string, number>>({});
 
-  const allAnswered = payload.questions.every((q) => choices[q.videoId] !== undefined);
+  const allAnswered = payload.questions.every((q) => choices[q.id] !== undefined);
 
   const submit = () => {
     const answers = payload.questions.map((q) => ({
-      videoId: q.videoId,
-      chosenIndex: choices[q.videoId],
+      questionId: q.id,
+      chosenIndex: choices[q.id],
     }));
     onSubmit(answers);
   };
@@ -540,14 +540,14 @@ function QuizView({
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Atividade baseada nas aulas</h2>
         <p className="text-sm text-muted-foreground">
-          Responda uma questão por vídeo. Escolha a alternativa que melhor completa o enunciado.
+          {payload.questions.length} questões cobrindo o conteúdo dos vídeos que você acabou de assistir.
         </p>
       </div>
 
       {payload.skipped.length > 0 && (
         <div className="border border-dashed border-border rounded-md p-3 text-xs text-muted-foreground bg-card">
-          Não foi possível gerar questão para {payload.skipped.length} vídeo(s):{" "}
-          {payload.skipped.map((s) => s.title).join(", ")} (sem legendas disponíveis).
+          Não foi possível analisar {payload.skipped.length} vídeo(s):{" "}
+          {payload.skipped.map((s) => s.title).join(", ")}.
         </div>
       )}
 
