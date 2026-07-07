@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics } from "@/lib/study.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
-import { useQuery as useRQ } from "@tanstack/react-query";
+
 import {
   CalendarDays,
   CheckCircle2,
