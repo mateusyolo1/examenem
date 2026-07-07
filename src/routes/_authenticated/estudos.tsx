@@ -820,6 +820,9 @@ function SuggestionHistoryModal({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
