@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { listStudyTopics } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search } from "lucide-react";
+import {
+  listStudyTopics,
+  listUserVideos,
+  addUserVideo,
+  deleteUserVideo,
+} from "@/lib/study.functions";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
