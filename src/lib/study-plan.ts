@@ -170,6 +170,7 @@ type Pick = {
 
 function buildTopicQueuesByArea(
   catalog: TopicCatalogEntry[] | undefined,
+  mastery?: TopicMastery[],
 ): Record<Area, TopicCatalogEntry[]> {
   const out: Record<Area, TopicCatalogEntry[]> = {
     linguagens: [],
@@ -178,12 +179,34 @@ function buildTopicQueuesByArea(
     matematica: [],
   };
   if (!catalog) return out;
+  // Skip tópicos dominados cujo next_review_at ainda é no futuro.
+  const now = Date.now();
+  const skip = new Set<string>();
+  if (mastery) {
+    for (const m of mastery) {
+      if (m.mastered && new Date(m.next_review_at).getTime() > now) {
+        skip.add(m.topic_slug);
+      }
+    }
+  }
   for (const t of catalog) {
-    if (t.area in out) out[t.area].push(t);
+    if (!(t.area in out)) continue;
+    if (skip.has(t.slug)) continue;
+    out[t.area].push(t);
   }
   (Object.keys(out) as Area[]).forEach((a) =>
     out[a].sort((x, y) => x.sort_order - y.sort_order),
   );
+  // Se todos os tópicos de uma área foram pulados, cai no catálogo cheio
+  // dessa área (o aluno ainda precisa estudar algo lá).
+  (Object.keys(out) as Area[]).forEach((a) => {
+    if (out[a].length === 0) {
+      const fallback = catalog
+        .filter((t) => t.area === a)
+        .sort((x, y) => x.sort_order - y.sort_order);
+      out[a] = fallback;
+    }
+  });
   return out;
 }
 
@@ -204,8 +227,9 @@ function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
 function makePicker(
   cfg: StudyPlanConfig,
   catalog: TopicCatalogEntry[] | undefined,
+  mastery: TopicMastery[] | undefined,
 ): () => Pick {
-  const topicsByArea = buildTopicQueuesByArea(catalog);
+  const topicsByArea = buildTopicQueuesByArea(catalog, mastery);
   const topicIdx: Record<Area, number> = {
     linguagens: 0,
     humanas: 0,
@@ -239,7 +263,7 @@ function makePicker(
       };
     };
   }
-  const areaQueue = buildAreaQueue(cfg);
+  const areaQueue = buildAreaQueue(cfg, mastery);
   let i = 0;
   return () => {
     const a = areaQueue[i % areaQueue.length];
@@ -254,6 +278,7 @@ function makePicker(
     };
   };
 }
+
 
 function dayTemplate(
   weekday: number,
