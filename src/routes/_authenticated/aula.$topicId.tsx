@@ -37,7 +37,10 @@ import {
   getLessonPlaylist,
   buildLessonQuiz,
   submitLessonAttempt,
+  saveVideoPosition,
+  markVideoWatched,
 } from "@/lib/study.functions";
+
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
   component: LessonPage,
