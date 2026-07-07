@@ -206,6 +206,8 @@ function dayTemplate(
           area: p1.area,
           minutes: 50,
           title: () => `Teoria de ${p1.label}`,
+          topicArea: p1.area === "geral" || p1.area === "redacao" ? undefined : (p1.area as Area),
+          topicSlug: p1.subjectId ? SUBJECT_TO_TOPIC_SLUG[p1.subjectId] : undefined,
         },
         {
           type: "questoes",
