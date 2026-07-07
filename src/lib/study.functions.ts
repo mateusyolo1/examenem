@@ -176,12 +176,27 @@ export const markVideoWatched = createServerFn({ method: "POST" })
 // Uses Gemini via Lovable AI Gateway to return YouTube video IDs from
 // known BR education channels. Cached in ai_response_cache to save credits.
 // ============================================================
-const suggestInput = z.object({ topicId: z.string().uuid() });
+const suggestInput = z.object({
+  topicId: z.string().uuid(),
+  maxMinutes: z.number().int().min(5).max(720).optional(),
+});
 
 interface AiVideoSuggestion {
   youtube_id: string;
   title: string;
   channel_name: string;
+  duration_seconds: number | null;
+}
+
+// Parses YouTube length strings like "10:32" or "1:02:15" → seconds.
+function parseLengthText(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const parts = text.split(":").map((p) => parseInt(p, 10));
+  if (parts.some((n) => !Number.isFinite(n))) return null;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1) return parts[0];
+  return null;
 }
 
 export const suggestVideosForTopic = createServerFn({ method: "POST" })
@@ -189,6 +204,8 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => suggestInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    const maxMinutes = data.maxMinutes ?? 120;
+    const maxSeconds = maxMinutes * 60;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: topic, error: tErr } = await supabase
