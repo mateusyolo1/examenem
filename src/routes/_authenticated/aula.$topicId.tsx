@@ -196,6 +196,18 @@ function LessonPlayer({
         toast.error("Não foi possível gerar a atividade agora. Tente novamente em instantes.");
         return;
       }
+      // Cache essayTask so /plano can propose "Escrever sobre esta aula"
+      // for the next redação task in the cronograma.
+      if (r.essayTask) {
+        saveLastEssayTask({
+          topicId,
+          topicTitle,
+          area: topicArea,
+          essayTitle: r.essayTask.title,
+          focusSkill: r.essayTask.focusSkill,
+          savedAt: Date.now(),
+        });
+      }
       setPhase("quiz");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -205,7 +217,12 @@ function LessonPlayer({
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
-    onSuccess: () => setPhase("result"),
+    onSuccess: () => {
+      // Auto-complete the linked schedule task, if this aula was opened
+      // from /plano.
+      if (taskId) markPlanTaskDone(taskId);
+      setPhase("result");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
