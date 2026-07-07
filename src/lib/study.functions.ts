@@ -345,6 +345,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         youtube_id: s.youtube_id,
         title: s.title,
         channel_name: s.channel_name,
+        duration_seconds: s.duration_seconds ?? null,
         source: "ai" as const,
         sort_order: 100 + i,
         suggested_at: new Date().toISOString(),
