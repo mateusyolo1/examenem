@@ -19,10 +19,11 @@ import {
   listSuggestionHistory,
   clearSuggestionHistory,
   resolveStudyTopic,
+  listTopicMastery,
 
 } from "@/lib/study.functions";
 import { useStudyPlan, weekDates, dateLabel, areaLabel } from "@/lib/study-plan";
-import type { StudyTask } from "@/lib/study-plan";
+import type { StudyTask, TopicMastery } from "@/lib/study-plan";
 import { CalendarCheck } from "lucide-react";
 import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
