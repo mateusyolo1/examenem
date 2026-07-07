@@ -155,6 +155,8 @@ function EstudosPage() {
             </p>
           </header>
 
+          <WeekPlanTopics />
+
           {/* Assuntos - barra horizontal no topo */}
           <div className="border border-border bg-card p-4 rounded-md mb-6">
             <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
