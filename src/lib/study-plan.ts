@@ -275,6 +275,8 @@ export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
         type: s.type,
         minutes: Math.max(15, Math.round(s.minutes * scale)),
         status: "pendente",
+        topicSlug: s.topicSlug,
+        topicArea: s.topicArea,
       });
     });
   }
