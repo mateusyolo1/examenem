@@ -10,8 +10,11 @@ import {
   listUserVideos,
   addUserVideo,
   deleteUserVideo,
+  listVideosForTopic,
+  suggestVideosForTopic,
+  markVideoWatched,
 } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
@@ -334,6 +337,9 @@ function TopicSearches({ topic }: { topic: Topic }) {
         )}
       </div>
 
+      {/* Vídeos sugeridos (curados + IA) com player embutido */}
+      <SuggestedVideos topic={topic} />
+
       {/* Busca geral em destaque */}
       <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
         Descubra no YouTube
@@ -535,5 +541,115 @@ function AddVideoDialog({
       </div>
     </div>,
     document.body,
+  );
+}
+
+function SuggestedVideos({ topic }: { topic: Topic }) {
+  const listSuggested = useServerFn(listVideosForTopic);
+  const suggest = useServerFn(suggestVideosForTopic);
+  const markWatched = useServerFn(markVideoWatched);
+  const qc = useQueryClient();
+
+  const key = ["suggested-videos", topic.id];
+  const { data, isLoading } = useQuery({
+    queryKey: key,
+    queryFn: () => listSuggested({ data: { topicId: topic.id } }),
+  });
+  const videos = data?.videos ?? [];
+
+  const suggestMutation = useMutation({
+    mutationFn: () => suggest({ data: { topicId: topic.id } }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: key });
+      if (r?.added > 0) toast.success(`${r.added} novos vídeos sugeridos`);
+      else toast.info("Nenhuma sugestão nova desta vez");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const watchedMutation = useMutation({
+    mutationFn: (v: { id: string; watched: boolean }) =>
+      markWatched({ data: { videoId: v.id, watched: v.watched } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+          Vídeos sugeridos
+        </h3>
+        <button
+          onClick={() => suggestMutation.mutate()}
+          disabled={suggestMutation.isPending}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
+        >
+          <Sparkles size={14} />
+          {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="border border-dashed border-border rounded-md p-6 text-center bg-card">
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="border border-dashed border-border rounded-md p-6 text-center bg-card">
+          <p className="text-sm text-muted-foreground">
+            Ainda não há vídeos sugeridos para este assunto. Clique em{" "}
+            <strong>Sugerir com IA</strong> para gerar recomendações.
+          </p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {videos.map((v) => (
+            <div
+              key={v.id}
+              className="border border-border bg-card rounded-md overflow-hidden"
+            >
+              <div className="relative aspect-video bg-black">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src={`https://www.youtube.com/embed/${v.youtube_id}`}
+                  title={v.title ?? "Vídeo do YouTube"}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium line-clamp-2">
+                      {v.title ?? "Vídeo do YouTube"}
+                    </div>
+                    {v.channel_name && (
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {v.channel_name}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() =>
+                      watchedMutation.mutate({ id: v.id, watched: !v.watched })
+                    }
+                    className={
+                      "shrink-0 inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors " +
+                      (v.watched
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                        : "border-border text-muted-foreground hover:text-foreground")
+                    }
+                    aria-label={v.watched ? "Marcar como não assistido" : "Marcar como assistido"}
+                  >
+                    <Check size={12} />
+                    {v.watched ? "Assistido" : "Marcar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
