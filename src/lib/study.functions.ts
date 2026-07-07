@@ -55,6 +55,92 @@ export const resolveStudyTopic = createServerFn({ method: "POST" })
     throw new Error("Nenhum tópico correspondente foi encontrado.");
   });
 
+// ============================================================
+// Topic mastery (Abordagem 3) — grava desempenho por tópico e alimenta
+// o cronograma para pular dominados, injetar revisões espaçadas e ajustar
+// pesos por área.
+// ============================================================
+const MASTERY_AREA = z.enum(["linguagens", "humanas", "natureza", "matematica"]);
+
+function nextReviewFromScore(score: number): { nextReviewAt: string; mastered: boolean } {
+  const now = new Date();
+  let days = 3;
+  let mastered = false;
+  if (score >= 0.8) {
+    days = 14;
+    mastered = true;
+  } else if (score >= 0.6) {
+    days = 7;
+  }
+  const next = new Date(now);
+  next.setDate(next.getDate() + days);
+  return { nextReviewAt: next.toISOString(), mastered };
+}
+
+export const recordTopicMastery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        topicSlug: z.string().min(1).max(80),
+        area: MASTERY_AREA,
+        score: z.number().min(0).max(1),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { nextReviewAt, mastered } = nextReviewFromScore(data.score);
+    const nowIso = new Date().toISOString();
+    // Upsert: se existe, incrementa attempts.
+    const { data: existing } = await context.supabase
+      .from("topic_mastery")
+      .select("id, attempts")
+      .eq("user_id", context.userId)
+      .eq("topic_slug", data.topicSlug)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await context.supabase
+        .from("topic_mastery")
+        .update({
+          area: data.area,
+          last_score: data.score,
+          attempts: (existing.attempts ?? 0) + 1,
+          last_seen_at: nowIso,
+          next_review_at: nextReviewAt,
+          mastered,
+        })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase.from("topic_mastery").insert({
+        user_id: context.userId,
+        topic_slug: data.topicSlug,
+        area: data.area,
+        last_score: data.score,
+        attempts: 1,
+        last_seen_at: nowIso,
+        next_review_at: nextReviewAt,
+        mastered,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, mastered, nextReviewAt };
+  });
+
+export const listTopicMastery = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("topic_mastery")
+      .select("topic_slug, area, last_score, attempts, last_seen_at, next_review_at, mastered")
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { mastery: data ?? [] };
+  });
+
+
+
 
 // ============================================================
 // User-owned videos (per topic, saved to the user's account)
