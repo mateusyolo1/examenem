@@ -228,9 +228,10 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => suggestInput.parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const maxMinutes = data.maxMinutes ?? 120;
     const maxSeconds = maxMinutes * 60;
+    const forceRefresh = !!data.forceRefresh;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: topic, error: tErr } = await supabase
@@ -241,21 +242,29 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     if (tErr) throw new Error(tErr.message);
 
     const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
-    const { data: cached } = await supabase
-      .from("ai_response_cache")
-      .select("response")
-      .eq("cache_key", cacheKey)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
 
-    let suggestions: AiVideoSuggestion[];
-    if (cached) {
-      suggestions = (cached.response as unknown as { suggestions: AiVideoSuggestion[] }).suggestions;
-    } else {
-      // Query prioritizes the specific topic title (in quotes) so YouTube
-      // doesn't fall back to generic subject-level videos that overlap with
-      // sibling topics under the same subject.
-      const query = `"${topic.title}" ${topic.subject ?? ""} ENEM aula explicação`.trim();
+    // C) forceRefresh: pula leitura de cache; senão tenta cache antes.
+    let suggestions: AiVideoSuggestion[] | null = null;
+    if (!forceRefresh) {
+      const { data: cached } = await supabase
+        .from("ai_response_cache")
+        .select("response")
+        .eq("cache_key", cacheKey)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (cached) {
+        suggestions = (cached.response as unknown as { suggestions: AiVideoSuggestion[] })
+          .suggestions;
+      }
+    }
+
+    if (!suggestions) {
+      // B) rotação de sufixo — força a busca a variar entre chamadas.
+      const seed = forceRefresh
+        ? Math.floor(Math.random() * SEARCH_SUFFIXES.length)
+        : 0;
+      const suffix = pickSuffix(seed);
+      const query = `"${topic.title}" ${topic.subject ?? ""} ${suffix}`.trim();
 
       const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
       let html = "";
@@ -272,7 +281,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         html = "";
       }
 
-      // Extract up to ~20 candidates so we still have 6 after de-duplication
       const parsed: AiVideoSuggestion[] = [];
       const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
       if (match) {
@@ -295,8 +303,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
               const lengthText: string | undefined =
                 v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
               const duration = parseLengthText(lengthText);
-              // Skip live streams / unknown-length entries — they can't be
-              // budgeted against the daily study time.
               if (duration == null || duration <= 0) continue;
               parsed.push({
                 youtube_id: v.videoId,
@@ -313,9 +319,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         }
       }
 
-      // De-duplicate against videos already used by AI in any other topic —
-      // avoids the same video appearing in "Interpretação de Texto" and
-      // "Gramática" just because both share the Português subject.
+      // De-dup contra vídeos AI já usados em OUTROS tópicos (global).
       const candidateIds = parsed.map((p) => p.youtube_id);
       const usedIds = new Set<string>();
       if (candidateIds.length > 0) {
@@ -327,11 +331,32 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         for (const row of existing ?? []) usedIds.add(row.youtube_id);
       }
 
-      const unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
+      // D) exclui vídeos que já apareceram para ESTE usuário neste tópico.
+      const historyIds = new Set<string>();
+      if (candidateIds.length > 0) {
+        const { data: history } = await supabase
+          .from("user_video_suggestion_history")
+          .select("youtube_id")
+          .eq("user_id", userId)
+          .eq("topic_id", topic.id)
+          .in("youtube_id", candidateIds);
+        for (const row of history ?? []) historyIds.add(row.youtube_id);
+      }
 
-      // Budget selection: fit as many videos as possible under maxSeconds,
-      // skipping any single video that already exceeds the daily budget.
-      // Always try to keep at least 3 to unlock "Iniciar aula".
+      let unique = parsed.filter(
+        (p) => !usedIds.has(p.youtube_id) && !historyIds.has(p.youtube_id),
+      );
+
+      // A) embaralha para variar a seleção mesmo quando a query volta igual.
+      if (forceRefresh) unique = shuffleInPlace([...unique]);
+
+      // Fallback: se o histórico esvaziou a lista, permite reutilizar vídeos
+      // do histórico (mas ainda evita colisão com outros tópicos).
+      if (unique.length < 3) {
+        const relaxed = parsed.filter((p) => !usedIds.has(p.youtube_id));
+        unique = forceRefresh ? shuffleInPlace([...relaxed]) : relaxed;
+      }
+
       const fits: AiVideoSuggestion[] = [];
       let running = 0;
       for (const v of unique) {
@@ -342,8 +367,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         running += d;
         if (fits.length >= 6) break;
       }
-      // Fallback: if the budget is very tight and we got <3, take the 3
-      // shortest videos so the lesson can still be started.
       if (fits.length < 3) {
         const shortest = [...unique]
           .filter((v) => (v.duration_seconds ?? Infinity) <= maxSeconds)
@@ -354,15 +377,29 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         suggestions = fits;
       }
 
+      // Atualiza cache (upsert para permitir a chamada com forceRefresh
+      // sobrescrever o cache antigo).
       if (suggestions.length > 0) {
-        await supabaseAdmin.from("ai_response_cache").insert({
-          cache_key: cacheKey,
-          prompt_type: "video-suggestions",
-          response: JSON.parse(JSON.stringify({ suggestions })),
-        });
+        await supabaseAdmin.from("ai_response_cache").upsert(
+          {
+            cache_key: cacheKey,
+            prompt_type: "video-suggestions",
+            response: JSON.parse(JSON.stringify({ suggestions })),
+          },
+          { onConflict: "cache_key" },
+        );
       }
     }
 
+    // Se forceRefresh, remove os vídeos AI atuais do tópico antes de inserir
+    // os novos — caso contrário eles se acumulariam na tela.
+    if (forceRefresh) {
+      await supabaseAdmin
+        .from("study_videos")
+        .delete()
+        .eq("topic_id", topic.id)
+        .eq("source", "ai");
+    }
 
     if (suggestions.length > 0) {
       const rows = suggestions.map((s, i) => ({
@@ -378,6 +415,22 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("study_videos")
         .upsert(rows, { onConflict: "topic_id,youtube_id", ignoreDuplicates: true });
+
+      // D) registra no histórico do usuário (idempotente por unique constraint).
+      const historyRows = suggestions.map((s) => ({
+        user_id: userId,
+        topic_id: topic.id,
+        youtube_id: s.youtube_id,
+        title: s.title,
+        channel_name: s.channel_name,
+        duration_seconds: s.duration_seconds ?? null,
+      }));
+      await supabase
+        .from("user_video_suggestion_history")
+        .upsert(historyRows, {
+          onConflict: "user_id,topic_id,youtube_id",
+          ignoreDuplicates: true,
+        });
     }
 
     const totalSeconds = suggestions.reduce((s, v) => s + (v.duration_seconds ?? 0), 0);
@@ -385,7 +438,41 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       added: suggestions.length,
       totalMinutes: Math.round(totalSeconds / 60),
       maxMinutes,
+      refreshed: forceRefresh,
     };
+  });
+
+// ============================================================
+// Suggestion history — vídeos já sugeridos pelo usuário no tópico
+// ============================================================
+export const listSuggestionHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ topicId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: rows, error } = await supabase
+      .from("user_video_suggestion_history")
+      .select("youtube_id, title, channel_name, duration_seconds, suggested_at")
+      .eq("user_id", userId)
+      .eq("topic_id", data.topicId)
+      .order("suggested_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return { history: rows ?? [] };
+  });
+
+export const clearSuggestionHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ topicId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_video_suggestion_history")
+      .delete()
+      .eq("user_id", userId)
+      .eq("topic_id", data.topicId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ============================================================
