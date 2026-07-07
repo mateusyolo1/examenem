@@ -380,7 +380,7 @@ export const clearSuggestedVideos = createServerFn({ method: "POST" })
     await supabaseAdmin
       .from("ai_response_cache")
       .delete()
-      .eq("cache_key", `video-suggestions:${data.topicId}`);
+      .like("cache_key", `video-suggestions:${data.topicId}%`);
     return { ok: true };
   });
 
