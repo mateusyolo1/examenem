@@ -595,7 +595,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
         <div className="flex items-center gap-2 flex-wrap">
           {videos.length >= 3 && (
             <Link
-              to="/estudos/aula/$topicId"
+              to="/aula/$topicId"
               params={{ topicId: topic.id }}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
             >
