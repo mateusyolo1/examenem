@@ -13,6 +13,8 @@ import {
   listVideosForTopic,
   suggestVideosForTopic,
   markVideoWatched,
+  clearSuggestedVideos,
+
 } from "@/lib/study.functions";
 import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
