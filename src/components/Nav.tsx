@@ -4,6 +4,7 @@ import { useProgress } from "@/lib/storage";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StageIndicator } from "@/components/StageIndicator";
+import { UserMenu } from "@/components/UserMenu";
 import {
   Home,
   ListChecks,
