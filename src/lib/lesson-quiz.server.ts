@@ -32,10 +32,21 @@ interface QuizQuestion {
   };
 }
 
+export interface EssayTask {
+  title: string;
+  prompt: string;
+  focusSkill: string;
+  rubric: string[];
+  minWords: number;
+  maxWords: number;
+}
+
 export interface LessonQuizPayload {
   questions: QuizQuestion[];
   skipped: { youtubeId: string; title: string; reason: string }[];
+  essayTask: EssayTask | null;
 }
+
 
 type SupabaseAdmin = Awaited<
   typeof import("@/integrations/supabase/client.server")
