@@ -577,21 +577,47 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
 
+  const clearMutation = useMutation({
+    mutationFn: () => clearSuggested({ data: { topicId: topic.id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: key });
+      toast.success("Lista de sugestões limpa");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2">
         <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
           Vídeos sugeridos
         </h3>
-        <button
-          onClick={() => suggestMutation.mutate()}
-          disabled={suggestMutation.isPending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
-        >
-          <Sparkles size={14} />
-          {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
-        </button>
+        <div className="flex items-center gap-2">
+          {videos.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
+                  clearMutation.mutate();
+                }
+              }}
+              disabled={clearMutation.isPending}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
+            </button>
+          )}
+          <button
+            onClick={() => suggestMutation.mutate()}
+            disabled={suggestMutation.isPending}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <Sparkles size={14} />
+            {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
+          </button>
+        </div>
       </div>
+
 
       {isLoading ? (
         <div className="border border-dashed border-border rounded-md p-6 text-center bg-card">
