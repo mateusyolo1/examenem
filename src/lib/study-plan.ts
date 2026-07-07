@@ -302,14 +302,18 @@ function dayTemplate(
 }
 
 
-export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
+export function generatePlan(
+  cfg: StudyPlanConfig,
+  catalog?: TopicCatalogEntry[],
+): StudyPlan {
   const tasks: StudyTask[] = [];
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date(cfg.examDate);
   end.setHours(0, 0, 0, 0);
 
-  const pick = makePicker(cfg);
+  const pick = makePicker(cfg, catalog);
+
   const themes = [...ESSAY_THEMES];
   let themeIdx = 0;
 
