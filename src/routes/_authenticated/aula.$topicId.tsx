@@ -147,8 +147,31 @@ function LessonPlayer({
   const savePos = useServerFn(saveVideoPosition);
   const markWatchedFn = useServerFn(markVideoWatched);
 
+  // Pré-geração da atividade em background: assim que o aluno conclui
+  // o 1º vídeo, começamos a montar o quiz (Gemini transcreve + gera perguntas
+  // e cacheia no banco). Quando ele clicar em "Fazer atividade" no fim da
+  // playlist, reaproveitamos a mesma promessa — instantâneo se já pronto.
+  const prefetchRef = useRef<Promise<Awaited<ReturnType<typeof buildQuiz>>> | null>(null);
+  const [prefetchReady, setPrefetchReady] = useState(false);
+  const startPrefetch = () => {
+    if (prefetchRef.current) return;
+    prefetchRef.current = buildQuiz({ data: { topicId } })
+      .then((r) => {
+        setPrefetchReady(true);
+        return r;
+      })
+      .catch((e) => {
+        // libera para nova tentativa quando o aluno clicar em "Fazer atividade"
+        prefetchRef.current = null;
+        throw e;
+      });
+  };
+
   const quizMutation = useMutation({
-    mutationFn: () => buildQuiz({ data: { topicId } }),
+    mutationFn: () => {
+      startPrefetch();
+      return prefetchRef.current!;
+    },
     onSuccess: (r) => {
       if (r.questions.length === 0) {
         toast.error("Não foi possível gerar a atividade agora. Tente novamente em instantes.");
@@ -158,6 +181,7 @@ function LessonPlayer({
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
@@ -169,6 +193,14 @@ function LessonPlayer({
   const total = videos.length;
   const video = videos[current];
   const allWatched = watched.size === total;
+
+  // Dispara o prefetch quando o aluno concluir o 1º vídeo (ou se já
+  // entrou na aula com algum vídeo assistido de sessão anterior).
+  useEffect(() => {
+    if (watched.size >= 1) startPrefetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watched.size >= 1]);
+
 
   const markCurrentWatched = () => {
     setWatched((prev) => {
@@ -223,6 +255,8 @@ function LessonPlayer({
             allWatched={allWatched}
             onStartQuiz={() => quizMutation.mutate()}
             quizLoading={quizMutation.isPending}
+            quizPrefetching={!!prefetchRef.current && !prefetchReady}
+            quizPrefetchReady={prefetchReady}
             videos={videos}
             onSaveProgress={(seconds) =>
               savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
@@ -231,6 +265,7 @@ function LessonPlayer({
             }
             resumeAt={video.watch_seconds ?? 0}
           />
+
 
         )}
 
@@ -262,7 +297,10 @@ function WatchingView({
   allWatched,
   onStartQuiz,
   quizLoading,
+  quizPrefetching,
+  quizPrefetchReady,
   videos,
+
   onSaveProgress,
   resumeAt,
 }: {
@@ -277,7 +315,10 @@ function WatchingView({
   allWatched: boolean;
   onStartQuiz: () => void;
   quizLoading: boolean;
+  quizPrefetching: boolean;
+  quizPrefetchReady: boolean;
   videos: Video[];
+
   onSaveProgress: (seconds: number) => void;
   resumeAt: number;
 }) {
@@ -412,15 +453,33 @@ function WatchingView({
         </button>
 
         {isLast ? (
-          <button
-            onClick={onStartQuiz}
-            disabled={!allWatched || quizLoading}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40"
-          >
-            <ClipboardList size={14} />
-            {quizLoading ? "Preparando atividade…" : "Fazer atividade"}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={onStartQuiz}
+              disabled={!allWatched || quizLoading}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              <ClipboardList size={14} />
+              {quizLoading ? "Preparando atividade…" : "Fazer atividade"}
+            </button>
+            {allWatched && !quizLoading && (
+              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                {quizPrefetchReady ? (
+                  <>
+                    <Check size={10} className="text-emerald-600 dark:text-emerald-400" />
+                    Atividade pronta
+                  </>
+                ) : quizPrefetching ? (
+                  <>
+                    <Sparkles size={10} className="animate-pulse" />
+                    Preparando em segundo plano…
+                  </>
+                ) : null}
+              </span>
+            )}
+          </div>
         ) : (
+
           <button
             onClick={onNext}
             disabled={!canGoNext}
