@@ -179,6 +179,7 @@ export const markVideoWatched = createServerFn({ method: "POST" })
 const suggestInput = z.object({
   topicId: z.string().uuid(),
   maxMinutes: z.number().int().min(5).max(720).optional(),
+  forceRefresh: z.boolean().optional(),
 });
 
 interface AiVideoSuggestion {
@@ -186,6 +187,30 @@ interface AiVideoSuggestion {
   title: string;
   channel_name: string;
   duration_seconds: number | null;
+}
+
+// Sufixos rotacionados para variar a query do YouTube a cada busca.
+const SEARCH_SUFFIXES = [
+  "ENEM aula explicação",
+  "ENEM aula completa",
+  "ENEM resumo",
+  "ENEM exercícios resolvidos",
+  "ENEM professor",
+  "ENEM em 10 minutos",
+  "ENEM revisão",
+  "vestibular explicação",
+];
+
+function pickSuffix(seed: number) {
+  return SEARCH_SUFFIXES[seed % SEARCH_SUFFIXES.length];
+}
+
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 // Parses YouTube length strings like "10:32" or "1:02:15" → seconds.
