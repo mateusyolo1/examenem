@@ -247,6 +247,8 @@ function TopicSearches({ topic }: { topic: Topic }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
+  const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
+
 
   const addMutation = useMutation({
     mutationFn: (input: { url: string; title?: string }) =>
