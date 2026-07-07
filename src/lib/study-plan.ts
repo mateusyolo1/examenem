@@ -563,14 +563,19 @@ export function useStudyPlan() {
   }, []);
 
   const savePlan = useCallback(
-    (cfg: StudyPlanConfig, catalog?: TopicCatalogEntry[]) => {
-      const p = generatePlan(cfg, catalog);
+    (
+      cfg: StudyPlanConfig,
+      catalog?: TopicCatalogEntry[],
+      mastery?: TopicMastery[],
+    ) => {
+      const p = generatePlan(cfg, catalog, mastery);
       write(p);
       setPlan(p);
       return p;
     },
     [],
   );
+
 
 
   const clearPlan = useCallback(() => {
