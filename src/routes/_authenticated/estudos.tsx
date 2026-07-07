@@ -645,7 +645,16 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
                     {v.watched ? "Assistido" : "Marcar"}
                   </button>
                 </div>
+                <a
+                  href={`https://www.youtube.com/watch?v=${v.youtube_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  Abrir no YouTube ↗
+                </a>
               </div>
+
             </div>
           ))}
         </div>
