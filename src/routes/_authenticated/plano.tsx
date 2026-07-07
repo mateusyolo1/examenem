@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { resolveStudyTopic } from "@/lib/study.functions";
+import { resolveStudyTopic, listStudyTopics } from "@/lib/study.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
+
 import {
   CalendarDays,
   CheckCircle2,
@@ -39,6 +40,7 @@ import {
   type Focus,
   type StudyTask,
   type TaskType,
+  type TopicCatalogEntry,
   resolvedStatus,
   weekDates,
   dateLabel,
@@ -116,6 +118,39 @@ function Plano() {
   const [editing, setEditing] = useState(false);
   const [askClear, setAskClear] = useState(false);
 
+  // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
+  const listTopicsFn = useServerFn(listStudyTopics);
+  const needsCatalog = !plan || editing;
+  const { data: topicsData } = useQuery({
+    queryKey: ["study-topics"],
+    queryFn: () => listTopicsFn(),
+    enabled: needsCatalog,
+    staleTime: 5 * 60 * 1000,
+  });
+  const topicCatalog: TopicCatalogEntry[] = useMemo(() => {
+    const rows = (topicsData?.topics ?? []) as Array<{
+      slug: string;
+      area: string;
+      title: string;
+      subject: string | null;
+      sort_order: number;
+      parent_id: string | null;
+    }>;
+    return rows
+      .filter(
+        (t) =>
+          t.parent_id !== null &&
+          ["linguagens", "humanas", "natureza", "matematica"].includes(t.area),
+      )
+      .map((t) => ({
+        slug: t.slug,
+        area: t.area as TopicCatalogEntry["area"],
+        title: t.title,
+        subject: t.subject,
+        sort_order: t.sort_order,
+      }));
+  }, [topicsData]);
+
   if (!plan || editing) {
     return (
       <Shell plan={plan}>
@@ -124,13 +159,14 @@ function Plano() {
           defaultExamDate={progress.examDate}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
-            savePlan(cfg);
+            savePlan(cfg, topicCatalog.length ? topicCatalog : undefined);
             setEditing(false);
           }}
         />
       </Shell>
     );
   }
+
 
   return (
     <Shell plan={plan}>

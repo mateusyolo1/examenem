@@ -37,16 +37,17 @@ export interface StudyTask {
   topicArea?: Area;
 }
 
-// Mapeamento parcial de subject id (SUBJECTS) → slug em study_topics.
-// Quando o plano é gerado com matérias específicas, se houver
-// correspondência aqui a tarefa de teoria abre exatamente aquele tópico.
-// Fora daqui o CTA cai no fallback por área.
-const SUBJECT_TO_TOPIC_SLUG: Record<string, string> = {
-  "ling-interp": "lin-interpretacao",
-  "ling-gram": "lin-gramatica",
-  "ling-lit": "lin-literatura",
-  "ling-ingles": "lin-ingles",
-};
+// Catálogo de tópicos vindo do banco (`study_topics`), usado pelo gerador
+// para rotacionar as tarefas de teoria em tópicos concretos (ex: "Funções",
+// "Geometria Plana") em vez de só nomes de área.
+export interface TopicCatalogEntry {
+  slug: string;
+  area: Area;
+  title: string;
+  subject: string | null;
+  sort_order: number;
+}
+
 
 export interface StudyPlan {
   id: string;
@@ -123,7 +124,33 @@ interface Slot {
   topicSlug?: string;
 }
 
-type Pick = { area: StudyTask["area"]; label: string; subjectId?: string };
+type Pick = {
+  area: StudyTask["area"];
+  label: string;
+  subjectId?: string;
+  topicSlug?: string;
+  topicTitle?: string;
+  topicArea?: Area;
+};
+
+function buildTopicQueuesByArea(
+  catalog: TopicCatalogEntry[] | undefined,
+): Record<Area, TopicCatalogEntry[]> {
+  const out: Record<Area, TopicCatalogEntry[]> = {
+    linguagens: [],
+    humanas: [],
+    natureza: [],
+    matematica: [],
+  };
+  if (!catalog) return out;
+  for (const t of catalog) {
+    if (t.area in out) out[t.area].push(t);
+  }
+  (Object.keys(out) as Area[]).forEach((a) =>
+    out[a].sort((x, y) => x.sort_order - y.sort_order),
+  );
+  return out;
+}
 
 function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
   if (!cfg.subjects?.length) return null;
@@ -139,14 +166,42 @@ function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
   return queue;
 }
 
-function makePicker(cfg: StudyPlanConfig): () => Pick {
+function makePicker(
+  cfg: StudyPlanConfig,
+  catalog: TopicCatalogEntry[] | undefined,
+): () => Pick {
+  const topicsByArea = buildTopicQueuesByArea(catalog);
+  const topicIdx: Record<Area, number> = {
+    linguagens: 0,
+    humanas: 0,
+    natureza: 0,
+    matematica: 0,
+  };
+
+  function nextTopicFor(area: Area): TopicCatalogEntry | undefined {
+    const list = topicsByArea[area];
+    if (!list.length) return undefined;
+    const t = list[topicIdx[area] % list.length];
+    topicIdx[area] += 1;
+    return t;
+  }
+
   const subjectQueue = buildSubjectQueue(cfg);
   if (subjectQueue) {
     let i = 0;
     return () => {
       const s = subjectQueue[i % subjectQueue.length];
       i += 1;
-      return { area: s.area as Area, label: s.name, subjectId: s.id };
+      const area = s.area as Area;
+      const topic = nextTopicFor(area);
+      return {
+        area,
+        label: s.name,
+        subjectId: s.id,
+        topicSlug: topic?.slug,
+        topicTitle: topic?.title,
+        topicArea: area,
+      };
     };
   }
   const areaQueue = buildAreaQueue(cfg);
@@ -154,7 +209,14 @@ function makePicker(cfg: StudyPlanConfig): () => Pick {
   return () => {
     const a = areaQueue[i % areaQueue.length];
     i += 1;
-    return { area: a, label: AREA_LABEL[a] };
+    const topic = nextTopicFor(a);
+    return {
+      area: a,
+      label: AREA_LABEL[a],
+      topicSlug: topic?.slug,
+      topicTitle: topic?.title,
+      topicArea: a,
+    };
   };
 }
 
@@ -200,14 +262,17 @@ function dayTemplate(
     default: {
       const p1 = pick();
       const p2 = pick();
+      const teoriaTitle = p1.topicTitle
+        ? `Teoria: ${p1.topicTitle}`
+        : `Teoria de ${p1.label}`;
       const slots: Slot[] = [
         {
           type: "teoria",
           area: p1.area,
           minutes: 50,
-          title: () => `Teoria de ${p1.label}`,
-          topicArea: p1.area === "geral" || p1.area === "redacao" ? undefined : (p1.area as Area),
-          topicSlug: p1.subjectId ? SUBJECT_TO_TOPIC_SLUG[p1.subjectId] : undefined,
+          title: () => teoriaTitle,
+          topicArea: p1.topicArea,
+          topicSlug: p1.topicSlug,
         },
         {
           type: "questoes",
@@ -236,14 +301,19 @@ function dayTemplate(
   }
 }
 
-export function generatePlan(cfg: StudyPlanConfig): StudyPlan {
+
+export function generatePlan(
+  cfg: StudyPlanConfig,
+  catalog?: TopicCatalogEntry[],
+): StudyPlan {
   const tasks: StudyTask[] = [];
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date(cfg.examDate);
   end.setHours(0, 0, 0, 0);
 
-  const pick = makePicker(cfg);
+  const pick = makePicker(cfg, catalog);
+
   const themes = [...ESSAY_THEMES];
   let themeIdx = 0;
 
@@ -345,12 +415,16 @@ export function useStudyPlan() {
     };
   }, []);
 
-  const savePlan = useCallback((cfg: StudyPlanConfig) => {
-    const p = generatePlan(cfg);
-    write(p);
-    setPlan(p);
-    return p;
-  }, []);
+  const savePlan = useCallback(
+    (cfg: StudyPlanConfig, catalog?: TopicCatalogEntry[]) => {
+      const p = generatePlan(cfg, catalog);
+      write(p);
+      setPlan(p);
+      return p;
+    },
+    [],
+  );
+
 
   const clearPlan = useCallback(() => {
     write(null);

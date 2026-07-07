@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,8 +18,12 @@ import {
   clearSuggestedVideos,
   listSuggestionHistory,
   clearSuggestionHistory,
+  resolveStudyTopic,
 
 } from "@/lib/study.functions";
+import { useStudyPlan, weekDates, dateLabel, areaLabel } from "@/lib/study-plan";
+import type { StudyTask } from "@/lib/study-plan";
+import { CalendarCheck } from "lucide-react";
 import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
@@ -151,6 +155,8 @@ function EstudosPage() {
             </p>
           </header>
 
+          <WeekPlanTopics />
+
           {/* Assuntos - barra horizontal no topo */}
           <div className="border border-border bg-card p-4 rounded-md mb-6">
             <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
@@ -227,6 +233,99 @@ function EstudosPage() {
     </div>
   );
 }
+
+function WeekPlanTopics() {
+  const { plan } = useStudyPlan();
+  const navigate = useNavigate();
+  const resolveFn = useServerFn(resolveStudyTopic);
+  const [openingSlug, setOpeningSlug] = useState<string | null>(null);
+
+  const items = useMemo(() => {
+    if (!plan) return [] as Array<{ task: StudyTask; key: string }>;
+    const week = new Set(weekDates());
+    const seen = new Set<string>();
+    const out: Array<{ task: StudyTask; key: string }> = [];
+    for (const t of plan.tasks) {
+      if (t.type !== "teoria") continue;
+      if (!week.has(t.date)) continue;
+      const key = t.topicSlug ?? `${t.area}:${t.title}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ task: t, key });
+    }
+    // Ordena por data (crescente)
+    out.sort((a, b) => (a.task.date < b.task.date ? -1 : 1));
+    return out;
+  }, [plan]);
+
+  if (!plan || items.length === 0) return null;
+
+  async function openTopic(t: StudyTask) {
+    try {
+      setOpeningSlug(t.topicSlug ?? t.id);
+      const topic = await resolveFn({
+        data: {
+          slug: t.topicSlug,
+          area: t.topicArea,
+        },
+      });
+      navigate({
+        to: "/aula/$topicId",
+        params: { topicId: topic.id },
+        search: { taskId: t.id },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível abrir a aula.");
+      setOpeningSlug(null);
+    }
+  }
+
+  return (
+    <div className="border border-border bg-card p-4 rounded-md mb-6">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <CalendarCheck size={14} /> Seus tópicos desta semana
+        </h2>
+        <Link
+          to="/plano"
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+        >
+          Ver plano completo
+        </Link>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map(({ task, key }) => {
+          const loading = openingSlug === (task.topicSlug ?? task.id);
+          const title = task.title.startsWith("Teoria:")
+            ? task.title.slice("Teoria:".length).trim()
+            : task.title;
+          return (
+            <button
+              key={key}
+              onClick={() => openTopic(task)}
+              disabled={loading}
+              className="text-left border border-border rounded-md p-3 hover:bg-accent transition-colors disabled:opacity-60"
+            >
+              <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                <span>{dateLabel(task.date)}</span>
+                <span>·</span>
+                <span>
+                  {task.topicArea ? areaLabel(task.topicArea) : areaLabel(task.area)}
+                </span>
+              </div>
+              <div className="mt-1 text-sm font-bold leading-tight">{title}</div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {loading ? "Abrindo aula…" : "Abrir aula →"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 
 function TopicSearches({ topic }: { topic: Topic }) {
   const channels = CHANNELS[topic.area] ?? [];
