@@ -223,14 +223,24 @@ function LessonPlayer({
   const submitMutation = useMutation({
     mutationFn: (answers: { questionId: string; chosenIndex: number }[]) =>
       submit({ data: { topicId, answers } }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Auto-complete the linked schedule task, if this aula was opened
       // from /plano.
       if (taskId) markPlanTaskDone(taskId);
+      // Registra desempenho por tópico (Abordagem 3) — alimenta o cronograma
+      // (skip de dominados, revisão espaçada, pesos por área).
+      const total = Math.max(data.total, 1);
+      const score = data.score / total;
+      const area = topicArea as "linguagens" | "humanas" | "natureza" | "matematica";
+      if (["linguagens", "humanas", "natureza", "matematica"].includes(area)) {
+        recordMastery({ data: { topicSlug, area, score } }).catch(() => {});
+      }
       setPhase("result");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+
 
   const total = videos.length;
   const video = videos[current];
