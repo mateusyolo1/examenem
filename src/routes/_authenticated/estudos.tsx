@@ -14,9 +14,11 @@ import {
   suggestVideosForTopic,
   markVideoWatched,
   clearSuggestedVideos,
+  listSuggestionHistory,
+  clearSuggestionHistory,
 
 } from "@/lib/study.functions";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
 
@@ -554,6 +556,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const clearSuggested = useServerFn(clearSuggestedVideos);
   const qc = useQueryClient();
 
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const key = ["suggested-videos", topic.id];
   const { data, isLoading } = useQuery({
@@ -566,15 +569,22 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const dailyMinutes = progress.dailyMinutes ?? 120;
 
   const suggestMutation = useMutation({
-    mutationFn: () =>
-      suggest({ data: { topicId: topic.id, maxMinutes: dailyMinutes } }),
-    onSuccess: (r) => {
+    mutationFn: (forceRefresh: boolean) =>
+      suggest({
+        data: { topicId: topic.id, maxMinutes: dailyMinutes, forceRefresh },
+      }),
+    onSuccess: (r, forceRefresh) => {
       qc.invalidateQueries({ queryKey: key });
-      if (r?.added > 0)
+      qc.invalidateQueries({ queryKey: ["suggestion-history", topic.id] });
+      if (r?.added > 0) {
         toast.success(
-          `${r.added} vídeos sugeridos · ${r.totalMinutes}min de ${r.maxMinutes}min disponíveis`,
+          forceRefresh
+            ? `${r.added} novos vídeos · ${r.totalMinutes}min`
+            : `${r.added} vídeos sugeridos · ${r.totalMinutes}min de ${r.maxMinutes}min disponíveis`,
         );
-      else toast.info("Nenhuma sugestão nova desta vez");
+      } else {
+        toast.info("Nenhuma sugestão nova desta vez");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -594,6 +604,9 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const hasVideos = videos.length > 0;
+  const busy = suggestMutation.isPending;
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3 gap-2">
@@ -611,31 +624,63 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
               Iniciar aula
             </Link>
           )}
-          {videos.length > 0 && (
+          {hasVideos && (
+            <>
+              <button
+                onClick={() => suggestMutation.mutate(true)}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
+                title="Buscar vídeos diferentes"
+              >
+                <RefreshCw size={14} className={busy ? "animate-spin" : ""} />
+                {busy ? "Buscando…" : "Trocar sugestões"}
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
+                    clearMutation.mutate();
+                  }
+                }}
+                disabled={clearMutation.isPending}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
+              </button>
+            </>
+          )}
+          {!hasVideos && (
             <button
-              onClick={() => {
-                if (confirm("Limpar todos os vídeos sugeridos pela IA deste tópico?")) {
-                  clearMutation.mutate();
-                }
-              }}
-              disabled={clearMutation.isPending}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+              onClick={() => suggestMutation.mutate(false)}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
             >
-              <Trash2 size={14} />
-              {clearMutation.isPending ? "Limpando…" : "Limpar lista"}
+              <Sparkles size={14} />
+              {busy ? "Buscando…" : "Sugerir com IA"}
             </button>
           )}
-          <button
-            onClick={() => suggestMutation.mutate()}
-            disabled={suggestMutation.isPending}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
-          >
-            <Sparkles size={14} />
-            {suggestMutation.isPending ? "Buscando…" : "Sugerir com IA"}
-          </button>
         </div>
 
       </div>
+
+      {/* Link discreto de histórico */}
+      <div className="mb-3">
+        <button
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+        >
+          <History size={11} />
+          Histórico de sugestões
+        </button>
+      </div>
+
+      {historyOpen && (
+        <SuggestionHistoryModal
+          topic={topic}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+
 
 
       {isLoading ? (
@@ -709,5 +754,136 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
         </div>
       )}
     </div>
+  );
+}
+
+function SuggestionHistoryModal({
+  topic,
+  onClose,
+}: {
+  topic: Topic;
+  onClose: () => void;
+}) {
+  const listHistory = useServerFn(listSuggestionHistory);
+  const clearHistoryFn = useServerFn(clearSuggestionHistory);
+  const qc = useQueryClient();
+
+  const historyKey = ["suggestion-history", topic.id];
+  const { data, isLoading } = useQuery({
+    queryKey: historyKey,
+    queryFn: () => listHistory({ data: { topicId: topic.id } }),
+  });
+  const history = data?.history ?? [];
+
+  const clearMutation = useMutation({
+    mutationFn: () => clearHistoryFn({ data: { topicId: topic.id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: historyKey });
+      toast.success("Histórico de sugestões apagado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div>
+            <h4 className="text-sm font-semibold">Histórico de sugestões</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {topic.title} · {history.length} vídeo{history.length === 1 ? "" : "s"} já sugerido{history.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Fechar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Carregando…</p>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhum vídeo foi sugerido para este tópico ainda.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {history.map((h) => (
+                <li
+                  key={h.youtube_id}
+                  className="flex items-start gap-3 p-2 rounded hover:bg-accent/50 transition-colors"
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${h.youtube_id}/mqdefault.jpg`}
+                    alt=""
+                    className="w-24 aspect-video object-cover rounded shrink-0 bg-muted"
+                    loading="lazy"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={`https://www.youtube.com/watch?v=${h.youtube_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium hover:underline line-clamp-2"
+                    >
+                      {h.title ?? "Vídeo do YouTube"}
+                    </a>
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                      {h.channel_name && <span className="truncate">{h.channel_name}</span>}
+                      <span>·</span>
+                      <span>
+                        {new Date(h.suggested_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {history.length > 0 && (
+          <div className="p-3 border-t border-border flex justify-between items-center gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              Vídeos daqui não voltam a ser sugeridos.
+            </p>
+            <button
+              onClick={() => {
+                if (confirm("Apagar o histórico? Vídeos antigos poderão ser sugeridos novamente.")) {
+                  clearMutation.mutate();
+                }
+              }}
+              disabled={clearMutation.isPending}
+              className="text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+            >
+              {clearMutation.isPending ? "Apagando…" : "Apagar histórico"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
