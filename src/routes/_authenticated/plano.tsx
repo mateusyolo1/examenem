@@ -665,6 +665,10 @@ function PlanView({
         />
       </section>
 
+      <MasteryPanel plan={plan} mastery={mastery} />
+
+
+
       {/* Week navigation */}
       <section className="bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
