@@ -224,7 +224,14 @@ function LessonPlayer({
             onStartQuiz={() => quizMutation.mutate()}
             quizLoading={quizMutation.isPending}
             videos={videos}
+            onSaveProgress={(seconds) =>
+              savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
+                () => {},
+              )
+            }
+            resumeAt={video.watch_seconds ?? 0}
           />
+
         )}
 
         {phase === "quiz" && quizMutation.data && (
