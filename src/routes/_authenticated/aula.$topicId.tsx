@@ -553,10 +553,10 @@ function QuizView({
 
       <ol className="space-y-8">
         {payload.questions.map((q, i) => {
-          const answered = choices[q.videoId] !== undefined;
+          const answered = choices[q.id] !== undefined;
           return (
             <li
-              key={q.videoId}
+              key={q.id}
               className="border border-border bg-card rounded-lg p-6 sm:p-8 space-y-5 shadow-sm"
             >
               <header className="space-y-3 pb-4 border-b border-border">
@@ -574,7 +574,8 @@ function QuizView({
                   )}
                 </div>
                 <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground/70 line-clamp-1">
-                  Sobre: {q.videoTitle}
+                  Baseado em: {q.videoRef.videoTitle}
+                  {q.videoRef.timestamp ? ` · aos ${q.videoRef.timestamp}` : ""}
                 </p>
               </header>
 
@@ -582,11 +583,11 @@ function QuizView({
 
               <div className="space-y-2.5 pt-1">
                 {q.options.map((opt, idx) => {
-                  const selected = choices[q.videoId] === idx;
+                  const selected = choices[q.id] === idx;
                   return (
                     <button
                       key={idx}
-                      onClick={() => setChoices({ ...choices, [q.videoId]: idx })}
+                      onClick={() => setChoices({ ...choices, [q.id]: idx })}
                       className={
                         "w-full text-left flex items-start gap-3 px-4 py-3.5 rounded-md border transition-colors " +
                         (selected
