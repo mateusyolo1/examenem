@@ -355,7 +355,12 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         .upsert(rows, { onConflict: "topic_id,youtube_id", ignoreDuplicates: true });
     }
 
-    return { added: suggestions.length };
+    const totalSeconds = suggestions.reduce((s, v) => s + (v.duration_seconds ?? 0), 0);
+    return {
+      added: suggestions.length,
+      totalMinutes: Math.round(totalSeconds / 60),
+      maxMinutes,
+    };
   });
 
 // ============================================================
