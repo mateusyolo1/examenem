@@ -130,6 +130,44 @@ export type Database = {
           },
         ]
       }
+      lesson_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string
+          id: string
+          score: number
+          topic_id: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string
+          id?: string
+          score: number
+          topic_id: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string
+          id?: string
+          score?: number
+          topic_id?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_attempts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "study_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
