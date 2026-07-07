@@ -26,6 +26,7 @@ import { Route as AuthenticatedEstudosRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
+import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_authenticated/aula.$topicId.pratica'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -114,6 +115,12 @@ const AuthenticatedAulaTopicIdRoute =
     path: '/aula/$topicId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAulaTopicIdPraticaRoute =
+  AuthenticatedAulaTopicIdPraticaRouteImport.update({
+    id: '/pratica',
+    path: '/pratica',
+    getParentRoute: () => AuthenticatedAulaTopicIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -131,7 +138,8 @@ export interface FileRoutesByFullPath {
   '/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
-  '/aula/$topicId': typeof AuthenticatedAulaTopicIdRoute
+  '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -149,7 +157,8 @@ export interface FileRoutesByTo {
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
   '/': typeof AuthenticatedIndexRoute
-  '/aula/$topicId': typeof AuthenticatedAulaTopicIdRoute
+  '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,7 +178,8 @@ export interface FileRoutesById {
   '/_authenticated/temas': typeof AuthenticatedTemasRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/aula/$topicId': typeof AuthenticatedAulaTopicIdRoute
+  '/_authenticated/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/_authenticated/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/tutor'
     | '/aula/$topicId'
+    | '/aula/$topicId/pratica'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -208,6 +219,7 @@ export interface FileRouteTypes {
     | '/tutor'
     | '/'
     | '/aula/$topicId'
+    | '/aula/$topicId/pratica'
   id:
     | '__root__'
     | '/_authenticated'
@@ -227,6 +239,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tutor'
     | '/_authenticated/'
     | '/_authenticated/aula/$topicId'
+    | '/_authenticated/aula/$topicId/pratica'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -355,8 +368,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAulaTopicIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/aula/$topicId/pratica': {
+      id: '/_authenticated/aula/$topicId/pratica'
+      path: '/pratica'
+      fullPath: '/aula/$topicId/pratica'
+      preLoaderRoute: typeof AuthenticatedAulaTopicIdPraticaRouteImport
+      parentRoute: typeof AuthenticatedAulaTopicIdRoute
+    }
   }
 }
+
+interface AuthenticatedAulaTopicIdRouteChildren {
+  AuthenticatedAulaTopicIdPraticaRoute: typeof AuthenticatedAulaTopicIdPraticaRoute
+}
+
+const AuthenticatedAulaTopicIdRouteChildren: AuthenticatedAulaTopicIdRouteChildren =
+  {
+    AuthenticatedAulaTopicIdPraticaRoute: AuthenticatedAulaTopicIdPraticaRoute,
+  }
+
+const AuthenticatedAulaTopicIdRouteWithChildren =
+  AuthenticatedAulaTopicIdRoute._addFileChildren(
+    AuthenticatedAulaTopicIdRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
@@ -373,7 +407,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTemasRoute: typeof AuthenticatedTemasRoute
   AuthenticatedTutorRoute: typeof AuthenticatedTutorRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedAulaTopicIdRoute: typeof AuthenticatedAulaTopicIdRoute
+  AuthenticatedAulaTopicIdRoute: typeof AuthenticatedAulaTopicIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -391,7 +425,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTemasRoute: AuthenticatedTemasRoute,
   AuthenticatedTutorRoute: AuthenticatedTutorRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedAulaTopicIdRoute: AuthenticatedAulaTopicIdRoute,
+  AuthenticatedAulaTopicIdRoute: AuthenticatedAulaTopicIdRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
