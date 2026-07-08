@@ -160,7 +160,7 @@ function LousaPage() {
       </div>
 
       {/* Selos das etapas */}
-      <div className="mx-auto max-w-5xl px-4 pt-6">
+      <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-16 pt-6">
         <div className="flex flex-wrap items-center gap-2">
           {STAGES.map((s) => (
             <span
@@ -186,7 +186,7 @@ function LousaPage() {
       </div>
 
       {/* Corpo da lousa */}
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
         {/* Cabeçalho */}
         <header className="mb-8">
           <div style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}>
