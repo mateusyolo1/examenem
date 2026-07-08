@@ -243,6 +243,7 @@ function ConnectorHandles({
       } as any,
     ]);
     const newShape = built[0];
+    const start = { x: a.sx, y: a.sy };
     const arrow: any = {
       ...built[1],
       points: elbowPoints(start, { x: start.x + dx * gap, y: start.y + dy * gap }, a.key),
