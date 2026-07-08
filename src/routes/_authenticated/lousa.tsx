@@ -88,8 +88,12 @@ function LousaPage() {
   const grain = isDark
     ? "radial-gradient(circle at 30% 20%, rgba(255,255,255,.06), transparent 60%), radial-gradient(circle at 70% 80%, rgba(255,255,255,.04), transparent 55%)"
     : "radial-gradient(circle at 30% 20%, rgba(0,0,0,.03), transparent 60%), radial-gradient(circle at 70% 80%, rgba(0,0,0,.02), transparent 55%)";
-  const fontWrite = isDark ? "LousaWriteDark, cursive" : "LousaWriteLight, cursive";
-  const fontTitle = isDark ? "LousaTitleDark, cursive" : "LousaTitleLight, cursive";
+  const fontWrite = isDark
+    ? '"LousaWriteDark", "Caveat", cursive'
+    : '"Caveat", "LousaWriteLight", cursive';
+  const fontTitle = isDark
+    ? '"LousaTitleDark", "Permanent Marker", cursive'
+    : '"Permanent Marker", "LousaTitleLight", cursive';
   const cQuestion = isDark ? "#7dd3fc" : "#1d4ed8"; // azul
   const cAnswer = isDark ? "#fca5a5" : "#dc2626"; // vermelho
   const cText = isDark ? "#f3f4f6" : "#111827";
@@ -156,7 +160,7 @@ function LousaPage() {
       </div>
 
       {/* Selos das etapas */}
-      <div className="mx-auto max-w-5xl px-4 pt-6">
+      <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-16 pt-6">
         <div className="flex flex-wrap items-center gap-2">
           {STAGES.map((s) => (
             <span
@@ -182,7 +186,7 @@ function LousaPage() {
       </div>
 
       {/* Corpo da lousa */}
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
         {/* Cabeçalho */}
         <header className="mb-8">
           <div style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}>
