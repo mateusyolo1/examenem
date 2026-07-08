@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Target } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { SUBJECTS, SUBJECT_AREAS, type Subject } from "@/lib/subjects";
 import { useSubjectStats, statFor } from "@/lib/subject-stats";
+import { getTodayFocusTopics } from "@/lib/cronograma.functions";
 
 export const Route = createFileRoute("/_authenticated/materias")({
   head: () => ({
@@ -21,17 +25,43 @@ export const Route = createFileRoute("/_authenticated/materias")({
 
 type AreaFilter = (typeof SUBJECT_AREAS)[number]["id"] | "todas";
 
+function matchesFocus(subject: Subject, topics: string[]): boolean {
+  if (!topics.length) return false;
+  const hay = `${subject.id} ${subject.name}`.toLowerCase();
+  return topics.some((t) => {
+    const needle = String(t).toLowerCase().trim();
+    if (!needle) return false;
+    return hay.includes(needle) || needle.includes(subject.id.toLowerCase());
+  });
+}
+
 function MateriasPage() {
   const [filter, setFilter] = useState<AreaFilter>("todas");
+  const [focusOnly, setFocusOnly] = useState(false);
   const { stats } = useSubjectStats();
+  const fetchFocus = useServerFn(getTodayFocusTopics);
+  const { data: focusData } = useQuery({
+    queryKey: ["cronograma", "focus-topics", "today"],
+    queryFn: () => fetchFocus(),
+    staleTime: 60_000,
+  });
+  const focusTopics = focusData?.topics ?? [];
+  const hasFocus = focusTopics.length > 0;
 
-  const visible =
-    filter === "todas" ? SUBJECTS : SUBJECTS.filter((s) => s.area === filter);
+  const areaFiltered = useMemo(
+    () => (filter === "todas" ? SUBJECTS : SUBJECTS.filter((s) => s.area === filter)),
+    [filter],
+  );
+  const visible = useMemo(
+    () => (focusOnly && hasFocus ? areaFiltered.filter((s) => matchesFocus(s, focusTopics)) : areaFiltered),
+    [areaFiltered, focusOnly, hasFocus, focusTopics],
+  );
 
   const grouped = SUBJECT_AREAS.map((a) => ({
     ...a,
     subjects: visible.filter((s) => s.area === a.id),
   })).filter((g) => g.subjects.length > 0);
+
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">
