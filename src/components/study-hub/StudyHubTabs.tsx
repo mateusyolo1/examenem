@@ -1275,6 +1275,7 @@ function NotesTab() {
                 <span className="font-medium text-foreground truncate">{v.videoTitle}</span>
                 {v.channel && <span className="text-muted-foreground truncate">· {v.channel}</span>}
                 <span className="text-muted-foreground">· {v.notes.length} nota{v.notes.length > 1 ? "s" : ""}</span>
+                <GenerateFromVideoButton variant="card" videoId={vId} videoTitle={v.videoTitle} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {v.notes.map((n: any) => (
