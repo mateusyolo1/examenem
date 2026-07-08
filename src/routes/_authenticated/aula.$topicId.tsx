@@ -154,6 +154,7 @@ function LessonPlayer({
   taskId?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("watching");
+  const [autoplay, setAutoplay] = useState(false);
   const [watched, setWatched] = useState<Set<number>>(
     () => new Set(videos.map((v, i) => (v.watched ? i : -1)).filter((i) => i >= 0)),
   );
