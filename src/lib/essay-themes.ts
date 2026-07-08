@@ -442,7 +442,207 @@ export const ESSAY_THEMES: EssayTheme[] = [
       "Mídia deve combater estereótipos e promover narrativas humanizadoras sobre migração.",
     ],
   },
+  {
+    id: "edu-analfabetismo-funcional",
+    categoria: "Educação",
+    titulo: "Combate ao analfabetismo funcional no Brasil",
+    eixo: "Letramento, leitura e cidadania",
+    textosMotivadores: [
+      { fonte: "Texto I — INAF", trecho: "3 em cada 10 brasileiros adultos são analfabetos funcionais." },
+      { fonte: "Texto II — UNESCO", trecho: "Ler é condição para exercer cidadania plena no século XXI." },
+    ],
+    repertorios: ["Paulo Freire — Pedagogia do Oprimido", "Rubem Alves", "Indicador de Alfabetismo Funcional (INAF)"],
+    ideiasIntroducao: ["Citar Freire sobre leitura de mundo.", "Partir do dado do INAF."],
+    argumentos: ["Formação docente frágil compromete letramento.", "Ausência de mediação de leitura em casa e escola."],
+    propostasIntervencao: [
+      "MEC deve ampliar formação continuada em alfabetização.",
+      "Municípios devem criar salas de leitura em UBS e CRAS.",
+    ],
+  },
+  {
+    id: "saude-obesidade",
+    categoria: "Saúde",
+    titulo: "A epidemia de obesidade infantil no Brasil",
+    eixo: "Saúde pública, alimentação e infância",
+    textosMotivadores: [
+      { fonte: "Texto I — Ministério da Saúde", trecho: "1 em cada 3 crianças brasileiras está acima do peso." },
+      { fonte: "Texto II — OMS", trecho: "Obesidade infantil é um dos maiores desafios de saúde do século XXI." },
+    ],
+    repertorios: ["Guia Alimentar da População Brasileira", "Lei do PNAE (11.947/2009)", "Michael Pollan"],
+    ideiasIntroducao: ["Partir do dado do MS.", "Citar o Guia Alimentar."],
+    argumentos: ["Publicidade abusiva de ultraprocessados a crianças.", "Desertos alimentares em periferias urbanas."],
+    propostasIntervencao: [
+      "ANVISA deve endurecer rotulagem frontal e restringir publicidade infantil.",
+      "MEC deve garantir merenda escolar 100% in natura via PNAE.",
+    ],
+  },
+  {
+    id: "tec-desinformacao",
+    categoria: "Tecnologia",
+    titulo: "O combate à desinformação nas redes sociais no Brasil",
+    eixo: "Mídias digitais, democracia e checagem",
+    textosMotivadores: [
+      { fonte: "Texto I — Reuters Digital News Report", trecho: "62% dos brasileiros já foram expostos a fake news online." },
+      { fonte: "Texto II — Marco Civil da Internet", trecho: "A liberdade de expressão deve conviver com a responsabilidade." },
+    ],
+    repertorios: ["Umberto Eco — sobre imbecis nas redes", "Agência Lupa e Aos Fatos", "Câmara dos Deputados — PL das Fake News"],
+    ideiasIntroducao: ["Citar Eco sobre o excesso de opinião.", "Partir do dado do Reuters Report."],
+    argumentos: ["Algoritmos priorizam engajamento e polarização.", "Baixo letramento midiático facilita a manipulação."],
+    propostasIntervencao: [
+      "Congresso deve aprovar marco regulatório de plataformas com transparência algorítmica.",
+      "MEC deve incluir educação midiática no currículo do EF e EM.",
+    ],
+  },
+  {
+    id: "meio-ambiente-desmatamento",
+    categoria: "Meio ambiente",
+    titulo: "Desmatamento na Amazônia e responsabilidade socioambiental",
+    eixo: "Bioma amazônico, clima e justiça ambiental",
+    textosMotivadores: [
+      { fonte: "Texto I — INPE", trecho: "A Amazônia perdeu mais de 13% de sua cobertura original nas últimas décadas." },
+      { fonte: "Texto II — Acordo de Paris", trecho: "Signatários se comprometem a limitar o aquecimento global a 1,5 °C." },
+    ],
+    repertorios: ["Ailton Krenak — Ideias para Adiar o Fim do Mundo", "Chico Mendes", "ODS 13 e 15"],
+    ideiasIntroducao: ["Citar Krenak sobre a queda do céu.", "Partir de dados do INPE."],
+    argumentos: ["Grilagem e agropecuária ilegal aceleram desmate.", "Fragilização de órgãos ambientais reduz fiscalização."],
+    propostasIntervencao: [
+      "IBAMA e ICMBio devem ampliar operações via satélite (DETER) com força-tarefa.",
+      "Congresso deve endurecer sanções à grilagem em terras públicas.",
+    ],
+  },
+  {
+    id: "seg-feminicidio",
+    categoria: "Segurança pública",
+    titulo: "O enfrentamento ao feminicídio na sociedade brasileira",
+    eixo: "Violência de gênero e proteção à mulher",
+    textosMotivadores: [
+      { fonte: "Texto I — FBSP", trecho: "O Brasil registra uma mulher assassinada por razões de gênero a cada 6 horas." },
+      { fonte: "Texto II — Lei do Feminicídio (13.104/2015)", trecho: "Feminicídio é qualificadora do crime de homicídio." },
+    ],
+    repertorios: ["Simone de Beauvoir — O Segundo Sexo", "Lei Maria da Penha (11.340/2006)", "Djamila Ribeiro"],
+    ideiasIntroducao: ["Citar Beauvoir sobre a construção do gênero.", "Partir do dado do FBSP."],
+    argumentos: ["Cultura patriarcal naturaliza violência doméstica.", "Rede de proteção fragmentada falha em acolher vítimas."],
+    propostasIntervencao: [
+      "Estados devem ampliar Delegacias da Mulher com atendimento 24h.",
+      "MEC deve incluir educação de gênero no currículo básico.",
+    ],
+  },
+  {
+    id: "cidadania-acessibilidade",
+    categoria: "Cidadania",
+    titulo: "Acessibilidade urbana e inclusão de pessoas com deficiência no Brasil",
+    eixo: "Cidade, direitos e desenho universal",
+    textosMotivadores: [
+      { fonte: "Texto I — IBGE", trecho: "Cerca de 18 milhões de brasileiros têm alguma deficiência." },
+      { fonte: "Texto II — LBI (Lei 13.146/2015)", trecho: "É dever do Estado assegurar acessibilidade plena." },
+    ],
+    repertorios: ["Convenção da ONU sobre Direitos das PcD", "Conceito de desenho universal", "Jaime Lerner — urbanismo"],
+    ideiasIntroducao: ["Citar a Convenção da ONU.", "Partir do dado do IBGE."],
+    argumentos: ["Calçadas irregulares inviabilizam mobilidade.", "Transporte público sem acessibilidade exclui."],
+    propostasIntervencao: [
+      "Municípios devem criar plano diretor com desenho universal obrigatório.",
+      "Ministério das Cidades deve destinar verba condicionada a acessibilidade.",
+    ],
+  },
+  {
+    id: "desig-fome",
+    categoria: "Desigualdade social",
+    titulo: "O retorno da fome ao mapa social brasileiro",
+    eixo: "Segurança alimentar e pobreza estrutural",
+    textosMotivadores: [
+      { fonte: "Texto I — Rede PENSSAN", trecho: "Mais de 33 milhões de brasileiros convivem com a fome." },
+      { fonte: "Texto II — DUDH, art. 25", trecho: "Toda pessoa tem direito à alimentação adequada." },
+    ],
+    repertorios: ["Josué de Castro — Geografia da Fome", "Programa Fome Zero", "ODS 2 — Fome Zero"],
+    ideiasIntroducao: ["Citar Josué de Castro.", "Partir do dado da PENSSAN."],
+    argumentos: ["Desemprego e inflação alimentar corroem renda.", "Desmonte de políticas de segurança alimentar."],
+    propostasIntervencao: [
+      "Governo Federal deve recompor o SISAN com orçamento próprio.",
+      "Municípios devem ampliar restaurantes populares e cozinhas solidárias.",
+    ],
+  },
+  {
+    id: "cultura-museus",
+    categoria: "Cultura",
+    titulo: "Preservação da memória e do patrimônio cultural brasileiro",
+    eixo: "Memória, museus e identidade nacional",
+    textosMotivadores: [
+      { fonte: "Texto I — IBRAM", trecho: "O Brasil tem mais de 3.700 museus, muitos em situação de abandono." },
+      { fonte: "Texto II — Incêndio do Museu Nacional (2018)", trecho: "200 anos de acervo foram perdidos em uma noite." },
+    ],
+    repertorios: ["Mário de Andrade — SPHAN", "Lei Rouanet", "Aleida Assmann — memória cultural"],
+    ideiasIntroducao: ["Citar Mário de Andrade e a criação do SPHAN.", "Partir do incêndio do Museu Nacional."],
+    argumentos: ["Subfinanciamento crônico dos equipamentos culturais.", "Baixa educação patrimonial na escola."],
+    propostasIntervencao: [
+      "MinC deve criar fundo emergencial para preservação de acervos.",
+      "Escolas devem promover visitas guiadas e projetos de memória local.",
+    ],
+  },
+  {
+    id: "trabalho-mulher",
+    categoria: "Trabalho",
+    titulo: "Desigualdade de gênero no mercado de trabalho brasileiro",
+    eixo: "Gênero, trabalho e cuidado",
+    textosMotivadores: [
+      { fonte: "Texto I — IBGE", trecho: "Mulheres ganham em média 22% menos que homens em funções equivalentes." },
+      { fonte: "Texto II — OIT", trecho: "Trabalho de cuidado não remunerado recai majoritariamente sobre mulheres." },
+    ],
+    repertorios: ["Silvia Federici — Calibã e a Bruxa", "Lei da Igualdade Salarial (14.611/2023)", "Heleieth Saffioti"],
+    ideiasIntroducao: ["Citar Federici sobre trabalho reprodutivo.", "Partir do dado do IBGE."],
+    argumentos: ["Divisão sexual do trabalho penaliza carreiras femininas.", "Escassez de creches limita retorno ao mercado."],
+    propostasIntervencao: [
+      "MTE deve fiscalizar a Lei da Igualdade Salarial com auditorias.",
+      "Municípios devem ampliar creches públicas em tempo integral.",
+    ],
+  },
+  {
+    id: "dh-lgbtqia",
+    categoria: "Direitos humanos",
+    titulo: "Combate à LGBTfobia e garantia de direitos da população LGBTQIA+ no Brasil",
+    eixo: "Diversidade, cidadania e direitos humanos",
+    textosMotivadores: [
+      { fonte: "Texto I — Grupo Gay da Bahia", trecho: "O Brasil lidera o ranking mundial de mortes violentas de pessoas LGBTQIA+." },
+      { fonte: "Texto II — STF (ADO 26)", trecho: "Homofobia e transfobia foram equiparadas ao crime de racismo." },
+    ],
+    repertorios: ["Judith Butler — performatividade de gênero", "João Silvério Trevisan", "Princípios de Yogyakarta"],
+    ideiasIntroducao: ["Citar Butler sobre gênero.", "Partir do dado do GGB."],
+    argumentos: ["Preconceito estrutural em espaços públicos e privados.", "Falta de dados oficiais dificulta políticas."],
+    propostasIntervencao: [
+      "Congresso deve tipificar a LGBTfobia em lei específica.",
+      "Ministério da Saúde deve ampliar ambulatórios trans no SUS.",
+    ],
+  },
+  {
+    id: "edu-ensino-superior",
+    categoria: "Educação",
+    titulo: "Democratização do acesso ao ensino superior no Brasil",
+    eixo: "Ensino superior, cotas e mobilidade social",
+    textosMotivadores: [
+      { fonte: "Texto I — MEC/INEP", trecho: "Apenas 25% dos jovens brasileiros entre 18 e 24 anos frequentam o ensino superior." },
+      { fonte: "Texto II — Lei de Cotas (12.711/2012)", trecho: "Reserva de vagas em universidades federais para escolas públicas, pretos, pardos e indígenas." },
+    ],
+    repertorios: ["Anísio Teixeira", "Kabengele Munanga", "Programas ProUni, FIES, SISU"],
+    ideiasIntroducao: ["Citar Anísio Teixeira sobre educação pública.", "Partir do dado do INEP."],
+    argumentos: ["Desigualdade na base compromete acesso ao topo.", "Custo indireto (moradia, transporte) inviabiliza permanência."],
+    propostasIntervencao: [
+      "MEC deve ampliar a Bolsa Permanência para cotistas.",
+      "IES devem criar programas de nivelamento e tutoria."
+    ],
+  },
 ];
+
+export const CATEGORY_COLORS: Record<EssayCategory, { bg: string; border: string; text: string; soft: string }> = {
+  "Educação":          { bg: "#3B82F6", border: "#3B82F6", text: "#1D4ED8", soft: "#DBEAFE" },
+  "Saúde":             { bg: "#10B981", border: "#10B981", text: "#047857", soft: "#D1FAE5" },
+  "Tecnologia":        { bg: "#8B5CF6", border: "#8B5CF6", text: "#6D28D9", soft: "#EDE9FE" },
+  "Meio ambiente":     { bg: "#22C55E", border: "#22C55E", text: "#15803D", soft: "#DCFCE7" },
+  "Segurança pública": { bg: "#EF4444", border: "#EF4444", text: "#B91C1C", soft: "#FEE2E2" },
+  "Cidadania":         { bg: "#F59E0B", border: "#F59E0B", text: "#B45309", soft: "#FEF3C7" },
+  "Desigualdade social":{ bg: "#EC4899", border: "#EC4899", text: "#BE185D", soft: "#FCE7F3" },
+  "Cultura":           { bg: "#F97316", border: "#F97316", text: "#C2410C", soft: "#FFEDD5" },
+  "Trabalho":          { bg: "#06B6D4", border: "#06B6D4", text: "#0E7490", soft: "#CFFAFE" },
+  "Direitos humanos":  { bg: "#A855F7", border: "#A855F7", text: "#7E22CE", soft: "#F3E8FF" },
+};
 
 export function themesByCategory(cat: EssayCategory): EssayTheme[] {
   return ESSAY_THEMES.filter((t) => t.categoria === cat);
