@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
@@ -779,8 +779,7 @@ function PlanView({
       <StageTasksSection />
 
       {/* Weekly rail — horizontal scroll preserves card readability */}
-      <section className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory">
-
+      <WeeklyRail>
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
           const isToday = iso === isoDateInput(new Date());
@@ -790,6 +789,7 @@ function PlanView({
           return (
             <article
               key={iso}
+              data-today={isToday ? "true" : undefined}
               className={
                 "shrink-0 w-[260px] snap-start rounded-2xl border bg-card shadow-sm flex flex-col transition-all " +
                 (isToday
@@ -859,8 +859,30 @@ function PlanView({
             </article>
           );
         })}
-      </section>
+      </WeeklyRail>
     </div>
+  );
+}
+
+function WeeklyRail({ children }: { children: React.ReactNode }) {
+  const railRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const target = rail.querySelector<HTMLElement>('[data-today="true"]');
+    const el = target ?? (rail.firstElementChild as HTMLElement | null);
+    if (!el) return;
+    // centraliza o card do dia dentro da régua
+    const left = el.offsetLeft - (rail.clientWidth - el.clientWidth) / 2;
+    rail.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+  }, [children]);
+  return (
+    <section
+      ref={railRef}
+      className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory scroll-smooth"
+    >
+      {children}
+    </section>
   );
 }
 
