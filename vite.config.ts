@@ -12,4 +12,24 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          // Excalidraw touches `window` at module top level. If Rollup lets it become
+          // the vendor chunk for shared modules (react-dom, jsx-runtime, globalthis, ...)
+          // every other lib ends up importing from it, executing Excalidraw at Worker
+          // startup and crashing SSR with "window is not defined".
+          // Force Excalidraw + mermaid into their own leaf chunks so nothing else pulls
+          // them in — they are only fetched when the client-side lazy() factory runs.
+          manualChunks(id) {
+            if (id.includes("@excalidraw/excalidraw")) return "excalidraw";
+            if (id.includes("@excalidraw/mermaid-to-excalidraw")) return "excalidraw-mermaid";
+            if (id.includes("node_modules/mermaid/")) return "mermaid";
+            return undefined;
+          },
+        },
+      },
+    },
+  },
 });
