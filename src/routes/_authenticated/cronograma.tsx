@@ -235,11 +235,21 @@ function Cronograma() {
                             <Icon size={22} />
                           </div>
                           <div className="flex-1 min-w-[200px]">
-                            <div className="font-bold flex items-center gap-2">
+                            <div className="font-bold flex items-center gap-2 flex-wrap">
                               {meta.label}
                               {isReforco && a.kind === "lousa" && (
                                 <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
                                   Reforço
+                                </span>
+                              )}
+                              {(a.payload as { carryover?: boolean })?.carryover && (
+                                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400">
+                                  Pendência de ontem
+                                </span>
+                              )}
+                              {(a.payload as { source?: string })?.source === "lousa_failure" && (
+                                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                  Foco recomendado
                                 </span>
                               )}
                             </div>
@@ -254,6 +264,15 @@ function Cronograma() {
                                     ? "Termine a atividade anterior para desbloquear"
                                     : meta.hint}
                             </div>
+                            {(() => {
+                              const focus = (a.payload as { focus_topics?: string[] })?.focus_topics;
+                              if (!focus?.length) return null;
+                              return (
+                                <div className="text-[11px] mt-1.5 text-blue-600 dark:text-blue-400">
+                                  Foque em: {focus.join(", ")}
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* Action */}
