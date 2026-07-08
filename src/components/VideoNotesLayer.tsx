@@ -197,6 +197,7 @@ export function VideoNotesLayer({
                 {isOpen && (
                   <NoteCard
                     note={n as Note}
+                    position={percentPosition(n.timestamp_seconds, notes)}
                     onClose={() => setOpenId(null)}
                     onDelete={() => remove.mutate(n.id)}
                     onSaveUserNote={(text) =>
