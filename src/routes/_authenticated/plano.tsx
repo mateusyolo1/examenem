@@ -859,7 +859,7 @@ function PlanView({
             </article>
           );
         })}
-      </section>
+      </WeeklyRail>
     </div>
   );
 }
