@@ -20,20 +20,35 @@ export interface BuildOpts {
   centerY: number;
 }
 
-// Central node
-const CW = 260;
-const CH = 90;
-// Branch node
-const BW = 200;
-const BH = 64;
-// Leaf node
-const LW = 180;
-const LH = 52;
+// Base sizes — actual width/height are computed per-node from label length
+// so long labels don't get clipped inside the box.
+const CW_MIN = 260;
+const CH_MIN = 90;
+const BW_MIN = 220;
+const BH_MIN = 64;
+const LW_MIN = 200;
+const LH_MIN = 52;
 
 const STROKE = "#1e1e1e";
 const CENTRAL_BG = "#fef3c7"; // soft yellow to stand out
 const BRANCH_BG = "#dbeafe"; // soft blue
 const LEAF_BG = "#ffffff";
+
+// Rough text-fit heuristic: characters per line at a given font size, then
+// grow width up to ~28 chars and add height for extra wrapped lines.
+function fitBox(text: string, fontSize: number, minW: number, minH: number) {
+  const t = (text ?? "").trim();
+  const avgCharPx = fontSize * 0.58;
+  const padX = 24;
+  const padY = 18;
+  const singleLineW = Math.ceil(t.length * avgCharPx) + padX * 2;
+  const maxW = Math.max(minW, Math.min(360, singleLineW));
+  const charsPerLine = Math.max(1, Math.floor((maxW - padX * 2) / avgCharPx));
+  const lines = Math.max(1, Math.ceil(t.length / charsPerLine));
+  const w = Math.max(minW, Math.min(360, singleLineW));
+  const h = Math.max(minH, lines * (fontSize * 1.3) + padY * 2);
+  return { w: Math.round(w), h: Math.round(h) };
+}
 
 function ytLink(id: string, seconds: number) {
   const t = Math.max(0, Math.floor(seconds || 0));
