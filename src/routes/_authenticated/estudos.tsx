@@ -34,11 +34,11 @@ import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } fro
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
     meta: [
-      { title: "Área de Estudos — Exame ENEM" },
+      { title: "Hub de Estudos — Exame ENEM" },
       {
         name: "description",
         content:
-          "Estude cada assunto do ENEM com buscas prontas no YouTube nos melhores canais educacionais brasileiros.",
+          "Vídeos, mapas mentais gerados por IA, notas, flashcards com revisão espaçada e resumos do que aprendi — tudo num só lugar.",
       },
     ],
   }),
