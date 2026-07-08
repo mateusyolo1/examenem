@@ -64,6 +64,7 @@ import toolEraser from "@/assets/tools/eraser.png.asset.json";
 import toolMarker from "@/assets/tools/marker.png.asset.json";
 import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
 import toolPostit from "@/assets/tools/postit.png.asset.json";
+import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
