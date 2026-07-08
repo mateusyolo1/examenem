@@ -397,6 +397,116 @@ function LousaPage() {
           sua última aula, seus erros recentes e seu plano de estudos.
         </p>
       </div>
+
+      {/* Menu de contexto sobre seleção */}
+      {menu && (
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          className="fixed z-50 w-64 overflow-hidden rounded-lg shadow-xl animate-in fade-in zoom-in-95"
+          style={{
+            top: menu.y,
+            left: menu.x,
+            background: isDark ? "#0a2a05" : "#ffffff",
+            border: `1px solid ${cBorder}`,
+            color: cText,
+          }}
+        >
+          <div
+            className="truncate px-3 py-2 text-xs"
+            style={{ borderBottom: `1px solid ${cBorder}`, color: cMuted }}
+            title={menu.text}
+          >
+            "{menu.text}"
+          </div>
+          {[
+            { k: "ask" as const, icon: MessageCircleQuestion, label: "Perguntar ao professor" },
+            { k: "learn" as const, icon: BookOpen, label: "Aprender sobre isto" },
+            { k: "example" as const, icon: Lightbulb, label: "Pedir um exemplo" },
+            { k: "source" as const, icon: Search, label: "Fonte da questão" },
+            { k: "translate" as const, icon: Languages, label: "Traduzir / simplificar" },
+          ].map(({ k, icon: Icon, label }) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                setPanel({ action: k, text: menu.text });
+                setMenu(null);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:opacity-80"
+              style={{ color: cText }}
+            >
+              <Icon size={16} style={{ color: cQuestion }} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Painel lateral com a "resposta" do professor */}
+      {panel && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setPanel(null)}
+          />
+          <aside
+            className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col shadow-2xl"
+            style={{
+              background: isDark ? "#051900" : "#ffffff",
+              borderLeft: `1px solid ${cBorder}`,
+              color: cText,
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: `1px solid ${cBorder}` }}
+            >
+              <div style={{ fontFamily: fontTitle, fontSize: 20 }}>
+                {panel.action === "ask" && "Professor IA responde"}
+                {panel.action === "learn" && "Aprender sobre"}
+                {panel.action === "example" && "Exemplo prático"}
+                {panel.action === "source" && "Fonte da questão"}
+                {panel.action === "translate" && "Explicação simplificada"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPanel(null)}
+                className="rounded p-1 hover:opacity-70"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              <div
+                className="rounded-md p-3 text-sm"
+                style={{
+                  border: `1px dashed ${cBorder}`,
+                  color: cMuted,
+                  fontFamily: fontWrite,
+                  fontSize: 18,
+                }}
+              >
+                Trecho selecionado:
+                <div style={{ color: cText, marginTop: 6 }}>"{panel.text}"</div>
+              </div>
+              <div
+                style={{
+                  fontFamily: fontWrite,
+                  fontSize: 20,
+                  color: cText,
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ color: cQuestion }}>Professor IA:</span>{" "}
+                Em breve eu vou explicar isto pra você em tempo real. Quando o backend do Tutor
+                estiver ligado a esta lousa, esta janela vai trazer a resposta usando a sua última
+                aula, seus erros recentes e o seu plano de estudos como contexto.
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
