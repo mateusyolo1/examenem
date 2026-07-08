@@ -840,7 +840,7 @@ function PlanView({
                     </p>
                   </div>
                 ) : (
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-2">
                     {dayTasks.map((t) => (
                       <li key={t.id}>
                         <TaskCard
