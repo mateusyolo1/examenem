@@ -366,7 +366,8 @@ function MindMapsTab() {
           <ul className="space-y-1">
             <li>• Barra de ferramentas fica no canvas</li>
             <li>• Duplo clique = texto</li>
-            <li>• Setas = conectar ideias</li>
+            <li>• Conectar formas: escolha a <b>seta</b>, arraste da borda de uma forma até a outra (a borda acende quando conecta)</li>
+            <li>• Trave a seta no ícone de cadeado da barra para conectar várias sem reclicar</li>
             <li>• Ctrl+Z / Ctrl+Y = desfazer/refazer</li>
             <li>• Roda do mouse = zoom</li>
           </ul>
