@@ -776,7 +776,7 @@ function PlanView({
       <StageTasksSection />
 
       {/* Weekly grid */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
 
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
