@@ -199,6 +199,41 @@ export const getTodayPlan = createServerFn({ method: "GET" })
   });
 
 /* =========================================================
+ * getTodayFocusTopics — tópicos que o Professor pediu hoje
+ * (extraídos das atividades "videos" com source=lousa_failure)
+ * ======================================================= */
+export const getTodayFocusTopics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const date = todayISO();
+    const { data: days } = await supabase
+      .from("study_plan_days")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("plan_date", date);
+    const dayIds = (days ?? []).map((d) => d.id);
+    if (!dayIds.length) return { topics: [] as string[] };
+
+    const { data: acts } = await supabase
+      .from("study_plan_activities")
+      .select("payload, status")
+      .in("day_id", dayIds)
+      .eq("kind", "videos");
+
+    const topics = new Set<string>();
+    for (const a of acts ?? []) {
+      const p = (a.payload ?? {}) as { focus_topics?: string[]; source?: string };
+      if (p.source === "lousa_failure" && Array.isArray(p.focus_topics)) {
+        for (const t of p.focus_topics) if (t) topics.add(t);
+      }
+    }
+    return { topics: Array.from(topics) };
+  });
+
+
+
+/* =========================================================
  * updateSettings
  * ======================================================= */
 export const updateStudySettings = createServerFn({ method: "POST" })
