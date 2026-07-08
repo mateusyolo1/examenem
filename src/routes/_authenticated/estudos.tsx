@@ -149,14 +149,14 @@ function EstudosPage() {
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0 flex-1">
                 <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                  Área de Estudos
+                  Hub de Estudos
                 </span>
                 <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
-                  Aprenda por vídeo.
+                  Aprenda, revise, domine.
                 </h1>
                 <p className="text-muted-foreground mt-3 max-w-2xl">
-                  Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
-                  brasileiros para o ENEM.
+                  Vídeos, mapas mentais, notas, flashcards e resumos — tudo num só lugar,
+                  personalizado pra você.
                 </p>
               </div>
               <div className="hidden md:block shrink-0">
