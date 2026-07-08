@@ -38,6 +38,7 @@ function todayISO(): string {
 
 /* =========================================================
  * ensureTodayPlan — cria o dia + atividades se ainda não existirem
+ * Também arrasta pendências do último dia anterior (ativa "pulada").
  * ======================================================= */
 export const ensureTodayPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -56,6 +57,7 @@ export const ensureTodayPlan = createServerFn({ method: "POST" })
       .maybeSingle();
 
     let day = existing;
+    const created = !day;
     if (!day) {
       const { data: inserted, error } = await supabase
         .from("study_plan_days")
@@ -67,16 +69,62 @@ export const ensureTodayPlan = createServerFn({ method: "POST" })
 
       const kinds = WEEK_PATTERN[weekday] ?? [];
       if (kinds.length) {
+        // deixa espaço no início para pendências arrastadas (offset 100)
         const rows = kinds.map((kind, i) => ({
           day_id: day!.id,
           user_id: userId,
-          order_index: i,
+          order_index: 100 + i,
           kind,
           status: "pending",
           payload: {},
         }));
         const { error: aerr } = await supabase.from("study_plan_activities").insert(rows);
         if (aerr) throw new Error(aerr.message);
+      }
+    }
+
+    // === CARRY-OVER de pendências do último dia anterior ===
+    if (created) {
+      const { data: prevDays } = await supabase
+        .from("study_plan_days")
+        .select("id, plan_date")
+        .eq("user_id", userId)
+        .lt("plan_date", date)
+        .order("plan_date", { ascending: false })
+        .limit(1);
+      const prev = prevDays?.[0];
+      if (prev) {
+        const { data: prevActs } = await supabase
+          .from("study_plan_activities")
+          .select("id, kind, payload, status")
+          .eq("day_id", prev.id)
+          .in("status", ["pending", "in_progress", "failed"]);
+
+        const carry = (prevActs ?? []).filter((a) => {
+          // não arrasta simulado nem lousa de reforço (já foi contextual)
+          if (a.kind === "simulado") return false;
+          return true;
+        });
+
+        if (carry.length) {
+          const rows = carry.map((a, i) => ({
+            day_id: day!.id,
+            user_id: userId,
+            order_index: i, // vem antes (0..N < 100)
+            kind: a.kind,
+            status: "pending",
+            payload: { ...(a.payload as object), carryover: true, from_date: prev.plan_date },
+          }));
+          await supabase.from("study_plan_activities").insert(rows);
+          // marca originais como puladas
+          await supabase
+            .from("study_plan_activities")
+            .update({ status: "skipped" })
+            .in(
+              "id",
+              carry.map((a) => a.id),
+            );
+        }
       }
     }
 
