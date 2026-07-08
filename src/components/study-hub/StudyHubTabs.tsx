@@ -237,11 +237,21 @@ function ConnectorHandles({
             scn.y <= n.y + n.height,
         );
       if (!target) return;
+      // Pick the closest side of the target for a clean elbow entry
+      const relX = (scn.x - target.x) / target.width;
+      const relY = (scn.y - target.y) / target.height;
+      const dLeft = relX, dRight = 1 - relX, dTop = relY, dBottom = 1 - relY;
+      const minD = Math.min(dLeft, dRight, dTop, dBottom);
+      const fpEnd: [number, number] =
+        minD === dTop    ? [0.5, 0] :
+        minD === dBottom ? [0.5, 1] :
+        minD === dLeft   ? [0, 0.5] :
+                           [1, 0.5];
       const next = arr.map((n: any) =>
         n.id === arrow.id
           ? {
               ...n,
-              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: null },
+              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: fpEnd },
               version: (n.version ?? 1) + 1,
               versionNonce: Math.floor(Math.random() * 2 ** 31),
             }
