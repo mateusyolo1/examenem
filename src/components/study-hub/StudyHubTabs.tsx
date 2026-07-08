@@ -257,11 +257,27 @@ function MindMapsTab() {
   function toggleFullscreen() {
     const el = wrapRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => toast.error("Tela cheia não disponível neste contexto."));
-    } else {
-      document.exitFullscreen?.();
+    // If we're in CSS-only fullscreen, just toggle off
+    if (el.dataset.cssFs === "1") {
+      delete el.dataset.cssFs;
+      setIsFullscreen(false);
+      return;
     }
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+      return;
+    }
+    const req = el.requestFullscreen?.bind(el);
+    if (!req) {
+      el.dataset.cssFs = "1";
+      setIsFullscreen(true);
+      return;
+    }
+    req().catch(() => {
+      // iframe likely blocks native fullscreen — fall back to CSS-only
+      el.dataset.cssFs = "1";
+      setIsFullscreen(true);
+    });
   }
 
   return (
