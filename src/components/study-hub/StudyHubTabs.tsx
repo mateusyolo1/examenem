@@ -443,6 +443,7 @@ function MindMapsTab() {
                 : undefined,
             backgroundSize: bgStyle === "dots" ? "20px 20px" : undefined,
           }}
+          ref={canvasWrapRef}
         >
           <ClientOnly
             fallback={
@@ -476,6 +477,7 @@ function MindMapsTab() {
                   },
                 }}
               />
+              <ConnectorHandles apiRef={apiRef} containerRef={canvasWrapRef} />
             </Suspense>
           </ClientOnly>
         </div>
