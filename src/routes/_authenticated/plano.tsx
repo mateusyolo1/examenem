@@ -824,7 +824,7 @@ function PlanView({
                 ) : null}
               </header>
 
-              <div className="px-4 pb-4 flex-1">
+              <div className="px-3 pb-3 flex-1">
                 {dayTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center py-6 px-3 rounded-xl bg-muted/40 border border-dashed border-border">
                     <Coffee
