@@ -631,7 +631,7 @@ function LousaPage() {
                       className="w-full rounded-md px-4 py-2.5 text-sm font-bold uppercase tracking-wider transition-opacity hover:opacity-90"
                       style={{
                         background: cQuestion,
-                        color: cBg,
+                        color: isDark ? "#051900" : "#ffffff",
                         fontFamily: fontTitle,
                         letterSpacing: ".05em",
                       }}
