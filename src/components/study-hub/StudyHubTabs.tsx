@@ -63,6 +63,7 @@ import toolPen from "@/assets/tools/pen.png.asset.json";
 import toolEraser from "@/assets/tools/eraser.png.asset.json";
 import toolMarker from "@/assets/tools/marker.png.asset.json";
 import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
+import toolPostit from "@/assets/tools/postit.png.asset.json";
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
@@ -1193,7 +1194,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           />
           <ChevronUp size={11} className="opacity-60" />
         </button>
-        <Btn id="sticky" icon={StickyNote} label="Sticky note" />
+        <Btn id="sticky" image={toolPostit.url} label="Sticky note" />
         <Divider />
         <button
           onClick={() => { setShapesOpen((v) => !v); setPenOpen(false); setMoreOpen(false); setTool(activeShape.id); }}
