@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClientOnly } from "@tanstack/react-router";
+import { ClientOnly, useSearch } from "@tanstack/react-router";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import {
@@ -64,6 +64,7 @@ import toolEraser from "@/assets/tools/eraser.png.asset.json";
 import toolMarker from "@/assets/tools/marker.png.asset.json";
 import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
 import toolPostit from "@/assets/tools/postit.png.asset.json";
+import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
@@ -471,6 +472,17 @@ function MindMapsTab() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Auto-open a map when navigated with `?openMap=<id>` (used by the
+  // "Gerar mapa mental" button in NotesTab video cards).
+  const search = useSearch({ strict: false }) as { openMap?: string };
+  useEffect(() => {
+    if (search.openMap && search.openMap !== selectedId) {
+      setSelectedId(search.openMap);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.openMap]);
+
   const [title, setTitle] = useState("Novo mapa");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -802,6 +814,44 @@ function MindMapsTab() {
               </button>
             ))}
           </div>
+          <GenerateFromVideoButton
+            variant="toolbar"
+            onInsert={async (elements, meta) => {
+              const api = apiRef.current;
+              if (!api) return;
+              // Import Excalidraw helpers to normalize the raw skeleton
+              // (labels, arrow bindings, etc.) into real scene elements.
+              const m = await import("@excalidraw/excalidraw");
+              const built = m.convertToExcalidrawElements(elements);
+              // Offset if the canvas already has content, so we don't stack
+              // on top of an existing mind map.
+              const current = api.getSceneElements() as any[];
+              let offsetX = 0;
+              if (current.length > 0) {
+                const maxX = current.reduce(
+                  (m: number, el: any) => Math.max(m, (el.x ?? 0) + (el.width ?? 0)),
+                  -Infinity,
+                );
+                offsetX = Math.max(0, maxX + 200);
+              }
+              const shifted = built.map((el: any) => ({
+                ...el,
+                x: (el.x ?? 0) + offsetX,
+              }));
+              const selected: Record<string, true> = {};
+              for (const el of shifted) selected[el.id] = true;
+              api.updateScene({
+                elements: [...current, ...shifted],
+                appState: { selectedElementIds: selected },
+              });
+              api.scrollToContent(shifted, {
+                animate: true,
+                fitToViewport: true,
+                maxZoom: 1,
+              });
+              if (!title || title === "Novo mapa") setTitle(meta.title);
+            }}
+          />
           <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
             <ImageIcon size={13} />
             PNG
@@ -1274,6 +1324,7 @@ function NotesTab() {
                 <span className="font-medium text-foreground truncate">{v.videoTitle}</span>
                 {v.channel && <span className="text-muted-foreground truncate">· {v.channel}</span>}
                 <span className="text-muted-foreground">· {v.notes.length} nota{v.notes.length > 1 ? "s" : ""}</span>
+                <GenerateFromVideoButton variant="card" videoId={vId} videoTitle={v.videoTitle} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {v.notes.map((n: any) => (

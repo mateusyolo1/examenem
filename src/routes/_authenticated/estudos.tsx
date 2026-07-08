@@ -32,6 +32,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } from "@/components/study-hub/StudyHubTabs";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+    openMap: typeof search.openMap === "string" ? search.openMap : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Hub de Estudos — Exame ENEM" },
@@ -104,6 +108,7 @@ function ytSearchUrl(query: string) {
 }
 
 function EstudosPage() {
+  const navigate = useNavigate();
   const listTopics = useServerFn(listStudyTopics);
   const { data: topicsData } = useQuery({
     queryKey: ["study-topics"],
@@ -170,7 +175,17 @@ function EstudosPage() {
 
 
 
-          <Tabs defaultValue="videos" className="w-full">
+          <Tabs
+            value={(Route.useSearch() as any).tab ?? "videos"}
+            onValueChange={(v) =>
+              navigate({
+                to: "/estudos",
+                search: (prev: any) => ({ ...prev, tab: v }),
+                replace: true,
+              })
+            }
+            className="w-full"
+          >
             <TabsList className="flex flex-wrap w-full h-auto justify-start gap-1 mb-4">
               <TabsTrigger value="videos" className="gap-1.5"><Youtube size={14} /> Vídeos</TabsTrigger>
               <TabsTrigger value="mapas" className="gap-1.5"><Brain size={14} /> Mapas mentais</TabsTrigger>
