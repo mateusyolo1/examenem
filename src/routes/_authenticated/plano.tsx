@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
