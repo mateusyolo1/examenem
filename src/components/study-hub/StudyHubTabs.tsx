@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ClientOnly } from "@tanstack/react-router";
+import { ClientOnly, useSearch } from "@tanstack/react-router";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import {
