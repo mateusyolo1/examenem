@@ -432,13 +432,14 @@ function StreamText({
   const Tag = as as keyof JSX.IntrinsicElements;
   const shown = text.slice(0, n);
   const caret = n < text.length;
-  return useMemo(
-    () => (
-      <Tag style={{ color, ...style }}>
-        {shown}
-        {caret && <span style={{ opacity: 0.5 }}>▍</span>}
-      </Tag>
-    ),
-    [shown, caret, color, style, Tag],
+  const content = (
+    <>
+      {shown}
+      {caret && <span style={{ opacity: 0.5 }}>▍</span>}
+    </>
   );
+  const commonStyle = { color, ...style };
+  if (as === "div") return <div style={commonStyle}>{content}</div>;
+  if (as === "span") return <span style={commonStyle}>{content}</span>;
+  return <li style={commonStyle}>{content}</li>;
 }
