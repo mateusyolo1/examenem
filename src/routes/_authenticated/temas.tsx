@@ -98,18 +98,31 @@ function CategoryChip({
   label,
   active,
   onClick,
+  color,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  color?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      style={
+        active && color
+          ? { backgroundColor: color, borderColor: color, color: "#fff" }
+          : color
+            ? { borderColor: color, color }
+            : undefined
+      }
       className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-widest border transition-all ${
         active
-          ? "bg-foreground text-background border-foreground"
-          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+          ? color
+            ? ""
+            : "bg-foreground text-background border-foreground"
+          : color
+            ? "hover:brightness-110"
+            : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
       }`}
     >
       {label}
