@@ -216,13 +216,20 @@ function Tutor() {
         : undefined;
       const res = await ask({
         data: {
-          messages: next.slice(-20),
+          messages: next.slice(-20).map((m) => ({ role: m.role, content: m.content })),
           mode,
           context: useContext ? studentContext : undefined,
           stage: stagePayload,
         },
       });
-      setMessages([...next, { role: "assistant", content: res.text }]);
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: res.text,
+          toolResults: res.toolResults?.length ? res.toolResults : undefined,
+        },
+      ]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       let userMsg = "Não consegui responder agora. Tente novamente.";
