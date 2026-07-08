@@ -71,6 +71,7 @@ function TemasPage() {
             <CategoryChip
               key={c}
               label={c}
+              color={CATEGORY_COLORS[c].bg}
               active={activeCat === c}
               onClick={() => navigate({ search: { cat: c } })}
             />
