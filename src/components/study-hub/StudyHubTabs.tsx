@@ -894,7 +894,7 @@ function MindMapsTab() {
 
 type ToolId =
   | "selection" | "hand"
-  | "pen" | "highlighter" | "pencil"
+  | "pen" | "highlighter" | "pencil" | "marker"
   | "sticky"
   | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
 
