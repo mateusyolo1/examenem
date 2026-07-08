@@ -601,6 +601,84 @@ function LousaPage() {
                 )}
               </div>
 
+              {!panelLoading && (panelAnswer || panelError) && (
+                <div className="pt-2">
+                  {!studyPath && !studyLoading && !studyError && (
+                    <button
+                      onClick={() => {
+                        if (!panel) return;
+                        setStudyError("");
+                        setStudyPath("");
+                        setStudyLoading(true);
+                        const p = `Sou um aluno de ENEM e não conheço quase nada sobre o assunto deste trecho da aula de ${content.materia} — "${content.tema}":\n\n"${panel.text}"\n\nMonte para mim uma TRILHA DE ESTUDO em forma de mapa mental / lista ordenada, partindo do conteúdo mais básico que preciso dominar ANTES, até chegar exatamente neste assunto. Para cada item:\n- Nome do tópico\n- 1 frase do porquê ele é pré-requisito\n- Nível (Fundamental / Médio inicial / Médio avançado / ENEM)\n\nNo final, sugira por onde começar hoje. Responda em Markdown, com títulos e listas.`;
+                        askTutorFn({
+                          data: {
+                            messages: [{ role: "user", content: p }],
+                            mode: "plano",
+                            context: `Lousa interativa · Matéria: ${content.materia} · Tema: ${content.tema}`,
+                          },
+                        })
+                          .then((res) => setStudyPath(res?.text ?? ""))
+                          .catch((err: unknown) =>
+                            setStudyError(
+                              err instanceof Error
+                                ? err.message
+                                : "Não consegui montar a trilha agora.",
+                            ),
+                          )
+                          .finally(() => setStudyLoading(false));
+                      }}
+                      className="w-full rounded-md px-4 py-2.5 text-sm font-bold uppercase tracking-wider transition-opacity hover:opacity-90"
+                      style={{
+                        background: cQuestion,
+                        color: cBg,
+                        fontFamily: fontTitle,
+                        letterSpacing: ".05em",
+                      }}
+                    >
+                      Estudar este assunto do zero
+                    </button>
+                  )}
+                  {studyLoading && (
+                    <div
+                      className="flex items-center gap-2 mt-2"
+                      style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}
+                    >
+                      <Loader2 size={16} className="animate-spin" />
+                      Montando sua trilha de estudo…
+                    </div>
+                  )}
+                  {studyError && (
+                    <div
+                      className="rounded-md p-3 mt-2"
+                      style={{
+                        border: `1px solid ${cBorder}`,
+                        color: cAnswer,
+                        fontFamily: fontWrite,
+                        fontSize: 16,
+                      }}
+                    >
+                      {studyError}
+                    </div>
+                  )}
+                  {studyPath && (
+                    <div className="mt-3" style={{ color: cText, lineHeight: 1.5 }}>
+                      <div
+                        style={{
+                          color: cQuestion,
+                          fontFamily: fontTitle,
+                          fontSize: 18,
+                          marginBottom: 8,
+                          letterSpacing: ".02em",
+                        }}
+                      >
+                        Trilha para chegar até aqui
+                      </div>
+                      <Markdown>{studyPath}</Markdown>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </aside>
         </>
