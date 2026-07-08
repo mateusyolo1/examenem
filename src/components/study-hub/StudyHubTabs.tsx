@@ -162,7 +162,7 @@ function MindMapsTab() {
     setTitle("Novo mapa");
     initialDataRef.current = {
       elements: [],
-      appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 },
+      appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 },
       files: {},
     };
     setLoadKey((k) => k + 1);
