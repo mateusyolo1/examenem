@@ -528,7 +528,17 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     }
 
     if (suggestions.length > 0) {
-      const rows = suggestions.map((s, i) => ({
+      // Coloca vídeos de dica/macete/bizu/truque/mnemônico ANTES dos vídeos
+      // de conteúdo direto, para não quebrar o padrão de aprendizado.
+      const TIP_REGEX =
+        /\b(dica|dicas|macete|macetes|bizu|bizus|truque|truques|hack|hacks|mnem[oô]nic\w*|resumão|resumao|atalho|atalhos)\b/i;
+      const isTip = (s: AiVideoSuggestion) =>
+        TIP_REGEX.test(s.title ?? "") || TIP_REGEX.test(s.channel_name ?? "");
+      const ordered = [
+        ...suggestions.filter(isTip),
+        ...suggestions.filter((s) => !isTip(s)),
+      ];
+      const rows = ordered.map((s, i) => ({
         topic_id: topic.id,
         youtube_id: s.youtube_id,
         title: s.title,
