@@ -429,7 +429,6 @@ function StreamText({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [text, delay]);
-  const Tag = as as keyof JSX.IntrinsicElements;
   const shown = text.slice(0, n);
   const caret = n < text.length;
   const content = (
