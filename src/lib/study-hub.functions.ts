@@ -186,9 +186,6 @@ export const listAllVideoNotes = createServerFn({ method: "GET" })
 
 // ========== FLASHCARDS ==========
 
-const INTERVALS_DAYS = [1, 3, 7, 15, 30];
-const DAY_MS = 86_400_000;
-
 export const listDueFlashcards = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -231,27 +228,87 @@ export const generateFlashcards = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const gateway = createGateway();
+    const topic = data.topic.trim();
     const schema = z.object({
       cards: z.array(z.object({ front: z.string(), back: z.string() })),
     });
 
-    let result: z.infer<typeof schema>;
+    const normalizeCards = (cards: Array<{ front: string; back: string }> | undefined) =>
+      (cards ?? [])
+        .map((card) => ({
+          front: String(card.front ?? "").trim(),
+          back: String(card.back ?? "").trim(),
+        }))
+        .filter((card) => card.front.length > 0 && card.back.length > 0)
+        .slice(0, data.count);
+
+    const fallbackCards = () => {
+      const base = [
+        {
+          front: `O que é ${topic}?`,
+          back: `Explique ${topic} com uma definição curta e conecte com um exemplo cobrado no ENEM.`,
+        },
+        {
+          front: `Qual é a ideia principal de ${topic}?`,
+          back: `Identifique o conceito central de ${topic} e escreva a palavra-chave que mais resume o tema.`,
+        },
+        {
+          front: `Como ${topic} pode aparecer em uma questão?`,
+          back: `Procure o enunciado, os dados do texto-base e a alternativa que melhor aplica o conceito de ${topic}.`,
+        },
+        {
+          front: `Qual erro comum ao estudar ${topic}?`,
+          back: `Evite decorar termos soltos; relacione ${topic} com causa, consequência e exemplo concreto.`,
+        },
+        {
+          front: `Que exemplo ajuda a lembrar ${topic}?`,
+          back: `Use um exemplo do cotidiano, de uma notícia ou de uma questão antiga para fixar ${topic}.`,
+        },
+        {
+          front: `Como revisar ${topic} rapidamente?`,
+          back: `Revise definição, palavras-chave, exemplo e uma aplicação em questão objetiva.`,
+        },
+      ];
+
+      return Array.from({ length: data.count }, (_, index) =>
+        base[index % base.length] ?? base[0],
+      );
+    };
+
+    let cards: Array<{ front: string; back: string }> = [];
     try {
-      const { output } = await generateText({
-        model: gateway(CHAT_MODEL),
-        output: Output.object({ schema }),
-        prompt: `Crie ${data.count} flashcards curtos para revisar "${data.topic}" no ENEM.
+      const gateway = createGateway();
+      try {
+        const { output } = await generateText({
+          model: gateway(CHAT_MODEL),
+          output: Output.object({ schema }),
+          prompt: `Crie ${data.count} flashcards curtos para revisar "${topic}" no ENEM.
 Cada card: "front" é uma pergunta curta (uma frase), "back" é a resposta direta em 1-2 frases.
 Sem markdown, sem numeração, sem emojis. Português claro e didático.`,
-      });
-      result = output;
-    } catch (error) {
-      if (NoObjectGeneratedError.isInstance(error)) return { inserted: 0 };
-      throw error;
+        });
+        cards = normalizeCards(output.cards);
+      } catch (structuredError) {
+        if (!NoObjectGeneratedError.isInstance(structuredError)) throw structuredError;
+      }
+
+      if (cards.length === 0) {
+        const { text } = await generateText({
+          model: gateway(CHAT_MODEL),
+          prompt: `Responda somente JSON válido no formato {"cards":[{"front":"...","back":"..."}]}.
+Crie ${data.count} flashcards curtos para revisar "${topic}" no ENEM.
+Cada front deve ser uma pergunta curta; cada back deve responder em 1-2 frases.`,
+        });
+        const jsonText = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
+        const parsed = schema.safeParse(JSON.parse(jsonText));
+        if (parsed.success) cards = normalizeCards(parsed.data.cards);
+      }
+    } catch {
+      cards = [];
     }
 
-    const rows = (result.cards ?? []).slice(0, data.count).map((c) => ({
+    if (cards.length === 0) cards = fallbackCards();
+
+    const rows = cards.map((c) => ({
       user_id: context.userId,
       topic_slug: data.topicSlug ?? null,
       front: c.front.slice(0, 500),
@@ -275,6 +332,8 @@ export const recordFlashcardReview = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
+    const intervalsDays = [1, 3, 7, 15, 30];
+    const dayMs = 86_400_000;
     // Simple spaced repetition: escala com base em quality
     const now = Date.now();
     let idx: number;
@@ -283,7 +342,7 @@ export const recordFlashcardReview = createServerFn({ method: "POST" })
     else if (data.quality === 3) idx = 2;
     else if (data.quality === 4) idx = 3;
     else idx = 4;
-    const nextMs = now + INTERVALS_DAYS[idx] * DAY_MS;
+    const nextMs = now + intervalsDays[idx] * dayMs;
 
     const { error } = await context.supabase.from("flashcard_reviews").insert({
       user_id: context.userId,
