@@ -553,19 +553,45 @@ function LousaPage() {
                 Trecho selecionado:
                 <div style={{ color: cText, marginTop: 6 }}>"{panel.text}"</div>
               </div>
-              <div
-                style={{
-                  fontFamily: fontWrite,
-                  fontSize: 20,
-                  color: cText,
-                  lineHeight: 1.5,
-                }}
-              >
-                <span style={{ color: cQuestion }}>Professor IA:</span>{" "}
-                Em breve eu vou explicar isto pra você em tempo real. Quando o backend do Tutor
-                estiver ligado a esta lousa, esta janela vai trazer a resposta usando a sua última
-                aula, seus erros recentes e o seu plano de estudos como contexto.
+              <div style={{ color: cText, lineHeight: 1.5 }}>
+                <div
+                  style={{
+                    color: cQuestion,
+                    fontFamily: fontTitle,
+                    fontSize: 18,
+                    marginBottom: 8,
+                    letterSpacing: ".02em",
+                  }}
+                >
+                  Professor IA
+                </div>
+                {panelLoading && (
+                  <div
+                    className="flex items-center gap-2"
+                    style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}
+                  >
+                    <Loader2 size={16} className="animate-spin" />
+                    Pensando na melhor explicação…
+                  </div>
+                )}
+                {!panelLoading && panelError && (
+                  <div
+                    className="rounded-md p-3"
+                    style={{
+                      border: `1px solid ${cBorder}`,
+                      color: cAnswer,
+                      fontFamily: fontWrite,
+                      fontSize: 16,
+                    }}
+                  >
+                    {panelError}
+                  </div>
+                )}
+                {!panelLoading && !panelError && panelAnswer && (
+                  <Markdown>{panelAnswer}</Markdown>
+                )}
               </div>
+
             </div>
           </aside>
         </>
