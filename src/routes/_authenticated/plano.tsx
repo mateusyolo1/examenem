@@ -778,8 +778,8 @@ function PlanView({
       {/* Stage-driven tasks (from learning-progress) */}
       <StageTasksSection />
 
-      {/* Weekly grid */}
-      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+      {/* Weekly rail — horizontal scroll preserves card readability */}
+      <section className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory">
 
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
@@ -791,7 +791,7 @@ function PlanView({
             <article
               key={iso}
               className={
-                "rounded-2xl border bg-card shadow-sm flex flex-col transition-all " +
+                "shrink-0 w-[260px] snap-start rounded-2xl border bg-card shadow-sm flex flex-col transition-all " +
                 (isToday
                   ? "border-primary/50 ring-2 ring-primary/20 shadow-md"
                   : "border-border hover:shadow-md")
