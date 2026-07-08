@@ -6,6 +6,7 @@ import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import {
   NotebookPen,
+  Sparkles,
   Trash2,
   Save,
   Plus,
