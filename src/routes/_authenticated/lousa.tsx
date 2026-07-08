@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Eye,
@@ -13,8 +14,11 @@ import {
   Search,
   Lightbulb,
   Languages,
+  Loader2,
   X,
 } from "lucide-react";
+import { askTutor } from "@/lib/ai.functions";
+import { Markdown } from "@/components/Markdown";
 
 export const Route = createFileRoute("/_authenticated/lousa")({
   head: () => ({
