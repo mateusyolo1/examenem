@@ -700,6 +700,7 @@ function MindMapsTab() {
       img.src = dataUrl;
       await new Promise((r) => (img.onload = () => r(null)));
       const orientation = img.width >= img.height ? "l" : "p";
+      const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ orientation, unit: "pt", format: "a4" });
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
