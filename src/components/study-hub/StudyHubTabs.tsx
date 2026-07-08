@@ -1194,7 +1194,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           />
           <ChevronUp size={11} className="opacity-60" />
         </button>
-        <Btn id="sticky" icon={StickyNote} label="Sticky note" />
+        <Btn id="sticky" image={toolPostit.url} label="Sticky note" />
         <Divider />
         <button
           onClick={() => { setShapesOpen((v) => !v); setPenOpen(false); setMoreOpen(false); setTool(activeShape.id); }}
