@@ -897,6 +897,9 @@ type ToolId =
   | "pen" | "highlighter" | "pencil" | "marker"
   | "sticky"
   | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
+  | "text" | "image" | "eraser" | "laser" | "frame";
+
+
 
 function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const [active, setActive] = useState<ToolId>("selection");
