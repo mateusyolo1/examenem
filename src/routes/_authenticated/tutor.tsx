@@ -5,7 +5,8 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
-import { askTutor } from "@/lib/ai.functions";
+import { TutorToolCard } from "@/components/TutorToolCard";
+import { askTutor, type TutorToolResult } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
 import {
@@ -14,7 +15,11 @@ import {
   LEARNING_STAGES,
 } from "@/lib/learning-progress";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  toolResults?: TutorToolResult[];
+};
 type Mode =
   | "livre"
   | "explicar"
@@ -25,7 +30,7 @@ type Mode =
   | "questoes"
   | "erro";
 
-const HISTORY_KEY = "exame:tutor:history:v1";
+const HISTORY_KEY = "exame:tutor:history:v2";
 
 export const Route = createFileRoute("/_authenticated/tutor")({
   head: () => ({
@@ -211,13 +216,20 @@ function Tutor() {
         : undefined;
       const res = await ask({
         data: {
-          messages: next.slice(-20),
+          messages: next.slice(-20).map((m) => ({ role: m.role, content: m.content })),
           mode,
           context: useContext ? studentContext : undefined,
           stage: stagePayload,
         },
       });
-      setMessages([...next, { role: "assistant", content: res.text }]);
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: res.text,
+          toolResults: res.toolResults?.length ? res.toolResults : undefined,
+        },
+      ]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       let userMsg = "Não consegui responder agora. Tente novamente.";
@@ -360,13 +372,26 @@ function Tutor() {
                 >
                   <div
                     className={
-                      "max-w-[85%] p-4 rounded-lg " +
+                      "max-w-[85%] " +
                       (m.role === "user"
-                        ? "bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
-                        : "bg-background border border-border")
+                        ? "p-4 rounded-lg bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
+                        : "space-y-3")
                     }
                   >
-                    {m.role === "user" ? m.content : <Markdown>{m.content}</Markdown>}
+                    {m.role === "user" ? (
+                      m.content
+                    ) : (
+                      <>
+                        {m.toolResults?.map((tr, ti) => (
+                          <TutorToolCard key={ti} result={tr} />
+                        ))}
+                        {m.content && (
+                          <div className="p-4 rounded-lg bg-background border border-border">
+                            <Markdown>{m.content}</Markdown>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
