@@ -394,7 +394,8 @@ export const generateSummary = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     // Gather activity signals
-    const since = new Date(Date.now() - 7 * DAY_MS).toISOString();
+    const dayMs = 86_400_000;
+    const since = new Date(Date.now() - 7 * dayMs).toISOString();
     const [notesRes, attemptsRes] = await Promise.all([
       context.supabase
         .from("video_notes")
