@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
@@ -269,6 +269,20 @@ function Tutor() {
             </span>
           </div>
         </header>
+
+        <Link
+          to="/tutor/lousa"
+          className="mb-6 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
+        >
+          <div>
+            <div className="text-xs font-mono uppercase tracking-widest text-primary">Novidade</div>
+            <div className="text-lg font-bold mt-1">Lousa Interativa — pratique como se estivesse em aula</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Ler, ouvir, escrever, praticar e ensinar. Quadro branco ou negro, com fontes de giz e lápis.
+            </div>
+          </div>
+          <span className="text-primary text-2xl font-bold group-hover:translate-x-1 transition-transform">→</span>
+        </Link>
 
         <div className="grid lg:grid-cols-[260px_1fr] gap-6 flex-1">
           {/* Sidebar */}

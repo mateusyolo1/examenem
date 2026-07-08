@@ -2,6 +2,28 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* === Lousa Interativa — fontes personalizadas === */
+@font-face {
+  font-family: "LousaWriteLight";
+  src: url("/__l5e/assets-v1/191102a6-fb55-4e6c-b787-01e010299e9e/lousa-write-light.otf") format("opentype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LousaTitleLight";
+  src: url("/__l5e/assets-v1/5842f0b2-9034-4202-9fa7-cecb7617b6ad/lousa-title-light.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LousaWriteDark";
+  src: url("/__l5e/assets-v1/2e259247-7743-4989-b5ac-4b971ba052ee/lousa-write-dark.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LousaTitleDark";
+  src: url("/__l5e/assets-v1/a8d48bda-490d-401e-8d93-7086cba991cd/lousa-title-dark.ttf") format("truetype");
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
