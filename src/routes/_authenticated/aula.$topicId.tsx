@@ -45,6 +45,7 @@ import {
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
 import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
+import { VideoNotesLayer } from "@/components/VideoNotesLayer";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
@@ -575,6 +576,24 @@ function WatchingView({
               <Check size={12} /> Assistido
             </div>
           )}
+          <VideoNotesLayer
+            videoId={video.id}
+            youtubeId={video.youtube_id}
+            videoTitle={video.title ?? ""}
+            topicTitle=""
+            getCurrentTime={() => {
+              try {
+                const p = playerRef.current;
+                if (p && typeof p.getCurrentTime === "function") return p.getCurrentTime();
+              } catch {}
+              return 0;
+            }}
+            onSeek={(s) => {
+              try {
+                playerRef.current?.seekTo?.(s, true);
+              } catch {}
+            }}
+          />
         </div>
       </div>
 
