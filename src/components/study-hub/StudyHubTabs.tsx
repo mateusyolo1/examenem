@@ -134,6 +134,79 @@ function ConnectorHandles({
     { key: "l", sx: el.x, sy: el.y + el.height / 2 },
   ];
 
+  const dirVec = (key: string) =>
+    key === "t" ? { dx: 0, dy: -1 } :
+    key === "r" ? { dx: 1, dy: 0 } :
+    key === "b" ? { dx: 0, dy: 1 } :
+                  { dx: -1, dy: 0 };
+
+  const fpFor = (key: string): [number, number] =>
+    key === "t" ? [0.5, 0] :
+    key === "r" ? [1, 0.5] :
+    key === "b" ? [0.5, 1] :
+                  [0, 0.5];
+
+  const oppositeFp = (key: string): [number, number] =>
+    key === "t" ? [0.5, 1] :
+    key === "r" ? [0, 0.5] :
+    key === "b" ? [0.5, 0] :
+                  [1, 0.5];
+
+  // Click behavior: duplicate the shape in the direction of the handle and
+  // connect it with an elbow arrow (like Excalidraw's Ctrl+Arrow shortcut).
+  const cloneInDirection = (a: (typeof anchors)[number]) => {
+    const api = apiRef.current;
+    const convert = convertRef.current;
+    if (!api || !convert) return;
+    const { dx, dy } = dirVec(a.key);
+    const gap = 80;
+    const nx = el.x + dx * (el.width + gap);
+    const ny = el.y + dy * (el.height + gap);
+    const built = convert([
+      {
+        type: el.type,
+        x: nx,
+        y: ny,
+        width: el.width,
+        height: el.height,
+        strokeColor: el.strokeColor,
+        backgroundColor: el.backgroundColor,
+        fillStyle: el.fillStyle,
+        strokeWidth: el.strokeWidth,
+        strokeStyle: el.strokeStyle,
+        roughness: el.roughness,
+        roundness: el.roundness,
+      } as any,
+      {
+        type: "arrow",
+        x: a.sx,
+        y: a.sy,
+        points: [
+          [0, 0],
+          [dx * gap, dy * gap],
+        ],
+        strokeColor: el.strokeColor,
+        strokeWidth: el.strokeWidth ?? 2,
+        endArrowhead: "arrow",
+        elbowed: true,
+        roundness: null,
+      } as any,
+    ]);
+    const newShape = built[0];
+    const arrow: any = {
+      ...built[1],
+      elbowed: true,
+      roundness: null,
+      startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpFor(a.key) },
+      endBinding: { elementId: newShape.id, focus: 0, gap: 1, fixedPoint: oppositeFp(a.key) },
+    };
+    const current = api.getSceneElements();
+    api.updateScene({
+      elements: [...current, newShape, arrow],
+      appState: { selectedElementIds: { [newShape.id]: true } },
+    });
+  };
+
   const startDrag = (e: React.PointerEvent, a: (typeof anchors)[number]) => {
     e.preventDefault();
     e.stopPropagation();
@@ -142,52 +215,64 @@ function ConnectorHandles({
     const cont = containerRef.current;
     if (!api || !convert || !cont) return;
     const rect = cont.getBoundingClientRect();
-    const st = api.getAppState();
-    const z = st.zoom?.value ?? 1;
-    const sX = st.scrollX ?? 0;
-    const sY = st.scrollY ?? 0;
-    const toScene = (cx: number, cy: number) => ({
-      x: (cx - rect.left) / z - sX,
-      y: (cy - rect.top) / z - sY,
-    });
+    const downX = e.clientX;
+    const downY = e.clientY;
+    const CLICK_THRESHOLD = 4;
+    let movedPastThreshold = false;
+    let arrowCreated = false;
+    let arrow: any = null;
     const start = { x: a.sx, y: a.sy };
-    const end0 = toScene(e.clientX, e.clientY);
-    const built = convert([
-      {
-        type: "arrow",
-        x: start.x,
-        y: start.y,
-        points: [
-          [0, 0],
-          [end0.x - start.x, end0.y - start.y],
-        ],
-        strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
-        strokeWidth: st.currentItemStrokeWidth ?? 2,
-        endArrowhead: "arrow",
+    const fpStart = fpFor(a.key);
+
+    const createArrow = (ev: PointerEvent) => {
+      const st = api.getAppState();
+      const z = st.zoom?.value ?? 1;
+      const sX = st.scrollX ?? 0;
+      const sY = st.scrollY ?? 0;
+      const end0 = {
+        x: (ev.clientX - rect.left) / z - sX,
+        y: (ev.clientY - rect.top) / z - sY,
+      };
+      const built = convert([
+        {
+          type: "arrow",
+          x: start.x,
+          y: start.y,
+          points: [
+            [0, 0],
+            [end0.x - start.x, end0.y - start.y],
+          ],
+          strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
+          strokeWidth: st.currentItemStrokeWidth ?? 2,
+          endArrowhead: "arrow",
+          elbowed: true,
+          roundness: null,
+        } as any,
+      ]);
+      arrow = {
+        ...built[0],
         elbowed: true,
         roundness: null,
-      } as any,
-    ]);
-    // Fixed anchor point on the source side (0..1 along each axis)
-    const fpStart: [number, number] =
-      a.key === "t" ? [0.5, 0] :
-      a.key === "r" ? [1, 0.5] :
-      a.key === "b" ? [0.5, 1] :
-                      [0, 0.5];
-    const arrow: any = {
-      ...built[0],
-      elbowed: true,
-      roundness: null,
-      startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpStart },
-      endBinding: null,
+        startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpStart },
+        endBinding: null,
+      };
+      const current = api.getSceneElements();
+      api.updateScene({ elements: [...current, arrow] });
+      arrowCreated = true;
+      draggingRef.current = true;
     };
-    const current = api.getSceneElements();
-    api.updateScene({ elements: [...current, arrow] });
-    draggingRef.current = true;
 
     const onMove = (ev: PointerEvent) => {
+      if (!movedPastThreshold) {
+        const dx = ev.clientX - downX;
+        const dy = ev.clientY - downY;
+        if (Math.hypot(dx, dy) < CLICK_THRESHOLD) return;
+        movedPastThreshold = true;
+        createArrow(ev);
+        return;
+      }
       const api2 = apiRef.current;
-      if (!api2) return;
+      if (!api2 || !arrow) return;
       const st2 = api2.getAppState();
       const z2 = st2.zoom?.value ?? 1;
       const scn = {
@@ -214,8 +299,13 @@ function ConnectorHandles({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       draggingRef.current = false;
+      if (!arrowCreated) {
+        // Treat as click → duplicate shape in the handle's direction
+        cloneInDirection(a);
+        return;
+      }
       const api2 = apiRef.current;
-      if (!api2) return;
+      if (!api2 || !arrow) return;
       const st2 = api2.getAppState();
       const z2 = st2.zoom?.value ?? 1;
       const scn = {
@@ -237,7 +327,6 @@ function ConnectorHandles({
             scn.y <= n.y + n.height,
         );
       if (!target) return;
-      // Pick the closest side of the target for a clean elbow entry
       const relX = (scn.x - target.x) / target.width;
       const relY = (scn.y - target.y) / target.height;
       const dLeft = relX, dRight = 1 - relX, dTop = relY, dBottom = 1 - relY;
@@ -271,7 +360,7 @@ function ConnectorHandles({
           <div
             key={a.key}
             onPointerDown={(e) => startDrag(e, a)}
-            title="Arraste para conectar"
+            title="Clique para duplicar nessa direção ou arraste para conectar"
             className="pointer-events-auto absolute rounded-full bg-blue-500 border-2 border-white shadow-md cursor-crosshair hover:scale-125 transition-transform"
             style={{
               left: p.x - 6,
