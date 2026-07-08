@@ -270,77 +270,124 @@ function ConnectorHandles({
     const downX = e.clientX;
     const downY = e.clientY;
     const CLICK_THRESHOLD = 4;
-    let movedPastThreshold = false;
     let arrowCreated = false;
-    let arrow: any = null;
+    let arrowId: string | null = null;
     const start = { x: a.sx, y: a.sy };
     const fpStart = fpFor(a.key);
+    const { dx: ddx, dy: ddy } = dirVec(a.key);
 
-    const createArrow = (ev: PointerEvent) => {
+    const scenePt = (ev: PointerEvent) => {
       const st = api.getAppState();
       const z = st.zoom?.value ?? 1;
-      const sX = st.scrollX ?? 0;
-      const sY = st.scrollY ?? 0;
-      const end0 = {
-        x: (ev.clientX - rect.left) / z - sX,
-        y: (ev.clientY - rect.top) / z - sY,
+      return {
+        x: (ev.clientX - rect.left) / z - (st.scrollX ?? 0),
+        y: (ev.clientY - rect.top) / z - (st.scrollY ?? 0),
       };
+    };
+
+    const findTarget = (scn: { x: number; y: number }) => {
+      const arr = api.getSceneElements();
+      const st = api.getAppState();
+      const z = st.zoom?.value ?? 1;
+      const hitMargin = Math.max(18, 34 / z);
+      return [...arr]
+        .reverse()
+        .filter(
+          (n: any) =>
+            !n.isDeleted &&
+            n.id !== el.id &&
+            n.id !== arrowId &&
+            BINDABLE.has(n.type) &&
+            distanceToElement(n, scn) <= hitMargin,
+        )
+        .sort((x: any, y: any) => distanceToElement(x, scn) - distanceToElement(y, scn))[0];
+    };
+
+    // Create a NATIVE elbowed arrow with startBinding fixedPoint — same shape
+    // that cloneInDirection (Ctrl+→) produces. Excalidraw handles the routing.
+    const createArrow = (ev: PointerEvent) => {
+      const st = api.getAppState();
+      const end0 = scenePt(ev);
       const built = convert([
         {
           type: "arrow",
           x: start.x,
           y: start.y,
-          points: elbowPoints(start, end0, a.key),
+          points: [
+            [0, 0],
+            [Math.max(Math.abs(end0.x - start.x), 40) * ddx || end0.x - start.x,
+             Math.max(Math.abs(end0.y - start.y), 40) * ddy || end0.y - start.y],
+          ],
           strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
           strokeWidth: st.currentItemStrokeWidth ?? 2,
           endArrowhead: "arrow",
-          elbowed: false,
+          elbowed: true,
           roundness: null,
         } as any,
       ]);
-      arrow = {
+      const arrow: any = {
         ...built[0],
-        points: elbowPoints(start, end0, a.key),
-        elbowed: false,
+        elbowed: true,
         roundness: null,
         startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpStart },
         endBinding: null,
       };
+      arrowId = arrow.id;
       const current = api.getSceneElements();
-      api.updateScene({ elements: current.map((n: any) => n.id === el.id ? addBoundArrow(n, arrow.id) : n).concat(arrow) });
+      api.updateScene({
+        elements: current
+          .map((n: any) => (n.id === el.id ? addBoundArrow(n, arrow.id) : n))
+          .concat(arrow),
+      });
       arrowCreated = true;
       draggingRef.current = true;
     };
 
+    const updateArrow = (ev: PointerEvent, finalize = false) => {
+      if (!arrowId) return;
+      const scn = scenePt(ev);
+      const target = findTarget(scn);
+      const arr = api.getSceneElements();
+      const next = arr.map((n: any) => {
+        if (n.id === arrowId) {
+          let endPoint = scn;
+          let endBinding: any = null;
+          if (target) {
+            const side = nearestSide(target, scn);
+            endPoint = sideAnchor(target, side);
+            endBinding = {
+              elementId: target.id,
+              focus: 0,
+              gap: 1,
+              fixedPoint: sideFp(side),
+            };
+          }
+          return {
+            ...n,
+            points: [
+              [0, 0],
+              [endPoint.x - start.x, endPoint.y - start.y],
+            ],
+            endBinding,
+            version: (n.version ?? 1) + 1,
+            versionNonce: Math.floor(Math.random() * 2 ** 31),
+          };
+        }
+        if (finalize && target && n.id === target.id) {
+          return addBoundArrow(n, arrowId!);
+        }
+        return n;
+      });
+      api.updateScene({ elements: next });
+    };
+
     const onMove = (ev: PointerEvent) => {
-      if (!movedPastThreshold) {
-        const dx = ev.clientX - downX;
-        const dy = ev.clientY - downY;
-        if (Math.hypot(dx, dy) < CLICK_THRESHOLD) return;
-        movedPastThreshold = true;
+      if (!arrowCreated) {
+        if (Math.hypot(ev.clientX - downX, ev.clientY - downY) < CLICK_THRESHOLD) return;
         createArrow(ev);
         return;
       }
-      const api2 = apiRef.current;
-      if (!api2 || !arrow) return;
-      const st2 = api2.getAppState();
-      const z2 = st2.zoom?.value ?? 1;
-      const scn = {
-        x: (ev.clientX - rect.left) / z2 - (st2.scrollX ?? 0),
-        y: (ev.clientY - rect.top) / z2 - (st2.scrollY ?? 0),
-      };
-      const arr = api2.getSceneElements();
-      const next = arr.map((n: any) =>
-        n.id === arrow.id
-          ? {
-              ...n,
-              points: elbowPoints(start, scn, a.key),
-              version: (n.version ?? 1) + 1,
-              versionNonce: Math.floor(Math.random() * 2 ** 31),
-            }
-          : n,
-      );
-      api2.updateScene({ elements: next });
+      updateArrow(ev);
     };
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", onMove);
@@ -351,44 +398,7 @@ function ConnectorHandles({
         cloneInDirection(a);
         return;
       }
-      const api2 = apiRef.current;
-      if (!api2 || !arrow) return;
-      const st2 = api2.getAppState();
-      const z2 = st2.zoom?.value ?? 1;
-      const scn = {
-        x: (ev.clientX - rect.left) / z2 - (st2.scrollX ?? 0),
-        y: (ev.clientY - rect.top) / z2 - (st2.scrollY ?? 0),
-      };
-      const arr = api2.getSceneElements();
-      const hitMargin = Math.max(18, 34 / z2);
-      const target = [...arr]
-        .reverse()
-        .filter(
-          (n: any) =>
-            !n.isDeleted &&
-            n.id !== el.id &&
-            n.id !== arrow.id &&
-            BINDABLE.has(n.type) &&
-            distanceToElement(n, scn) <= hitMargin,
-        )
-        .sort((a: any, b: any) => distanceToElement(a, scn) - distanceToElement(b, scn))[0];
-      if (!target) return;
-      const side = nearestSide(target, scn);
-      const end = sideAnchor(target, side);
-      const next = arr.map((n: any) =>
-        n.id === arrow.id
-          ? {
-              ...n,
-              points: elbowPoints(start, end, a.key),
-              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: sideFp(side) },
-              version: (n.version ?? 1) + 1,
-              versionNonce: Math.floor(Math.random() * 2 ** 31),
-            }
-          : n.id === el.id || n.id === target.id
-            ? addBoundArrow(n, arrow.id)
-          : n,
-      );
-      api2.updateScene({ elements: next });
+      updateArrow(ev, true);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
