@@ -263,6 +263,21 @@ Transcrição:
 ${transcript.text}`;
 
     const gateway = createGateway();
+    const MindMapFromVideoSpec = z.object({
+      central: z.string(),
+      branches: z.array(
+        z.object({
+          label: z.string(),
+          timestamp: z.number(),
+          children: z.array(
+            z.object({
+              label: z.string(),
+              timestamp: z.number(),
+            }),
+          ),
+        }),
+      ),
+    });
     let spec: z.infer<typeof MindMapFromVideoSpec>;
     try {
       const { output } = await generateText({
