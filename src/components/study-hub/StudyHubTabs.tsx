@@ -33,6 +33,8 @@ import {
   Eraser,
   Zap,
   ChevronUp,
+  List,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1165,7 +1167,17 @@ function NotesTab() {
                 {v.notes.map((n: any) => (
                   <div key={n.id} className="border border-border rounded-md p-3 bg-card">
                     <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
-                      <span>{n.style}</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        {(() => {
+                          const s = String(n.style ?? "").toLowerCase();
+                          if (s.includes("topico")) return <List size={11} strokeWidth={2} />;
+                          if (s.includes("resumo")) return <FileText size={11} strokeWidth={2} />;
+                          if (s.includes("notinha") || s.includes("nota")) return <NotebookPen size={11} strokeWidth={2} />;
+                          if (s.includes("post")) return <StickyNote size={11} strokeWidth={2} />;
+                          return <Tag size={11} strokeWidth={2} />;
+                        })()}
+                        <span>{n.style}</span>
+                      </span>
                       <span>{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
                     </div>
                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{n.ai_explanation}</p>
