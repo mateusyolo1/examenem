@@ -25,9 +25,11 @@ import {
 import { useStudyPlan, weekDates, dateLabel, areaLabel } from "@/lib/study-plan";
 import type { StudyTask, TopicMastery } from "@/lib/study-plan";
 import { CalendarCheck } from "lucide-react";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw, Brain, StickyNote, Layers, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } from "@/components/study-hub/StudyHubTabs";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
