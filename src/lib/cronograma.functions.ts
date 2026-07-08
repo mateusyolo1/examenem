@@ -544,6 +544,7 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       .eq("id", act.id);
 
     // se falhou e NÃO é reforço, cria atividade de reforço no mesmo dia
+    // + prepara vídeo focado no dia seguinte com os tópicos errados
     let reforcoActivityId: string | null = null;
     if (!passed && !isReforco) {
       const wrongTopics = qs
@@ -552,7 +553,7 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
           return !c?.correta;
         })
         .map((q) => q.topico)
-        .filter(Boolean);
+        .filter(Boolean) as string[];
 
       const { data: nextOrder } = await supabase
         .from("study_plan_activities")
@@ -575,6 +576,76 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
         .select()
         .single();
       reforcoActivityId = inserted?.id ?? null;
+
+      // === Vídeo focado no dia seguinte ===
+      if (wrongTopics.length) {
+        const t = new Date();
+        t.setDate(t.getDate() + 1);
+        const tISO = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+
+        // garante dia de amanhã
+        let { data: tday } = await supabase
+          .from("study_plan_days")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("plan_date", tISO)
+          .eq("kind", "regular")
+          .maybeSingle();
+
+        if (!tday) {
+          const { data: ins } = await supabase
+            .from("study_plan_days")
+            .insert({ user_id: userId, plan_date: tISO, kind: "regular", unlocked_at: new Date().toISOString() })
+            .select("id")
+            .single();
+          tday = ins;
+          const wd = new Date(tISO + "T00:00:00").getDay();
+          const kinds = WEEK_PATTERN[wd] ?? [];
+          if (kinds.length && tday) {
+            const rows = kinds.map((kind, i) => ({
+              day_id: tday!.id,
+              user_id: userId,
+              order_index: 100 + i,
+              kind,
+              status: "pending",
+              payload: {},
+            }));
+            await supabase.from("study_plan_activities").insert(rows);
+          }
+        }
+
+        if (tday) {
+          // se já existe atividade "videos" amanhã, injeta o foco no payload
+          const { data: existingVideos } = await supabase
+            .from("study_plan_activities")
+            .select("id, payload")
+            .eq("day_id", tday.id)
+            .eq("kind", "videos")
+            .limit(1)
+            .maybeSingle();
+
+          if (existingVideos) {
+            const prevPayload = (existingVideos.payload as object) ?? {};
+            const prevFocus = ((prevPayload as { focus_topics?: string[] }).focus_topics ?? []) as string[];
+            const mergedFocus = Array.from(new Set([...prevFocus, ...wrongTopics]));
+            await supabase
+              .from("study_plan_activities")
+              .update({
+                payload: { ...prevPayload, focus_topics: mergedFocus, source: "lousa_failure" },
+              })
+              .eq("id", existingVideos.id);
+          } else {
+            await supabase.from("study_plan_activities").insert({
+              day_id: tday.id,
+              user_id: userId,
+              order_index: 50,
+              kind: "videos",
+              status: "pending",
+              payload: { focus_topics: wrongTopics, source: "lousa_failure" },
+            });
+          }
+        }
+      }
     }
 
     return {
