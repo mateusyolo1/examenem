@@ -88,8 +88,12 @@ function LousaPage() {
   const grain = isDark
     ? "radial-gradient(circle at 30% 20%, rgba(255,255,255,.06), transparent 60%), radial-gradient(circle at 70% 80%, rgba(255,255,255,.04), transparent 55%)"
     : "radial-gradient(circle at 30% 20%, rgba(0,0,0,.03), transparent 60%), radial-gradient(circle at 70% 80%, rgba(0,0,0,.02), transparent 55%)";
-  const fontWrite = isDark ? "LousaWriteDark, cursive" : "LousaWriteLight, cursive";
-  const fontTitle = isDark ? "LousaTitleDark, cursive" : "LousaTitleLight, cursive";
+  const fontWrite = isDark
+    ? '"LousaWriteDark", "Caveat", cursive'
+    : '"Caveat", "LousaWriteLight", cursive';
+  const fontTitle = isDark
+    ? '"LousaTitleDark", "Permanent Marker", cursive'
+    : '"Permanent Marker", "LousaTitleLight", cursive';
   const cQuestion = isDark ? "#7dd3fc" : "#1d4ed8"; // azul
   const cAnswer = isDark ? "#fca5a5" : "#dc2626"; // vermelho
   const cText = isDark ? "#f3f4f6" : "#111827";
