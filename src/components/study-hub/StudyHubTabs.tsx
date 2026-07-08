@@ -35,6 +35,7 @@ import {
   ChevronUp,
   List,
   Tag,
+  Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -954,6 +955,94 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     if (Object.keys(patch).length) api.updateScene({ appState: patch });
   };
 
+  // FigJam-style "Mapa mental": drop a pre-wired template (central node + 3 branches)
+  // centered on the current viewport.
+  const insertMindMap = async () => {
+    const api = apiRef.current;
+    if (!api) return;
+    const m = await import("@excalidraw/excalidraw");
+    const convert = m.convertToExcalidrawElements;
+    const st = api.getAppState();
+    const zoom = st.zoom?.value ?? 1;
+    const vw = st.width ?? 800;
+    const vh = st.height ?? 600;
+    const centerX = -st.scrollX + vw / (2 * zoom);
+    const centerY = -st.scrollY + vh / (2 * zoom);
+    const cw = 240;
+    const ch = 84;
+    const cx = centerX - cw / 2 - 120;
+    const cy = centerY - ch / 2;
+
+    const t = Date.now();
+    const centerId = `mm-c-${t}`;
+    const ids = [`mm-1-${t}`, `mm-2-${t}`, `mm-3-${t}`];
+    const labels = ["Um conceito", "Uma ideia", "Um pensamento"];
+    const bw = 180;
+    const bh = 60;
+    const branchX = cx + cw + 180;
+    const gap = 40;
+    const totalH = bh * 3 + gap * 2;
+    const startY = cy + ch / 2 - totalH / 2;
+
+    const skeleton: any[] = [
+      {
+        type: "rectangle",
+        id: centerId,
+        x: cx,
+        y: cy,
+        width: cw,
+        height: ch,
+        strokeColor: "#1e1e1e",
+        backgroundColor: "#ffffff",
+        fillStyle: "solid",
+        strokeWidth: 2,
+        roundness: { type: 3 },
+        label: { text: "Qualquer questão ou tópico", fontSize: 20 },
+      },
+    ];
+    ids.forEach((id, i) => {
+      skeleton.push({
+        type: "rectangle",
+        id,
+        x: branchX,
+        y: startY + i * (bh + gap),
+        width: bw,
+        height: bh,
+        strokeColor: "#1e1e1e",
+        backgroundColor: "#ffffff",
+        fillStyle: "solid",
+        strokeWidth: 2,
+        roundness: { type: 3 },
+        label: { text: labels[i], fontSize: 16 },
+      });
+    });
+    ids.forEach((id) => {
+      skeleton.push({
+        type: "arrow",
+        x: cx + cw,
+        y: cy + ch / 2,
+        strokeColor: "#1e1e1e",
+        strokeWidth: 2,
+        endArrowhead: null,
+        elbowed: true,
+        roundness: null,
+        start: { id: centerId },
+        end: { id },
+      });
+    });
+
+    const built = convert(skeleton);
+    const current = api.getSceneElements();
+    const selected: Record<string, true> = {};
+    for (const id of [centerId, ...ids]) selected[id] = true;
+    api.updateScene({
+      elements: [...current, ...built],
+      appState: { selectedElementIds: selected },
+    });
+    api.scrollToContent(built, { animate: true, fitToViewport: true, maxZoom: 1 });
+  };
+
+
   const Btn = ({
     id, label, icon: Icon, image, onClick,
   }: { id?: ToolId; label: string; icon?: any; image?: string; onClick?: () => void }) => {
@@ -1043,6 +1132,15 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           {shapes.map((s) => (
             <Btn key={s.id} id={s.id} icon={s.icon} label={s.label} onClick={() => { setTool(s.id); setShapesOpen(false); }} />
           ))}
+          <div className="w-px h-6 bg-border/70 mx-1" />
+          <button
+            title="Mapa mental"
+            onClick={() => { insertMindMap(); setShapesOpen(false); }}
+            className="h-10 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Network size={16} strokeWidth={1.75} />
+            Mapa mental
+          </button>
         </div>
       )}
       {moreOpen && (
