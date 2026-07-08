@@ -160,7 +160,7 @@ function LousaPage() {
 
   return (
     <div
-      className="min-h-screen w-full transition-colors"
+      className="fixed inset-0 z-30 overflow-auto transition-colors"
       style={{ background: bg, color: cText, backgroundImage: grain }}
       onContextMenu={onSelectionContextMenu}
     >
