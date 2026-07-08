@@ -864,14 +864,6 @@ function MindMapsTab() {
               if (!title || title === "Novo mapa") setTitle(meta.title);
             }}
           />
-          <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
-            <ImageIcon size={13} />
-            PNG
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportPdf} className="gap-1">
-            <FileText size={13} />
-            PDF
-          </Button>
           <Button
             size="sm"
             variant="outline"
