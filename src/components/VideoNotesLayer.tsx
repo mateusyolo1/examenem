@@ -72,6 +72,12 @@ export function VideoNotesLayer({
 
   const key = ["video-notes", videoId] as const;
 
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const { data: notes = [] } = useQuery({
     queryKey: key,
     queryFn: () => listFn({ data: { videoId } }),
