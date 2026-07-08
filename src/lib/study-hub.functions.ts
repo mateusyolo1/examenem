@@ -156,23 +156,13 @@ export const deleteMindMap = createServerFn({ method: "POST" })
 
 // ========== MIND MAP FROM VIDEO ==========
 
-const MindMapFromVideoSpec = z.object({
-  central: z.string(),
-  branches: z.array(
-    z.object({
-      label: z.string(),
-      timestamp: z.number(),
-      children: z.array(
-        z.object({
-          label: z.string(),
-          timestamp: z.number(),
-        }),
-      ),
-    }),
-  ),
-});
-
-export type MindMapFromVideoResult = z.infer<typeof MindMapFromVideoSpec> & {
+export type MindMapFromVideoResult = {
+  central: string;
+  branches: Array<{
+    label: string;
+    timestamp: number;
+    children: Array<{ label: string; timestamp: number }>;
+  }>;
   videoTitle: string;
   youtubeId: string;
   videoId: string;
@@ -273,6 +263,21 @@ Transcrição:
 ${transcript.text}`;
 
     const gateway = createGateway();
+    const MindMapFromVideoSpec = z.object({
+      central: z.string(),
+      branches: z.array(
+        z.object({
+          label: z.string(),
+          timestamp: z.number(),
+          children: z.array(
+            z.object({
+              label: z.string(),
+              timestamp: z.number(),
+            }),
+          ),
+        }),
+      ),
+    });
     let spec: z.infer<typeof MindMapFromVideoSpec>;
     try {
       const { output } = await generateText({
