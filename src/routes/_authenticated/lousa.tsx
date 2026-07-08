@@ -162,6 +162,7 @@ function LousaPage() {
     <div
       className="min-h-screen w-full transition-colors"
       style={{ background: bg, color: cText, backgroundImage: grain }}
+      onContextMenu={onSelectionContextMenu}
     >
       {/* Barra superior */}
       <div
