@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Eye,
@@ -13,8 +14,11 @@ import {
   Search,
   Lightbulb,
   Languages,
+  Loader2,
   X,
 } from "lucide-react";
+import { askTutor } from "@/lib/ai.functions";
+import { Markdown } from "@/components/Markdown";
 
 export const Route = createFileRoute("/_authenticated/lousa")({
   head: () => ({
@@ -100,7 +104,66 @@ function LousaPage() {
     action: "ask" | "source" | "learn" | "example" | "translate";
     text: string;
   } | null>(null);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelAnswer, setPanelAnswer] = useState<string>("");
+  const [panelError, setPanelError] = useState<string>("");
+  const askTutorFn = useServerFn(askTutor);
   const content = MOCK;
+
+  const PROMPTS: Record<
+    "ask" | "source" | "learn" | "example" | "translate",
+    (sel: string) => string
+  > = {
+    ask: (s) =>
+      `Estou estudando "${content.tema}" (${content.materia}) na lousa interativa e selecionei este trecho:\n\n"${s}"\n\nO que exatamente isto significa? Explique como se eu nunca tivesse visto antes.`,
+    learn: (s) =>
+      `Quero aprender a fundo sobre este trecho da minha aula de ${content.materia} — "${content.tema}":\n\n"${s}"\n\nMonte uma nota de aula curta com definição, pontos-chave e um exemplo aplicado ao ENEM.`,
+    example: (s) =>
+      `Sobre este trecho da aula de ${content.materia} (${content.tema}):\n\n"${s}"\n\nMe dê 1 exemplo prático e resolvido passo a passo, de preferência no estilo ENEM.`,
+    source: (s) =>
+      `Na aula "${content.tema}" (${content.materia}), este trecho foi apresentado:\n\n"${s}"\n\nDe onde vem essa afirmação? Cite base teórica, autor(es), fórmula original ou referência de livro didático quando aplicável, e explique por que ela é aceita.`,
+    translate: (s) =>
+      `Traduza para uma linguagem bem simples, como se eu tivesse 12 anos, este trecho da aula de ${content.materia} sobre "${content.tema}":\n\n"${s}"\n\nUse analogia do dia a dia e evite jargão.`,
+  };
+
+  useEffect(() => {
+    if (!panel) {
+      setPanelAnswer("");
+      setPanelError("");
+      setPanelLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPanelAnswer("");
+    setPanelError("");
+    setPanelLoading(true);
+    const prompt = PROMPTS[panel.action](panel.text);
+    askTutorFn({
+      data: {
+        messages: [{ role: "user", content: prompt }],
+        mode: panel.action === "learn" || panel.action === "example" ? "explicar" : "livre",
+        context: `Lousa interativa · Matéria: ${content.materia} · Tema: ${content.tema}`,
+      },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPanelAnswer(res?.text ?? "");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPanelError(
+          err instanceof Error ? err.message : "Não consegui responder agora. Tente de novo.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setPanelLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel]);
+
 
   const onSelectionContextMenu = (e: React.MouseEvent) => {
     const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
@@ -490,19 +553,45 @@ function LousaPage() {
                 Trecho selecionado:
                 <div style={{ color: cText, marginTop: 6 }}>"{panel.text}"</div>
               </div>
-              <div
-                style={{
-                  fontFamily: fontWrite,
-                  fontSize: 20,
-                  color: cText,
-                  lineHeight: 1.5,
-                }}
-              >
-                <span style={{ color: cQuestion }}>Professor IA:</span>{" "}
-                Em breve eu vou explicar isto pra você em tempo real. Quando o backend do Tutor
-                estiver ligado a esta lousa, esta janela vai trazer a resposta usando a sua última
-                aula, seus erros recentes e o seu plano de estudos como contexto.
+              <div style={{ color: cText, lineHeight: 1.5 }}>
+                <div
+                  style={{
+                    color: cQuestion,
+                    fontFamily: fontTitle,
+                    fontSize: 18,
+                    marginBottom: 8,
+                    letterSpacing: ".02em",
+                  }}
+                >
+                  Professor IA
+                </div>
+                {panelLoading && (
+                  <div
+                    className="flex items-center gap-2"
+                    style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}
+                  >
+                    <Loader2 size={16} className="animate-spin" />
+                    Pensando na melhor explicação…
+                  </div>
+                )}
+                {!panelLoading && panelError && (
+                  <div
+                    className="rounded-md p-3"
+                    style={{
+                      border: `1px solid ${cBorder}`,
+                      color: cAnswer,
+                      fontFamily: fontWrite,
+                      fontSize: 16,
+                    }}
+                  >
+                    {panelError}
+                  </div>
+                )}
+                {!panelLoading && !panelError && panelAnswer && (
+                  <Markdown>{panelAnswer}</Markdown>
+                )}
               </div>
+
             </div>
           </aside>
         </>
