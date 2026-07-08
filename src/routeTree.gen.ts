@@ -24,6 +24,7 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedMateriasRouteImport } from './routes/_authenticated/materias'
 import { Route as AuthenticatedLousaRouteImport } from './routes/_authenticated/lousa'
 import { Route as AuthenticatedEstudosRouteImport } from './routes/_authenticated/estudos'
+import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
 import { Route as AuthenticatedConquistasRouteImport } from './routes/_authenticated/conquistas'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
@@ -104,6 +105,11 @@ const AuthenticatedEstudosRoute = AuthenticatedEstudosRouteImport.update({
   path: '/estudos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
+  id: '/cronograma',
+  path: '/cronograma',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConquistasRoute = AuthenticatedConquistasRouteImport.update({
   id: '/conquistas',
   path: '/conquistas',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
+  '/cronograma': typeof AuthenticatedCronogramaRoute
   '/estudos': typeof AuthenticatedEstudosRoute
   '/lousa': typeof AuthenticatedLousaRoute
   '/materias': typeof AuthenticatedMateriasRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
+  '/cronograma': typeof AuthenticatedCronogramaRoute
   '/estudos': typeof AuthenticatedEstudosRoute
   '/lousa': typeof AuthenticatedLousaRoute
   '/materias': typeof AuthenticatedMateriasRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
+  '/_authenticated/cronograma': typeof AuthenticatedCronogramaRoute
   '/_authenticated/estudos': typeof AuthenticatedEstudosRoute
   '/_authenticated/lousa': typeof AuthenticatedLousaRoute
   '/_authenticated/materias': typeof AuthenticatedMateriasRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/conquistas'
+    | '/cronograma'
     | '/estudos'
     | '/lousa'
     | '/materias'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/conquistas'
+    | '/cronograma'
     | '/estudos'
     | '/lousa'
     | '/materias'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/configuracoes'
     | '/_authenticated/conquistas'
+    | '/_authenticated/cronograma'
     | '/_authenticated/estudos'
     | '/_authenticated/lousa'
     | '/_authenticated/materias'
@@ -366,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstudosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cronograma': {
+      id: '/_authenticated/cronograma'
+      path: '/cronograma'
+      fullPath: '/cronograma'
+      preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/conquistas': {
       id: '/_authenticated/conquistas'
       path: '/conquistas'
@@ -414,6 +433,7 @@ const AuthenticatedAulaTopicIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
+  AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRoute
   AuthenticatedEstudosRoute: typeof AuthenticatedEstudosRoute
   AuthenticatedLousaRoute: typeof AuthenticatedLousaRoute
   AuthenticatedMateriasRoute: typeof AuthenticatedMateriasRoute
@@ -433,6 +453,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
+  AuthenticatedCronogramaRoute: AuthenticatedCronogramaRoute,
   AuthenticatedEstudosRoute: AuthenticatedEstudosRoute,
   AuthenticatedLousaRoute: AuthenticatedLousaRoute,
   AuthenticatedMateriasRoute: AuthenticatedMateriasRoute,
