@@ -152,6 +152,56 @@ function ConnectorHandles({
     key === "b" ? [0.5, 0] :
                   [1, 0.5];
 
+  const sideFp = (side: "t" | "r" | "b" | "l"): [number, number] => fpFor(side);
+
+  const sideAnchor = (target: any, side: "t" | "r" | "b" | "l") => ({
+    x: side === "l" ? target.x : side === "r" ? target.x + target.width : target.x + target.width / 2,
+    y: side === "t" ? target.y : side === "b" ? target.y + target.height : target.y + target.height / 2,
+  });
+
+  const nearestSide = (target: any, p: { x: number; y: number }): "t" | "r" | "b" | "l" => {
+    const dLeft = Math.abs(p.x - target.x);
+    const dRight = Math.abs(p.x - (target.x + target.width));
+    const dTop = Math.abs(p.y - target.y);
+    const dBottom = Math.abs(p.y - (target.y + target.height));
+    const minD = Math.min(dLeft, dRight, dTop, dBottom);
+    return minD === dTop ? "t" : minD === dBottom ? "b" : minD === dLeft ? "l" : "r";
+  };
+
+  const distanceToElement = (target: any, p: { x: number; y: number }) => {
+    const dx = Math.max(target.x - p.x, 0, p.x - (target.x + target.width));
+    const dy = Math.max(target.y - p.y, 0, p.y - (target.y + target.height));
+    return Math.hypot(dx, dy);
+  };
+
+  const addBoundArrow = (target: any, arrowId: string) => {
+    const existing = Array.isArray(target.boundElements) ? target.boundElements : [];
+    if (existing.some((b: any) => b.id === arrowId)) return target;
+    return {
+      ...target,
+      boundElements: [...existing, { id: arrowId, type: "arrow" }],
+      version: (target.version ?? 1) + 1,
+      versionNonce: Math.floor(Math.random() * 2 ** 31),
+      updated: Date.now(),
+    };
+  };
+
+  const dedupePoints = (points: [number, number][]) =>
+    points.filter((p, i) => i === 0 || Math.abs(p[0] - points[i - 1][0]) > 0.5 || Math.abs(p[1] - points[i - 1][1]) > 0.5);
+
+  const elbowPoints = (start: { x: number; y: number }, end: { x: number; y: number }, key: string): [number, number][] => {
+    const relX = end.x - start.x;
+    const relY = end.y - start.y;
+    if (key === "r" || key === "l") {
+      const dir = key === "r" ? 1 : -1;
+      const midX = dir * relX > 36 ? relX / 2 : dir * 36;
+      return dedupePoints([[0, 0], [midX, 0], [midX, relY], [relX, relY]]);
+    }
+    const dir = key === "b" ? 1 : -1;
+    const midY = dir * relY > 36 ? relY / 2 : dir * 36;
+    return dedupePoints([[0, 0], [0, midY], [relX, midY], [relX, relY]]);
+  };
+
   // Click behavior: duplicate the shape in the direction of the handle and
   // connect it with an elbow arrow (like Excalidraw's Ctrl+Arrow shortcut).
   const cloneInDirection = (a: (typeof anchors)[number]) => {
@@ -193,16 +243,18 @@ function ConnectorHandles({
       } as any,
     ]);
     const newShape = built[0];
+    const start = { x: a.sx, y: a.sy };
     const arrow: any = {
       ...built[1],
-      elbowed: true,
+      points: elbowPoints(start, { x: start.x + dx * gap, y: start.y + dy * gap }, a.key),
+      elbowed: false,
       roundness: null,
       startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpFor(a.key) },
       endBinding: { elementId: newShape.id, focus: 0, gap: 1, fixedPoint: oppositeFp(a.key) },
     };
     const current = api.getSceneElements();
     api.updateScene({
-      elements: [...current, newShape, arrow],
+      elements: current.map((n: any) => n.id === el.id ? addBoundArrow(n, arrow.id) : n).concat(addBoundArrow(newShape, arrow.id), arrow),
       appState: { selectedElementIds: { [newShape.id]: true } },
     });
   };
@@ -238,26 +290,24 @@ function ConnectorHandles({
           type: "arrow",
           x: start.x,
           y: start.y,
-          points: [
-            [0, 0],
-            [end0.x - start.x, end0.y - start.y],
-          ],
+          points: elbowPoints(start, end0, a.key),
           strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
           strokeWidth: st.currentItemStrokeWidth ?? 2,
           endArrowhead: "arrow",
-          elbowed: true,
+          elbowed: false,
           roundness: null,
         } as any,
       ]);
       arrow = {
         ...built[0],
-        elbowed: true,
+        points: elbowPoints(start, end0, a.key),
+        elbowed: false,
         roundness: null,
         startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpStart },
         endBinding: null,
       };
       const current = api.getSceneElements();
-      api.updateScene({ elements: [...current, arrow] });
+      api.updateScene({ elements: current.map((n: any) => n.id === el.id ? addBoundArrow(n, arrow.id) : n).concat(arrow) });
       arrowCreated = true;
       draggingRef.current = true;
     };
@@ -284,10 +334,7 @@ function ConnectorHandles({
         n.id === arrow.id
           ? {
               ...n,
-              points: [
-                [0, 0],
-                [scn.x - start.x, scn.y - start.y],
-              ],
+              points: elbowPoints(start, scn, a.key),
               version: (n.version ?? 1) + 1,
               versionNonce: Math.floor(Math.random() * 2 ** 31),
             }
@@ -313,37 +360,32 @@ function ConnectorHandles({
         y: (ev.clientY - rect.top) / z2 - (st2.scrollY ?? 0),
       };
       const arr = api2.getSceneElements();
+      const hitMargin = Math.max(18, 34 / z2);
       const target = [...arr]
         .reverse()
-        .find(
+        .filter(
           (n: any) =>
             !n.isDeleted &&
             n.id !== el.id &&
             n.id !== arrow.id &&
             BINDABLE.has(n.type) &&
-            scn.x >= n.x &&
-            scn.x <= n.x + n.width &&
-            scn.y >= n.y &&
-            scn.y <= n.y + n.height,
-        );
+            distanceToElement(n, scn) <= hitMargin,
+        )
+        .sort((a: any, b: any) => distanceToElement(a, scn) - distanceToElement(b, scn))[0];
       if (!target) return;
-      const relX = (scn.x - target.x) / target.width;
-      const relY = (scn.y - target.y) / target.height;
-      const dLeft = relX, dRight = 1 - relX, dTop = relY, dBottom = 1 - relY;
-      const minD = Math.min(dLeft, dRight, dTop, dBottom);
-      const fpEnd: [number, number] =
-        minD === dTop    ? [0.5, 0] :
-        minD === dBottom ? [0.5, 1] :
-        minD === dLeft   ? [0, 0.5] :
-                           [1, 0.5];
+      const side = nearestSide(target, scn);
+      const end = sideAnchor(target, side);
       const next = arr.map((n: any) =>
         n.id === arrow.id
           ? {
               ...n,
-              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: fpEnd },
+              points: elbowPoints(start, end, a.key),
+              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: sideFp(side) },
               version: (n.version ?? 1) + 1,
               versionNonce: Math.floor(Math.random() * 2 ** 31),
             }
+          : n.id === el.id || n.id === target.id
+            ? addBoundArrow(n, arrow.id)
           : n,
       );
       api2.updateScene({ elements: next });
