@@ -515,8 +515,9 @@ function WatchingView({
 
   return (
     <div className="space-y-6">
-      <div className="border border-border bg-card rounded-md overflow-hidden">
-        <div className="relative aspect-video bg-black">
+      <div className="border border-border bg-card rounded-md">
+        <div className="relative aspect-video bg-black rounded-t-md overflow-hidden">
+
           <div ref={iframeRef} className="absolute inset-0 w-full h-full" />
           {countdown !== null && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10">
