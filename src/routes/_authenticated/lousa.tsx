@@ -134,11 +134,17 @@ function LousaPage() {
       setPanelAnswer("");
       setPanelError("");
       setPanelLoading(false);
+      setStudyPath("");
+      setStudyError("");
+      setStudyLoading(false);
       return;
     }
     let cancelled = false;
     setPanelAnswer("");
     setPanelError("");
+    setStudyPath("");
+    setStudyError("");
+    setStudyLoading(false);
     setPanelLoading(true);
     const prompt = PROMPTS[panel.action](panel.text);
     askTutorFn({
