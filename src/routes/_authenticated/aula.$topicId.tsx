@@ -477,11 +477,12 @@ function WatchingView({
             // 0 = ended, 2 = paused
             if (e.data === 0) {
               onMarkWatched();
-              toast.success("Vídeo concluído — marcado como assistido");
+              toast.success("Vídeo concluído — próximo em 5s");
               if (poll) {
                 clearInterval(poll);
                 poll = null;
               }
+              if (!isLastRef.current) setCountdown(5);
             }
             if (e.data === 2) flush();
           },
