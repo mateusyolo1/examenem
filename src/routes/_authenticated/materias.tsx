@@ -195,9 +195,11 @@ function FilterPill({
 function SubjectCard({
   subject,
   stat,
+  isFocus,
 }: {
   subject: Subject;
   stat: { correct: number; errors: number };
+  isFocus?: boolean;
 }) {
   const done = stat.correct + stat.errors;
   const progress = Math.min(
@@ -216,7 +218,17 @@ function SubjectCard({
   const isRedacao = subject.area === "redacao";
 
   return (
-    <div className="bg-background p-6 flex flex-col min-h-[260px]">
+    <div
+      className={
+        "bg-background p-6 flex flex-col min-h-[260px] relative " +
+        (isFocus ? "ring-2 ring-blue-500/60 ring-inset" : "")
+      }
+    >
+      {isFocus && (
+        <span className="absolute top-2 right-2 text-[9px] font-mono uppercase tracking-widest px-2 py-1 rounded bg-blue-500 text-white flex items-center gap-1">
+          <Target size={10} /> Foco
+        </span>
+      )}
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-extrabold tracking-tight leading-tight">
           {subject.name}
@@ -227,6 +239,7 @@ function SubjectCard({
           {subject.difficulty}
         </span>
       </div>
+
 
       <div className="mt-5">
         <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground mb-1.5">
