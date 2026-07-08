@@ -316,16 +316,17 @@ function LessonPlayer({
             current={current}
             total={total}
             watched={watched}
-            onSelect={setCurrent}
+            onSelect={goSelect}
             onMarkWatched={markCurrentWatched}
             onNext={goNext}
-            onPrev={() => current > 0 && setCurrent(current - 1)}
+            onPrev={goPrev}
             allWatched={allWatched}
             onStartQuiz={() => quizMutation.mutate()}
             quizLoading={quizMutation.isPending}
             quizPrefetching={!!prefetchRef.current && !prefetchReady}
             quizPrefetchReady={prefetchReady}
             videos={videos}
+            autoplay={autoplay}
             onSaveProgress={(seconds) =>
               savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
                 () => {},
