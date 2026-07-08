@@ -1,6 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Eye, EyeOff, RefreshCcw, Sun, Moon, Volume2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  RefreshCcw,
+  Sun,
+  Moon,
+  Volume2,
+  MessageCircleQuestion,
+  BookOpen,
+  Search,
+  Lightbulb,
+  Languages,
+  X,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/lousa")({
   head: () => ({
