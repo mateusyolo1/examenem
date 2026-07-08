@@ -18,6 +18,21 @@ import {
   FileText,
   Image as ImageIcon,
   Frame,
+  MousePointer2,
+  Hand,
+  Pencil,
+  Highlighter,
+  StickyNote,
+  Square,
+  Circle,
+  Diamond,
+  Triangle,
+  ArrowUpRight,
+  Minus,
+  Type,
+  Eraser,
+  Zap,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
