@@ -369,7 +369,7 @@ function WatchingView({
   quizPrefetching,
   quizPrefetchReady,
   videos,
-
+  autoplay,
   onSaveProgress,
   resumeAt,
 }: {
@@ -387,19 +387,41 @@ function WatchingView({
   quizPrefetching: boolean;
   quizPrefetchReady: boolean;
   videos: Video[];
-
+  autoplay: boolean;
   onSaveProgress: (seconds: number) => void;
   resumeAt: number;
 }) {
   const isWatched = watched.has(current);
   const isLast = current === total - 1;
   const canGoNext = isWatched;
+  const [countdown, setCountdown] = useState<number | null>(null);
   const iframeRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const onSaveProgressRef = useRef(onSaveProgress);
   onSaveProgressRef.current = onSaveProgress;
   const resumeAtRef = useRef(resumeAt);
   resumeAtRef.current = resumeAt;
+  const isLastRef = useRef(isLast);
+  isLastRef.current = isLast;
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+
+  // Reset countdown whenever we switch videos.
+  useEffect(() => {
+    setCountdown(null);
+  }, [video.youtube_id]);
+
+  // Tick the auto-next countdown.
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 0) {
+      setCountdown(null);
+      onNextRef.current();
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   useEffect(() => {
     let cancelled = false;
