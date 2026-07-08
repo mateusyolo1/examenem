@@ -134,7 +134,7 @@ export const updateVideoNote = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { user_note?: string; style?: string } = {};
     if (data.userNote !== undefined) patch.user_note = data.userNote;
     if (data.style !== undefined) patch.style = data.style;
     if (Object.keys(patch).length === 0) return { ok: true };
