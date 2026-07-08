@@ -445,6 +445,7 @@ function WatchingView({
           rel: 0,
           modestbranding: 1,
           enablejsapi: 1,
+          autoplay: autoplay ? 1 : 0,
           origin: window.location.origin,
           start: Math.max(0, Math.floor(resumeAtRef.current)),
         },
