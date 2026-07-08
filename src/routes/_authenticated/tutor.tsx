@@ -5,7 +5,8 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
-import { askTutor } from "@/lib/ai.functions";
+import { TutorToolCard } from "@/components/TutorToolCard";
+import { askTutor, type TutorToolResult } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
 import {
@@ -14,7 +15,11 @@ import {
   LEARNING_STAGES,
 } from "@/lib/learning-progress";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  toolResults?: TutorToolResult[];
+};
 type Mode =
   | "livre"
   | "explicar"
@@ -25,7 +30,7 @@ type Mode =
   | "questoes"
   | "erro";
 
-const HISTORY_KEY = "exame:tutor:history:v1";
+const HISTORY_KEY = "exame:tutor:history:v2";
 
 export const Route = createFileRoute("/_authenticated/tutor")({
   head: () => ({
