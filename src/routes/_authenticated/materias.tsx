@@ -81,6 +81,45 @@ function MateriasPage() {
           </p>
         </section>
 
+        {hasFocus && (
+          <section className="mb-8 rounded-2xl border border-blue-500/40 bg-blue-500/5 p-5">
+            <div className="flex items-start gap-3 flex-wrap">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Target size={20} />
+              </div>
+              <div className="flex-1 min-w-[220px]">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
+                  Recomendação do Professor
+                </div>
+                <div className="text-base font-bold mt-1">
+                  Foque hoje nestes assuntos que você errou na Lousa:
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {focusTopics.map((t) => (
+                    <span
+                      key={t}
+                      className="text-xs font-semibold px-2 py-1 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => setFocusOnly((v) => !v)}
+                className={
+                  "text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg border transition-colors shrink-0 " +
+                  (focusOnly
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "border-blue-500/40 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10")
+                }
+              >
+                {focusOnly ? "Mostrar tudo" : "Só foco"}
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* Filter pills */}
         <div className="flex flex-wrap gap-2 mb-8">
           <FilterPill active={filter === "todas"} onClick={() => setFilter("todas")}>
@@ -113,7 +152,12 @@ function MateriasPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border border border-border">
               {g.subjects.map((s) => (
-                <SubjectCard key={s.id} subject={s} stat={statFor(stats, s.id)} />
+                <SubjectCard
+                  key={s.id}
+                  subject={s}
+                  stat={statFor(stats, s.id)}
+                  isFocus={matchesFocus(s, focusTopics)}
+                />
               ))}
             </div>
           </section>
