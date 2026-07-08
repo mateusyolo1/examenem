@@ -45,6 +45,7 @@ import {
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
 import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
+import { VideoNotesLayer } from "@/components/VideoNotesLayer";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
