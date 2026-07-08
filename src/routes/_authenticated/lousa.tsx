@@ -95,7 +95,39 @@ function LousaPage() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [teachAnswer, setTeachAnswer] = useState("");
   const [teachRevealed, setTeachRevealed] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [panel, setPanel] = useState<{
+    action: "ask" | "source" | "learn" | "example" | "translate";
+    text: string;
+  } | null>(null);
   const content = MOCK;
+
+  const onSelectionContextMenu = (e: React.MouseEvent) => {
+    const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
+    if (!sel) return; // permite menu nativo quando não há seleção
+    e.preventDefault();
+    const pad = 8;
+    const maxX = window.innerWidth - 260 - pad;
+    const maxY = window.innerHeight - 240 - pad;
+    setMenu({
+      x: Math.min(e.clientX, Math.max(pad, maxX)),
+      y: Math.min(e.clientY, Math.max(pad, maxY)),
+      text: sel,
+    });
+  };
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("mousedown", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("mousedown", close);
+    };
+  }, [menu]);
 
   const isDark = mode === "dark";
   const bg = isDark ? "#051900" : "#fafafa";
