@@ -164,11 +164,21 @@ function ConnectorHandles({
         strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
         strokeWidth: st.currentItemStrokeWidth ?? 2,
         endArrowhead: "arrow",
+        elbowed: true,
+        roundness: null,
       } as any,
     ]);
+    // Fixed anchor point on the source side (0..1 along each axis)
+    const fpStart: [number, number] =
+      a.key === "t" ? [0.5, 0] :
+      a.key === "r" ? [1, 0.5] :
+      a.key === "b" ? [0.5, 1] :
+                      [0, 0.5];
     const arrow: any = {
       ...built[0],
-      startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: null },
+      elbowed: true,
+      roundness: null,
+      startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: fpStart },
       endBinding: null,
     };
     const current = api.getSceneElements();
