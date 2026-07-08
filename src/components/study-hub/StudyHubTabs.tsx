@@ -5,18 +5,24 @@ import {
   ReactFlow,
   Background,
   Controls,
+  MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  Handle,
+  Position,
   addEdge,
   type Connection,
   type Node,
   type Edge,
+  type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import {
-  Layers,
   NotebookPen,
   Sparkles,
   Trash2,
@@ -26,6 +32,20 @@ import {
   Loader2,
   RotateCcw,
   ChevronRight,
+  Square,
+  Circle as CircleIcon,
+  StickyNote,
+  Type,
+  Copy,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Minimize2,
+  Frame,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +68,7 @@ import {
   saveDraft,
   deleteDraft,
 } from "@/lib/study-hub.functions";
+
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
