@@ -358,6 +358,25 @@ function MindMapsTab() {
             className="h-8 text-sm max-w-xs"
           />
           <div className="flex-1" />
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-background">
+            {(["dots", "grid", "none"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setBgStyle(s)}
+                className={
+                  "px-2 py-1 text-[11px] font-mono rounded transition-colors " +
+                  (bgStyle === s
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+                title={
+                  s === "dots" ? "Fundo com bolinhas" : s === "grid" ? "Grade quadriculada" : "Sem fundo"
+                }
+              >
+                {s === "dots" ? "• • •" : s === "grid" ? "▦" : "∅"}
+              </button>
+            ))}
+          </div>
           <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
             <ImageIcon size={13} />
             PNG
