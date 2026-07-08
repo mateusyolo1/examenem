@@ -864,6 +864,28 @@ function PlanView({
   );
 }
 
+function WeeklyRail({ children }: { children: React.ReactNode }) {
+  const railRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const target = rail.querySelector<HTMLElement>('[data-today="true"]');
+    const el = target ?? (rail.firstElementChild as HTMLElement | null);
+    if (!el) return;
+    // centraliza o card do dia dentro da régua
+    const left = el.offsetLeft - (rail.clientWidth - el.clientWidth) / 2;
+    rail.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+  }, [children]);
+  return (
+    <section
+      ref={railRef}
+      className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory scroll-smooth"
+    >
+      {children}
+    </section>
+  );
+}
+
 function TaskCard({
   task,
   isPastDay,
