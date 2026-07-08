@@ -46,6 +46,7 @@ type Toast = { kind: "ok" | "err"; msg: string } | null;
 
 function ConfiguracoesPage() {
   const { progress, update } = useProgress();
+  const { scheme, change: changeScheme } = useColorScheme();
   const [askReset, setAskReset] = useState(false);
   const [askWipe, setAskWipe] = useState(false);
   const [wipeText, setWipeText] = useState("");
