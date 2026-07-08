@@ -98,7 +98,7 @@ function MindMapsTab() {
       api.updateScene({
         appState: {
           gridModeEnabled: bgStyle === "grid",
-          gridSize: 20,
+          gridSize: 20, objectsSnapModeEnabled: true,
           viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff",
         },
       });
@@ -172,7 +172,7 @@ function MindMapsTab() {
       appState: {
         viewBackgroundColor: bgStyle === "dots" ? "transparent" : (meta.viewBackgroundColor ?? "#ffffff"),
         gridModeEnabled: bgStyle === "grid",
-        gridSize: 20,
+        gridSize: 20, objectsSnapModeEnabled: true,
       },
       files: meta.files ?? {},
       scrollToContent: true,
@@ -186,7 +186,7 @@ function MindMapsTab() {
     setTitle("Novo mapa");
     initialDataRef.current = {
       elements: [],
-      appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 },
+      appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20, objectsSnapModeEnabled: true },
       files: {},
     };
     setLoadKey((k) => k + 1);
@@ -461,7 +461,7 @@ function MindMapsTab() {
             >
               <ExcalidrawLazy
                 key={loadKey}
-                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 }, files: {} }}
+                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20, objectsSnapModeEnabled: true }, files: {} }}
                 excalidrawAPI={(api: any) => (apiRef.current = api)}
                 UIOptions={{
                   canvasActions: {
