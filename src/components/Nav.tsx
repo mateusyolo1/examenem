@@ -35,6 +35,7 @@ type NavItem = {
 const PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/plano", label: "Plano de Estudos", shortLabel: "Plano", icon: Calendar },
+  { to: "/cronograma", label: "Cronograma", shortLabel: "Hoje", icon: Calendar },
   { to: "/estudos", label: "Hub de Estudos", shortLabel: "Estudar", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },

@@ -243,6 +243,19 @@ function Shell({
     <div className="min-h-screen flex flex-col font-sans bg-gradient-to-b from-muted/30 via-background to-background text-foreground">
       <Nav />
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <Link
+          to="/cronograma"
+          className="mb-8 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
+        >
+          <div>
+            <div className="text-xs font-mono uppercase tracking-widest text-primary">Novo</div>
+            <div className="text-lg font-bold mt-1">Cronograma inteligente de hoje</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Vídeos, Treino sob pressão, Flashcards, Simulado e Lousa (lição de casa com 24h) — tudo adaptado ao seu nível.
+            </div>
+          </div>
+          <span className="text-primary text-2xl font-bold group-hover:translate-x-1 transition-transform">→</span>
+        </Link>
         <header className="mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold tracking-wide ring-1 ring-inset ring-primary/20">
             <Sparkles size={12} aria-hidden />
