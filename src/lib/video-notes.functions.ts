@@ -88,22 +88,67 @@ export const createVideoNote = createServerFn({ method: "POST" })
     const segments = await fetchSegments(data.youtubeId);
     const contextText = sliceWindow(segments, data.timestampSeconds, 10);
 
+    // Greeting only on the FIRST note of the day (user's local ≈ server day).
+    // Also personalize with display_name when available.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: notesToday } = await context.supabase
+      .from("video_notes")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId)
+      .gte("created_at", todayStart.toISOString());
+
+    let greeting = "";
+    if ((notesToday ?? 0) === 0) {
+      const { data: profile } = await context.supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const rawName = (profile?.display_name ?? "").trim();
+      const firstName = rawName ? rawName.split(/\s+/)[0] : "";
+      const hour = new Date().getHours();
+      const period = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+      const openers = firstName
+        ? [
+            `${period}, ${firstName}! Que bom te ver por aqui de novo.`,
+            `Olá, ${firstName}! ${period} — vamos aprender juntos.`,
+            `${period}, futuro universitário ${firstName}!`,
+          ]
+        : [
+            `${period}, futuro universitário!`,
+            `Olá, futuro universitário! ${period}.`,
+            `${period}! Bora estudar juntos.`,
+          ];
+      greeting = openers[Math.floor(Math.random() * openers.length)];
+    }
+
     // AI explanation.
     let explanation = "";
     try {
       const gateway = createGateway();
+      const baseRules = `Regras de formatação: escreva em texto corrido, SEM markdown (não use **, *, #, listas ou emojis). Use frases curtas e claras.`;
       const prompt = contextText
-        ? `Você é um professor do ENEM. Explique de forma clara, direta e didática o trecho abaixo (aprox. 10 segundos por volta de ${fmt(data.timestampSeconds)}) do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\n\nTrecho da fala:\n"""${contextText}"""\n\nResponda em português, em 2-4 frases curtas, focando no conceito principal desse momento. Não repita o texto literal.`
-        : `Você é um professor do ENEM. O aluno marcou o momento ${fmt(data.timestampSeconds)} do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\nSem transcrição desse trecho, faça uma nota curta (2-3 frases) sobre o que provavelmente está sendo explicado neste ponto do tópico, para servir de referência de estudo.`;
+        ? `Você é um professor do ENEM. Explique de forma clara, direta e didática o trecho abaixo (aprox. 10 segundos por volta de ${fmt(data.timestampSeconds)}) do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\n\n${baseRules}\n\nTrecho da fala:\n"""${contextText}"""\n\nResponda em português, em 2-4 frases curtas, focando no conceito principal desse momento. Não repita o texto literal.`
+        : `Você é um professor do ENEM. O aluno marcou o momento ${fmt(data.timestampSeconds)} do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\n${baseRules}\nSem transcrição desse trecho, faça uma nota curta (2-3 frases) sobre o que provavelmente está sendo explicado neste ponto do tópico, para servir de referência de estudo.`;
 
       const { text } = await generateText({
         model: gateway(CHAT_MODEL),
         prompt,
       });
-      explanation = text.trim();
+      // Strip any residual markdown just in case.
+      explanation = text
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/(?<!\*)\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)/g, "$1")
+        .replace(/^#+\s*/gm, "")
+        .replace(/^[-*]\s+/gm, "• ")
+        .trim();
     } catch {
       explanation = "Anotação salva. (Explicação automática indisponível no momento — adicione suas próprias observações abaixo.)";
     }
+
+    if (greeting) explanation = `${greeting}\n\n${explanation}`;
+
 
     const { data: inserted, error } = await context.supabase
       .from("video_notes")
