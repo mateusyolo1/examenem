@@ -360,7 +360,7 @@ function ConnectorHandles({
           <div
             key={a.key}
             onPointerDown={(e) => startDrag(e, a)}
-            title="Arraste para conectar"
+            title="Clique para duplicar nessa direção ou arraste para conectar"
             className="pointer-events-auto absolute rounded-full bg-blue-500 border-2 border-white shadow-md cursor-crosshair hover:scale-125 transition-transform"
             style={{
               left: p.x - 6,
