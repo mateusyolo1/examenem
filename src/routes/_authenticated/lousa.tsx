@@ -107,6 +107,9 @@ function LousaPage() {
   const [panelLoading, setPanelLoading] = useState(false);
   const [panelAnswer, setPanelAnswer] = useState<string>("");
   const [panelError, setPanelError] = useState<string>("");
+  const [studyLoading, setStudyLoading] = useState(false);
+  const [studyPath, setStudyPath] = useState<string>("");
+  const [studyError, setStudyError] = useState<string>("");
   const askTutorFn = useServerFn(askTutor);
   const content = MOCK;
 
