@@ -129,6 +129,8 @@ function MindMapsTab() {
       elements: (m.nodes as any) ?? [],
       appState: {
         viewBackgroundColor: meta.viewBackgroundColor ?? "#ffffff",
+        gridModeEnabled: true,
+        gridSize: 20,
       },
       files: meta.files ?? {},
       scrollToContent: true,
