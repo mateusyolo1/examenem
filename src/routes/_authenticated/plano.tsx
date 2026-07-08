@@ -776,7 +776,7 @@ function PlanView({
       <StageTasksSection />
 
       {/* Weekly grid */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
 
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
@@ -796,7 +796,7 @@ function PlanView({
             >
               <header
                 className={
-                  "flex items-center justify-between px-4 pt-4 pb-3 " +
+                  "flex items-center justify-between gap-2 px-3 pt-3 pb-2 " +
                   (isToday ? "" : "")
                 }
               >
@@ -824,7 +824,7 @@ function PlanView({
                 ) : null}
               </header>
 
-              <div className="px-4 pb-4 flex-1">
+              <div className="px-3 pb-3 flex-1">
                 {dayTasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center py-6 px-3 rounded-xl bg-muted/40 border border-dashed border-border">
                     <Coffee
@@ -840,7 +840,7 @@ function PlanView({
                     </p>
                   </div>
                 ) : (
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-2">
                     {dayTasks.map((t) => (
                       <li key={t.id}>
                         <TaskCard
@@ -879,7 +879,7 @@ function TaskCard({
   return (
     <div
       className={
-        "group rounded-xl border p-3 transition-all " +
+        "group rounded-xl border p-2.5 transition-all " +
         (done
           ? "border-emerald-500/30 bg-emerald-500/5"
           : late
