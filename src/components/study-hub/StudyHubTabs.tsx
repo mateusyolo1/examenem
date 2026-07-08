@@ -79,12 +79,46 @@ function MindMapsTab() {
   const [loadKey, setLoadKey] = useState(0);
   const initialDataRef = useRef<any>(null);
 
-  // Fullscreen listener
+  // Native fullscreen listener (falls back to CSS-only fullscreen when unavailable)
   useEffect(() => {
-    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFs = () => {
+      if (document.fullscreenElement) setIsFullscreen(true);
+      else if (!wrapRef.current?.dataset.cssFs) setIsFullscreen(false);
+    };
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
+
+  // Plain mouse-wheel zoom (Excalidraw requires Ctrl+wheel by default)
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement;
+      if (!target.closest(".excalidraw")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      target.dispatchEvent(new WheelEvent("wheel", {
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        deltaMode: e.deltaMode,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+    };
+    el.addEventListener("wheel", handler, { passive: false, capture: true });
+    return () => el.removeEventListener("wheel", handler, { capture: true } as any);
+  }, []);
+
+  // Nudge Excalidraw to re-measure on fullscreen toggle
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+    return () => clearTimeout(t);
+  }, [isFullscreen]);
 
   // Load selected map into Excalidraw
   useEffect(() => {
