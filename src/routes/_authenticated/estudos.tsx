@@ -32,6 +32,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } from "@/components/study-hub/StudyHubTabs";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+    openMap: typeof search.openMap === "string" ? search.openMap : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Hub de Estudos — Exame ENEM" },
