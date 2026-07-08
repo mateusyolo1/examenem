@@ -6,6 +6,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import {
   CATEGORIAS,
+  CATEGORY_COLORS,
   ESSAY_THEMES,
   type EssayCategory,
   type EssayTheme,
