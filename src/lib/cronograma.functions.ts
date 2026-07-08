@@ -102,13 +102,14 @@ export const getTodayPlan = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const dayIds = (days ?? []).map((d) => d.id);
+    type LousaPayload = { reforco?: boolean; topicos?: (string | null)[] };
     let activities: Array<{
       id: string;
       day_id: string;
       kind: ActivityKind;
       order_index: number;
       status: string;
-      payload: Record<string, unknown>;
+      payload: LousaPayload;
       generated_at: string | null;
       submitted_at: string | null;
       score: number | null;
