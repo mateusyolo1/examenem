@@ -26,6 +26,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { COLOR_SCHEMES, useColorScheme } from "@/lib/color-scheme";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -45,6 +46,7 @@ type Toast = { kind: "ok" | "err"; msg: string } | null;
 
 function ConfiguracoesPage() {
   const { progress, update } = useProgress();
+  const { scheme, change: changeScheme } = useColorScheme();
   const [askReset, setAskReset] = useState(false);
   const [askWipe, setAskWipe] = useState(false);
   const [wipeText, setWipeText] = useState("");
@@ -160,6 +162,58 @@ function ConfiguracoesPage() {
               </div>
             </div>
             <ThemeToggle />
+          </div>
+        </Section>
+
+        {/* Color scheme */}
+        <Section title="Paleta de cores">
+          <p className="text-sm text-muted-foreground">
+            Escolha um esquema de cores. A identidade e o layout do site
+            permanecem — apenas a cor de destaque (e, em alguns temas, o fundo)
+            mudam.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-2">
+            {COLOR_SCHEMES.map((s) => {
+              const active = scheme === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    changeScheme(s.id);
+                    flash({ kind: "ok", msg: `Paleta "${s.label}" aplicada.` });
+                  }}
+                  aria-pressed={active}
+                  className={
+                    "text-left rounded-lg border p-3 transition-all hover:-translate-y-0.5 " +
+                    (active
+                      ? "border-primary ring-2 ring-ring bg-accent"
+                      : "border-border bg-card hover:border-foreground/30")
+                  }
+                >
+                  <div className="flex gap-1 mb-2">
+                    {s.swatch.map((c, i) => (
+                      <span
+                        key={i}
+                        className="h-6 flex-1 rounded-sm border border-black/5"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold truncate">{s.label}</p>
+                    {active && (
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
+                        Ativo
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                    {s.description}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </Section>
 
