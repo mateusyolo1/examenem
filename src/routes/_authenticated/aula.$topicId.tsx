@@ -511,6 +511,139 @@ function WatchingView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video.youtube_id]);
 
+  // YouTube-like keyboard shortcuts
+  const [shortcutHint, setShortcutHint] = useState<string | null>(null);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showHint = (msg: string) => {
+    setShortcutHint(msg);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => setShortcutHint(null), 900);
+  };
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) => {
+      const t = el as HTMLElement | null;
+      if (!t) return false;
+      const tag = t.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        (t as HTMLElement).isContentEditable
+      );
+    };
+
+    const fmt = (s: number) => {
+      const m = Math.floor(s / 60);
+      const ss = Math.floor(s % 60).toString().padStart(2, "0");
+      return `${m}:${ss}`;
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const p = playerRef.current;
+      if (!p) return;
+
+      const seekBy = (delta: number) => {
+        try {
+          const cur = p.getCurrentTime?.() ?? 0;
+          const dur = p.getDuration?.() ?? 0;
+          const next = Math.max(0, Math.min(dur || cur + delta, cur + delta));
+          p.seekTo(next, true);
+          showHint(`${delta > 0 ? "+" : ""}${delta}s · ${fmt(next)}`);
+        } catch {}
+      };
+      const seekPct = (pct: number) => {
+        try {
+          const dur = p.getDuration?.() ?? 0;
+          if (!dur) return;
+          const next = dur * pct;
+          p.seekTo(next, true);
+          showHint(`${Math.round(pct * 100)}% · ${fmt(next)}`);
+        } catch {}
+      };
+      const changeVol = (delta: number) => {
+        try {
+          const v = p.getVolume?.() ?? 100;
+          const nv = Math.max(0, Math.min(100, v + delta));
+          p.unMute?.();
+          p.setVolume?.(nv);
+          showHint(`Volume ${Math.round(nv)}%`);
+        } catch {}
+      };
+      const changeRate = (dir: 1 | -1) => {
+        try {
+          const rates: number[] = p.getAvailablePlaybackRates?.() ?? [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+          const cur = p.getPlaybackRate?.() ?? 1;
+          const idx = rates.indexOf(cur);
+          const next = rates[Math.max(0, Math.min(rates.length - 1, (idx < 0 ? rates.indexOf(1) : idx) + dir))];
+          p.setPlaybackRate?.(next);
+          showHint(`Velocidade ${next}×`);
+        } catch {}
+      };
+
+      switch (e.key) {
+        case " ":
+        case "k":
+        case "K": {
+          e.preventDefault();
+          const state = p.getPlayerState?.();
+          if (state === 1) { p.pauseVideo?.(); showHint("Pausado"); }
+          else { p.playVideo?.(); showHint("Reproduzindo"); }
+          break;
+        }
+        case "j":
+        case "J":
+          e.preventDefault(); seekBy(-10); break;
+        case "l":
+        case "L":
+          e.preventDefault(); seekBy(10); break;
+        case "ArrowLeft":
+          e.preventDefault(); seekBy(-5); break;
+        case "ArrowRight":
+          e.preventDefault(); seekBy(5); break;
+        case "ArrowUp":
+          e.preventDefault(); changeVol(10); break;
+        case "ArrowDown":
+          e.preventDefault(); changeVol(-10); break;
+        case "m":
+        case "M": {
+          e.preventDefault();
+          try {
+            if (p.isMuted?.()) { p.unMute?.(); showHint("Som ativado"); }
+            else { p.mute?.(); showHint("Mudo"); }
+          } catch {}
+          break;
+        }
+        case "f":
+        case "F": {
+          e.preventDefault();
+          const el = iframeRef.current?.parentElement;
+          if (!document.fullscreenElement) el?.requestFullscreen?.();
+          else document.exitFullscreen?.();
+          break;
+        }
+        case "0": case "1": case "2": case "3": case "4":
+        case "5": case "6": case "7": case "8": case "9":
+          e.preventDefault(); seekPct(parseInt(e.key, 10) / 10); break;
+        case ",":
+          if (e.shiftKey) { e.preventDefault(); changeRate(-1); }
+          break;
+        case ".":
+          if (e.shiftKey) { e.preventDefault(); changeRate(1); }
+          break;
+        case "?":
+          e.preventDefault(); setShowHelp((s) => !s); break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, []);
 
 
   return (
