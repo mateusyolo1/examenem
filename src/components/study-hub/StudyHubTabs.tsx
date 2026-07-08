@@ -224,6 +224,7 @@ function MindMapsTab() {
     }
     const appState = apiRef.current.getAppState();
     const files = apiRef.current.getFiles?.() ?? {};
+    if (import.meta.env.SSR) return null;
     const { exportToBlob } = await import("@excalidraw/excalidraw");
     return exportToBlob({
       elements,
