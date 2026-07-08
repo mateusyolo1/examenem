@@ -104,7 +104,66 @@ function LousaPage() {
     action: "ask" | "source" | "learn" | "example" | "translate";
     text: string;
   } | null>(null);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const [panelAnswer, setPanelAnswer] = useState<string>("");
+  const [panelError, setPanelError] = useState<string>("");
+  const askTutorFn = useServerFn(askTutor);
   const content = MOCK;
+
+  const PROMPTS: Record<
+    "ask" | "source" | "learn" | "example" | "translate",
+    (sel: string) => string
+  > = {
+    ask: (s) =>
+      `Estou estudando "${content.tema}" (${content.materia}) na lousa interativa e selecionei este trecho:\n\n"${s}"\n\nO que exatamente isto significa? Explique como se eu nunca tivesse visto antes.`,
+    learn: (s) =>
+      `Quero aprender a fundo sobre este trecho da minha aula de ${content.materia} — "${content.tema}":\n\n"${s}"\n\nMonte uma nota de aula curta com definição, pontos-chave e um exemplo aplicado ao ENEM.`,
+    example: (s) =>
+      `Sobre este trecho da aula de ${content.materia} (${content.tema}):\n\n"${s}"\n\nMe dê 1 exemplo prático e resolvido passo a passo, de preferência no estilo ENEM.`,
+    source: (s) =>
+      `Na aula "${content.tema}" (${content.materia}), este trecho foi apresentado:\n\n"${s}"\n\nDe onde vem essa afirmação? Cite base teórica, autor(es), fórmula original ou referência de livro didático quando aplicável, e explique por que ela é aceita.`,
+    translate: (s) =>
+      `Traduza para uma linguagem bem simples, como se eu tivesse 12 anos, este trecho da aula de ${content.materia} sobre "${content.tema}":\n\n"${s}"\n\nUse analogia do dia a dia e evite jargão.`,
+  };
+
+  useEffect(() => {
+    if (!panel) {
+      setPanelAnswer("");
+      setPanelError("");
+      setPanelLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPanelAnswer("");
+    setPanelError("");
+    setPanelLoading(true);
+    const prompt = PROMPTS[panel.action](panel.text);
+    askTutorFn({
+      data: {
+        messages: [{ role: "user", content: prompt }],
+        mode: panel.action === "learn" || panel.action === "example" ? "explicar" : "livre",
+        context: `Lousa interativa · Matéria: ${content.materia} · Tema: ${content.tema}`,
+      },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPanelAnswer(res?.text ?? "");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPanelError(
+          err instanceof Error ? err.message : "Não consegui responder agora. Tente de novo.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setPanelLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel]);
+
 
   const onSelectionContextMenu = (e: React.MouseEvent) => {
     const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
