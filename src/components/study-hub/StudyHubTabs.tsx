@@ -970,7 +970,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     const centerY = -st.scrollY + vh / (2 * zoom);
     const cw = 240;
     const ch = 84;
-    const cx = centerX - cw / 2 - 120;
+    const cx = centerX - cw / 2 - 160;
     const cy = centerY - ch / 2;
 
     const t = Date.now();
@@ -979,8 +979,9 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     const labels = ["Um conceito", "Uma ideia", "Um pensamento"];
     const bw = 180;
     const bh = 60;
-    const branchX = cx + cw + 180;
-    const gap = 40;
+    const branchGapX = 140;
+    const branchX = cx + cw + branchGapX;
+    const gap = 30;
     const totalH = bh * 3 + gap * 2;
     const startY = cy + ch / 2 - totalH / 2;
 
@@ -1016,16 +1017,28 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         label: { text: labels[i], fontSize: 16 },
       });
     });
-    ids.forEach((id) => {
+    // Curved (bezier) connectors like FigJam mind map branches.
+    const startX = cx + cw;
+    const startPy = cy + ch / 2;
+    ids.forEach((id, i) => {
+      const endX = branchX;
+      const endY = startY + i * (bh + gap) + bh / 2;
+      const dx = endX - startX;
+      const dy = endY - startPy;
+      // Two control-ish points to force a smooth S-curve via roundness.
       skeleton.push({
-        type: "arrow",
-        x: cx + cw,
-        y: cy + ch / 2,
+        type: "line",
+        x: startX,
+        y: startPy,
         strokeColor: "#1e1e1e",
         strokeWidth: 2,
-        endArrowhead: null,
-        elbowed: true,
-        roundness: null,
+        roundness: { type: 2 },
+        points: [
+          [0, 0],
+          [dx * 0.5, 0],
+          [dx * 0.5, dy],
+          [dx, dy],
+        ],
         start: { id: centerId },
         end: { id },
       });
