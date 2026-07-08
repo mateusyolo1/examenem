@@ -879,7 +879,7 @@ function TaskCard({
   return (
     <div
       className={
-        "group rounded-xl border p-3 transition-all " +
+        "group rounded-xl border p-2.5 transition-all " +
         (done
           ? "border-emerald-500/30 bg-emerald-500/5"
           : late
