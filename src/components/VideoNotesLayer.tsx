@@ -231,12 +231,14 @@ function percentPosition(t: number, all: Note[]) {
 
 function NoteCard({
   note,
+  position,
   onClose,
   onDelete,
   onSaveUserNote,
   onChangeStyle,
 }: {
   note: Note;
+  position: number;
   onClose: () => void;
   onDelete: () => void;
   onSaveUserNote: (text: string) => void;
@@ -253,10 +255,14 @@ function NoteCard({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onClose]);
 
+  // Anchor the popover based on marker position so it doesn't overflow.
+  const align =
+    position > 70 ? "right-0" : position < 30 ? "left-0" : "left-1/2 -translate-x-1/2";
+
   return (
     <div
       ref={ref}
-      className="absolute top-6 -translate-x-1/2 z-20 w-72 bg-card border border-border rounded-md shadow-lg p-3 text-left"
+      className={`absolute top-6 z-20 w-72 bg-card border border-border rounded-md shadow-lg p-3 text-left ${align}`}
       onMouseLeave={() => {
         if (text !== note.user_note) onSaveUserNote(text);
       }}
