@@ -287,23 +287,26 @@ ${transcript.text}`;
       });
       spec = output;
     } catch (error) {
+      console.error("[generateMindMapFromVideo] AI error:", error);
       if (NoObjectGeneratedError.isInstance(error)) {
-        // Fallback: try to parse raw text
-        try {
-          const raw = (error as any).text ?? "";
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
+        const raw = (error as any).text ?? "";
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
             spec = MindMapFromVideoSpec.parse(JSON.parse(jsonMatch[0]));
-          } else {
-            throw error;
+          } catch (parseErr) {
+            console.error("[generateMindMapFromVideo] fallback parse failed:", parseErr, "raw:", raw.slice(0, 500));
+            throw new Error("A IA devolveu um formato inválido. Tente novamente.");
           }
-        } catch {
-          throw new Error("A IA não conseguiu montar o mapa. Tente novamente.");
+        } else {
+          throw new Error("A IA não devolveu conteúdo. Tente novamente.");
         }
       } else {
-        throw error;
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`Falha ao gerar mapa: ${msg.slice(0, 200)}`);
       }
     }
+
 
     // 4. Clamp sizes (safety) + return
     const maxBranches = depth === "panorama" ? 4 : depth === "complete" ? 7 : 6;
