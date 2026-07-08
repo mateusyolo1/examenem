@@ -280,14 +280,14 @@ export const generateLousa = createServerFn({ method: "POST" })
     // contexto do aluno: pega últimos 20 tópicos com pior desempenho
     const { data: mastery } = await supabase
       .from("topic_mastery")
-      .select("topic_id, accuracy, attempts")
+      .select("topic_slug, last_score, attempts")
       .eq("user_id", userId)
-      .order("accuracy", { ascending: true })
+      .order("last_score", { ascending: true })
       .limit(20);
 
     const contextStr = (mastery ?? [])
       .slice(0, 8)
-      .map((m) => `${m.topic_id} (${Math.round((m.accuracy ?? 0) * 100)}%)`)
+      .map((m) => `${m.topic_slug} (${Math.round((m.last_score ?? 0) * 100)}%)`)
       .join(", ");
 
     const { generateText } = await import("ai");
