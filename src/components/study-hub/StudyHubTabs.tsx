@@ -943,6 +943,22 @@ function MindMapsTab() {
                     saveAsImage: false,
                   },
                 }}
+                menuItems={(MainMenu: any) => (
+                  <MainMenu>
+                    <MainMenu.DefaultItems.CommandPalette />
+                    <MainMenu.DefaultItems.SearchMenu />
+                    <MainMenu.DefaultItems.Help />
+                    <MainMenu.DefaultItems.ClearCanvas />
+                    <MainMenu.Separator />
+                    <MainMenu.Item onSelect={exportPng}>Exportar PNG</MainMenu.Item>
+                    <MainMenu.Item onSelect={exportPdf}>Exportar PDF</MainMenu.Item>
+                    <MainMenu.Separator />
+                    <MainMenu.DefaultItems.Socials />
+                    <MainMenu.Separator />
+                    <MainMenu.DefaultItems.ToggleTheme />
+                    <MainMenu.DefaultItems.ChangeCanvasBackground />
+                  </MainMenu>
+                )}
               />
               <ConnectorHandles apiRef={apiRef} containerRef={canvasWrapRef} />
               <FigmaBottomToolbar apiRef={apiRef} />
