@@ -796,7 +796,7 @@ function PlanView({
             >
               <header
                 className={
-                  "flex items-center justify-between px-4 pt-4 pb-3 " +
+                  "flex items-center justify-between gap-2 px-3 pt-3 pb-2 " +
                   (isToday ? "" : "")
                 }
               >
