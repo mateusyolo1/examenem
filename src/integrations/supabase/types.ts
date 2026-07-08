@@ -280,6 +280,59 @@ export type Database = {
           },
         ]
       }
+      lousa_questions: {
+        Row: {
+          activity_id: string
+          correct: boolean | null
+          created_at: string
+          enunciado: string
+          feedback: string | null
+          gabarito: string
+          id: string
+          order_index: number
+          topico: string | null
+          updated_at: string
+          user_answer: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          correct?: boolean | null
+          created_at?: string
+          enunciado: string
+          feedback?: string | null
+          gabarito: string
+          id?: string
+          order_index: number
+          topico?: string | null
+          updated_at?: string
+          user_answer?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          correct?: boolean | null
+          created_at?: string
+          enunciado?: string
+          feedback?: string | null
+          gabarito?: string
+          id?: string
+          order_index?: number
+          topico?: string | null
+          updated_at?: string
+          user_answer?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lousa_questions_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "study_plan_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mind_maps: {
         Row: {
           created_at: string
@@ -470,6 +523,98 @@ export type Database = {
           id?: string
           tags?: string[]
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_plan_activities: {
+        Row: {
+          created_at: string
+          day_id: string
+          generated_at: string | null
+          id: string
+          kind: string
+          order_index: number
+          passed: boolean | null
+          payload: Json
+          score: number | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          generated_at?: string | null
+          id?: string
+          kind: string
+          order_index: number
+          passed?: boolean | null
+          payload?: Json
+          score?: number | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          generated_at?: string | null
+          id?: string
+          kind?: string
+          order_index?: number
+          passed?: boolean | null
+          payload?: Json
+          score?: number | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_plan_activities_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "study_plan_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_plan_days: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          kind: string
+          plan_date: string
+          status: string
+          unlocked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_date: string
+          status?: string
+          unlocked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          plan_date?: string
+          status?: string
+          unlocked_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -701,6 +846,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_pressure_level: {
+        Row: {
+          last_result: number | null
+          level: number
+          updated_at: string
+          user_id: string
+          wins_streak: number
+        }
+        Insert: {
+          last_result?: number | null
+          level?: number
+          updated_at?: string
+          user_id: string
+          wins_streak?: number
+        }
+        Update: {
+          last_result?: number | null
+          level?: number
+          updated_at?: string
+          user_id?: string
+          wins_streak?: number
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           data: Json
@@ -737,6 +906,27 @@ export type Database = {
           cronograma?: Json
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_study_settings: {
+        Row: {
+          lousa_pass_threshold: number
+          updated_at: string
+          user_id: string
+          weekly_pattern: Json
+        }
+        Insert: {
+          lousa_pass_threshold?: number
+          updated_at?: string
+          user_id: string
+          weekly_pattern?: Json
+        }
+        Update: {
+          lousa_pass_threshold?: number
+          updated_at?: string
+          user_id?: string
+          weekly_pattern?: Json
         }
         Relationships: []
       }
