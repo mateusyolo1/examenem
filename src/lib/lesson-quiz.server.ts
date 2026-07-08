@@ -573,9 +573,7 @@ Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`
   if (orphanSummaries.length > 0) {
     try {
       const systemPrompt = buildQuizSystemPrompt(topicCtx, orphanSummaries.length);
-      const userPrompt =
-        `RESUMOS DOS VÍDEOS (gere UMA questão por vídeo, use o id exato no campo videoId; " +
-        "não inclua essayTask):\n${buildCombined(orphanSummaries)}`;
+      const userPrompt = `RESUMOS DOS VÍDEOS (gere UMA questão por vídeo, use o id exato no campo videoId; não inclua essayTask):\n${buildCombined(orphanSummaries)}`;
       const text = await callDeepSeek(deepseekKey, systemPrompt, userPrompt, {
         temperature: 0.6,
       });
