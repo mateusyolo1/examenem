@@ -115,7 +115,11 @@ function MindMapsTab() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // Plain mouse-wheel zoom (Excalidraw requires Ctrl+wheel by default)
+  // Plain mouse-wheel zoom (Excalidraw requires Ctrl+wheel by default).
+  // IMPORTANT: never remap while the user is drawing/dragging — a synthetic
+  // Ctrl+wheel mid-drag causes Excalidraw to zoom, which breaks arrow binding
+  // and shape resize. Also skip while linear/arrow tool is active, so users
+  // can freely connect shapes without accidental zooms.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -123,6 +127,18 @@ function MindMapsTab() {
       if (e.ctrlKey || e.metaKey) return;
       const target = e.target as HTMLElement;
       if (!target.closest(".excalidraw")) return;
+      const st = apiRef.current?.getAppState?.();
+      if (st) {
+        const busy =
+          st.draggingElement ||
+          st.newElement ||
+          st.resizingElement ||
+          st.editingLinearElement ||
+          st.multiElement ||
+          st.selectedLinearElement?.isEditing;
+        const tool = st.activeTool?.type;
+        if (busy || tool === "arrow" || tool === "line" || tool === "freedraw") return;
+      }
       e.preventDefault();
       e.stopPropagation();
       target.dispatchEvent(new WheelEvent("wheel", {
