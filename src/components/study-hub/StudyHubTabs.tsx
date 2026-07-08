@@ -79,12 +79,46 @@ function MindMapsTab() {
   const [loadKey, setLoadKey] = useState(0);
   const initialDataRef = useRef<any>(null);
 
-  // Fullscreen listener
+  // Native fullscreen listener (falls back to CSS-only fullscreen when unavailable)
   useEffect(() => {
-    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFs = () => {
+      if (document.fullscreenElement) setIsFullscreen(true);
+      else if (!wrapRef.current?.dataset.cssFs) setIsFullscreen(false);
+    };
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
+
+  // Plain mouse-wheel zoom (Excalidraw requires Ctrl+wheel by default)
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement;
+      if (!target.closest(".excalidraw")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      target.dispatchEvent(new WheelEvent("wheel", {
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        deltaMode: e.deltaMode,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+    };
+    el.addEventListener("wheel", handler, { passive: false, capture: true });
+    return () => el.removeEventListener("wheel", handler, { capture: true } as any);
+  }, []);
+
+  // Nudge Excalidraw to re-measure on fullscreen toggle
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+    return () => clearTimeout(t);
+  }, [isFullscreen]);
 
   // Load selected map into Excalidraw
   useEffect(() => {
@@ -95,6 +129,8 @@ function MindMapsTab() {
       elements: (m.nodes as any) ?? [],
       appState: {
         viewBackgroundColor: meta.viewBackgroundColor ?? "#ffffff",
+        gridModeEnabled: true,
+        gridSize: 20,
       },
       files: meta.files ?? {},
       scrollToContent: true,
@@ -108,7 +144,7 @@ function MindMapsTab() {
     setTitle("Novo mapa");
     initialDataRef.current = {
       elements: [],
-      appState: { viewBackgroundColor: "#ffffff" },
+      appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: true, gridSize: 20 },
       files: {},
     };
     setLoadKey((k) => k + 1);
@@ -223,11 +259,27 @@ function MindMapsTab() {
   function toggleFullscreen() {
     const el = wrapRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => toast.error("Tela cheia não disponível neste contexto."));
-    } else {
-      document.exitFullscreen?.();
+    // If we're in CSS-only fullscreen, just toggle off
+    if (el.dataset.cssFs === "1") {
+      delete el.dataset.cssFs;
+      setIsFullscreen(false);
+      return;
     }
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+      return;
+    }
+    const req = el.requestFullscreen?.bind(el);
+    if (!req) {
+      el.dataset.cssFs = "1";
+      setIsFullscreen(true);
+      return;
+    }
+    req().catch(() => {
+      // iframe likely blocks native fullscreen — fall back to CSS-only
+      el.dataset.cssFs = "1";
+      setIsFullscreen(true);
+    });
   }
 
   return (
@@ -340,7 +392,7 @@ function MindMapsTab() {
             >
               <ExcalidrawLazy
                 key={loadKey}
-                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: "#ffffff" }, files: {} }}
+                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: true, gridSize: 20 }, files: {} }}
                 excalidrawAPI={(api: any) => (apiRef.current = api)}
                 UIOptions={{
                   canvasActions: {
