@@ -55,6 +55,12 @@ import {
   deleteDraft,
 } from "@/lib/study-hub.functions";
 
+import toolPencil from "@/assets/tools/pencil.png.asset.json";
+import toolPen from "@/assets/tools/pen.png.asset.json";
+import toolEraser from "@/assets/tools/eraser.png.asset.json";
+import toolMarker from "@/assets/tools/marker.png.asset.json";
+import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
+
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
 // ============ MIND MAPS (Excalidraw whiteboard) ============
@@ -888,10 +894,12 @@ function MindMapsTab() {
 
 type ToolId =
   | "selection" | "hand"
-  | "pen" | "highlighter" | "pencil"
+  | "pen" | "highlighter" | "pencil" | "marker"
   | "sticky"
   | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
   | "text" | "image" | "eraser" | "laser" | "frame";
+
+
 
 function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const [active, setActive] = useState<ToolId>("selection");
@@ -906,9 +914,8 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
       const st = apiRef.current?.getAppState?.();
       const t = st?.activeTool?.type;
       if (t && t !== active && ["selection","hand","freedraw","rectangle","ellipse","diamond","arrow","line","text","image","eraser","laser","frame"].includes(t)) {
-        // Only overwrite if user picked something in Excalidraw itself
         if (t === "freedraw") {
-          // keep pen/highlighter/pencil sub-state as-is
+          // keep pen/highlighter/pencil/marker sub-state as-is
         } else {
           setActive(t as ToolId);
         }
@@ -925,19 +932,18 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     setActive(id);
     const map: Record<string, string> = {
       selection: "selection", hand: "hand",
-      pen: "freedraw", highlighter: "freedraw", pencil: "freedraw",
+      pen: "freedraw", highlighter: "freedraw", pencil: "freedraw", marker: "freedraw",
       sticky: "rectangle",
       rectangle: "rectangle", ellipse: "ellipse", diamond: "diamond",
       triangle: "diamond", line: "line", arrow: "arrow",
       text: "text", image: "image", eraser: "eraser", laser: "laser", frame: "frame",
     };
     api.setActiveTool({ type: map[id] as any });
-    // Tune brush / fill per variant
     const patch: any = {};
-    if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; }
-    if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; }
+    if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; }
+    if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; }
+    if (id === "marker") { patch.currentItemStrokeColor = "#0f172a"; patch.currentItemStrokeWidth = 4; patch.currentItemOpacity = 100; }
     if (id === "highlighter") { patch.currentItemStrokeColor = "#fde047"; patch.currentItemStrokeWidth = 12; patch.currentItemOpacity = 45; }
-    else if (id === "pen" || id === "pencil") { patch.currentItemOpacity = 100; }
     if (id === "sticky") {
       patch.currentItemBackgroundColor = "#fef9c3";
       patch.currentItemFillStyle = "solid";
@@ -947,34 +953,49 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
   };
 
   const Btn = ({
-    id, label, icon: Icon, onClick,
-  }: { id?: ToolId; label: string; icon: any; onClick?: () => void }) => {
+    id, label, icon: Icon, image, onClick,
+  }: { id?: ToolId; label: string; icon?: any; image?: string; onClick?: () => void }) => {
     const isActive = id && active === id;
     return (
       <button
         onClick={onClick ?? (() => id && setTool(id))}
         title={label}
         className={
-          "h-10 w-10 rounded-lg flex items-center justify-center transition-colors " +
+          "h-11 w-11 rounded-lg flex items-center justify-center transition-all " +
           (isActive
-            ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-            : "text-foreground/70 hover:text-foreground hover:bg-muted")
+            ? "bg-primary/15 text-primary ring-1 ring-primary/40 scale-105"
+            : "text-foreground/70 hover:text-foreground hover:bg-muted hover:scale-105")
         }
       >
-        <Icon size={18} strokeWidth={1.75} />
+        {image ? (
+          <img
+            src={image}
+            alt={label}
+            draggable={false}
+            className={
+              "object-contain select-none transition-transform " +
+              (isActive
+                ? "h-9 w-9 drop-shadow-[0_3px_6px_rgba(34,197,94,0.45)]"
+                : "h-8 w-8 drop-shadow-[0_2px_3px_rgba(0,0,0,0.15)]")
+            }
+          />
+        ) : Icon ? (
+          <Icon size={18} strokeWidth={1.75} />
+        ) : null}
       </button>
     );
   };
 
   const Divider = () => <div className="w-px h-6 bg-border/70 mx-1" />;
 
-  const penMeta: Record<string, { icon: any; label: string }> = {
-    pen: { icon: Pencil, label: "Caneta" },
-    highlighter: { icon: Highlighter, label: "Marca-texto" },
-    pencil: { icon: Pencil, label: "Lápis fino" },
+  const penMeta: Record<string, { icon: any; image: string; label: string }> = {
+    pen: { icon: Pencil, image: toolPen.url, label: "Caneta" },
+    marker: { icon: Pencil, image: toolMarker.url, label: "Marcador" },
+    highlighter: { icon: Highlighter, image: toolHighlighter.url, label: "Marca-texto" },
+    pencil: { icon: Pencil, image: toolPencil.url, label: "Lápis fino" },
   };
-  const activePen = (["pen","highlighter","pencil"] as const).includes(active as any)
-    ? (active as "pen" | "highlighter" | "pencil")
+  const activePen = (["pen","marker","highlighter","pencil"] as const).includes(active as any)
+    ? (active as "pen" | "marker" | "highlighter" | "pencil")
     : "pen";
 
   const shapes: { id: ToolId; icon: any; label: string }[] = [
@@ -986,13 +1007,32 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
   ];
   const activeShape = shapes.find((s) => s.id === active) ?? shapes[0];
 
+  // Lucide-based custom cursor when a drawing tool is active.
+  // Rendered as an inline SVG data URI so the cursor matches the toolbar icon.
+  const svgCursor = (paths: string, hotX = 2, hotY = 22) => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%231e1e1e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='0' y='0' width='24' height='24' fill='white' fill-opacity='0.001'/>${paths}</svg>`;
+    return `url("data:image/svg+xml;utf8,${svg}") ${hotX} ${hotY}, crosshair`;
+  };
+  const cursorMap: Partial<Record<ToolId, string>> = {
+    pen: svgCursor("<path d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/><path d='m15 5 4 4'/>"),
+    pencil: svgCursor("<path d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/><path d='m15 5 4 4'/>"),
+    marker: svgCursor("<path d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/><path d='m15 5 4 4'/>"),
+    highlighter: svgCursor("<path d='m9 11-6 6v3h9l3-3'/><path d='m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4'/>", 2, 22),
+    eraser: svgCursor("<path d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/><path d='M22 21H7'/><path d='m5 11 9 9'/>", 4, 20),
+  };
+  const cursorCss = cursorMap[active];
+
   return (
-    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
+    <>
+      {cursorCss && (
+        <style>{`.mm-canvas canvas, .mm-canvas .excalidraw .interactive { cursor: ${cursorCss} !important; }`}</style>
+      )}
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
       {/* Popovers */}
       {penOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-end gap-1 bg-card border border-border rounded-2xl shadow-lg px-2 py-2">
           {(Object.keys(penMeta) as (keyof typeof penMeta)[]).map((k) => (
-            <Btn key={k} id={k as ToolId} icon={penMeta[k].icon} label={penMeta[k].label} onClick={() => { setTool(k as ToolId); setPenOpen(false); }} />
+            <Btn key={k} id={k as ToolId} image={penMeta[k].image} label={penMeta[k].label} onClick={() => { setTool(k as ToolId); setPenOpen(false); }} />
           ))}
         </div>
       )}
@@ -1004,16 +1044,16 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         </div>
       )}
       {moreOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-2 right-0 flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
+        <div className="pointer-events-auto absolute bottom-full mb-2 right-0 flex items-end gap-1 bg-card border border-border rounded-2xl shadow-lg px-2 py-2">
           <Btn id="image" icon={ImageIcon} label="Imagem" onClick={() => { setTool("image"); setMoreOpen(false); }} />
-          <Btn id="eraser" icon={Eraser} label="Borracha" onClick={() => { setTool("eraser"); setMoreOpen(false); }} />
+          <Btn id="eraser" image={toolEraser.url} label="Borracha" onClick={() => { setTool("eraser"); setMoreOpen(false); }} />
           <Btn id="laser" icon={Zap} label="Ponteiro laser" onClick={() => { setTool("laser"); setMoreOpen(false); }} />
           <Btn id="frame" icon={Frame} label="Frame" onClick={() => { setTool("frame"); setMoreOpen(false); }} />
         </div>
       )}
 
       {/* Main pill */}
-      <div className="pointer-events-auto flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-2xl shadow-xl px-2 py-1.5">
+      <div className="pointer-events-auto flex items-end gap-0.5 bg-card/95 backdrop-blur border border-border rounded-2xl shadow-xl px-2 py-1.5">
         <Btn id="selection" icon={MousePointer2} label="Selecionar" />
         <Btn id="hand" icon={Hand} label="Mover" />
         <Divider />
@@ -1021,13 +1061,23 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           onClick={() => { setPenOpen((v) => !v); setShapesOpen(false); setMoreOpen(false); setTool(activePen); }}
           title={penMeta[activePen].label}
           className={
-            "h-10 px-2 rounded-lg flex items-center gap-0.5 transition-colors " +
-            (["pen","highlighter","pencil"].includes(active as string)
-              ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-              : "text-foreground/70 hover:text-foreground hover:bg-muted")
+            "h-11 px-1.5 rounded-lg flex items-center gap-0.5 transition-all " +
+            (["pen","marker","highlighter","pencil"].includes(active as string)
+              ? "bg-primary/15 text-primary ring-1 ring-primary/40 scale-105"
+              : "text-foreground/70 hover:text-foreground hover:bg-muted hover:scale-105")
           }
         >
-          {(() => { const I = penMeta[activePen].icon; return <I size={18} strokeWidth={1.75} />; })()}
+          <img
+            src={penMeta[activePen].image}
+            alt={penMeta[activePen].label}
+            draggable={false}
+            className={
+              "object-contain select-none " +
+              (["pen","marker","highlighter","pencil"].includes(active as string)
+                ? "h-9 w-9 drop-shadow-[0_3px_6px_rgba(34,197,94,0.45)]"
+                : "h-8 w-8 drop-shadow-[0_2px_3px_rgba(0,0,0,0.15)]")
+            }
+          />
           <ChevronUp size={11} className="opacity-60" />
         </button>
         <Btn id="sticky" icon={StickyNote} label="Sticky note" />
@@ -1036,7 +1086,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           onClick={() => { setShapesOpen((v) => !v); setPenOpen(false); setMoreOpen(false); setTool(activeShape.id); }}
           title={activeShape.label}
           className={
-            "h-10 px-2 rounded-lg flex items-center gap-0.5 transition-colors " +
+            "h-11 px-2 rounded-lg flex items-center gap-0.5 transition-colors " +
             (shapes.some((s) => s.id === active)
               ? "bg-primary/15 text-primary ring-1 ring-primary/40"
               : "text-foreground/70 hover:text-foreground hover:bg-muted")
@@ -1052,6 +1102,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         <Btn label="Mais" icon={Plus} onClick={() => { setMoreOpen((v) => !v); setPenOpen(false); setShapesOpen(false); }} />
       </div>
     </div>
+    </>
   );
 }
 
