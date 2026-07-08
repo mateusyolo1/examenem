@@ -157,18 +157,25 @@ function ThemeCard({ theme }: { theme: EssayTheme }) {
     }
   }
 
+  const c = CATEGORY_COLORS[theme.categoria];
   return (
-    <article className="border border-border bg-card">
-      <header className="p-6 border-b border-border">
+    <article
+      className="border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      style={{ borderTop: `4px solid ${c.bg}` }}
+    >
+      <header className="p-6 border-b border-border" style={{ backgroundColor: c.soft }}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-[260px]">
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+            <span
+              className="inline-block px-2 py-1 text-[10px] font-mono uppercase tracking-[0.2em] rounded"
+              style={{ backgroundColor: c.bg, color: "#fff" }}
+            >
               {theme.categoria}
             </span>
-            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2 leading-tight">
+            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mt-3 leading-tight">
               {theme.titulo}
             </h2>
-            <p className="text-xs font-mono uppercase text-muted-foreground mt-2">
+            <p className="text-xs font-mono uppercase mt-2" style={{ color: c.text }}>
               Eixo · {theme.eixo}
             </p>
           </div>
