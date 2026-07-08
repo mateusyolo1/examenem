@@ -432,7 +432,7 @@ function FlashcardsTab() {
       <div className="border border-border rounded-md bg-card p-6 flex flex-col items-center justify-center min-h-[400px]">
         {!current ? (
           <div className="text-center space-y-3">
-            <Layers size={40} className="mx-auto text-muted-foreground" />
+            <Frame size={40} className="mx-auto text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
               {all.length === 0 ? "Nenhum flashcard ainda — crie um deck!" : "Você está em dia com as revisões."}
             </p>
