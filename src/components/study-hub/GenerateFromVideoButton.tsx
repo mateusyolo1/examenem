@@ -71,10 +71,16 @@ export function GenerateFromVideoButton(props: Props) {
         branches: spec.branches,
         youtubeId: spec.youtubeId,
       };
-      const elements = buildMindMapFromVideoElements(mindMapSpec, {
+      const skeleton = buildMindMapFromVideoElements(mindMapSpec, {
         centerX: 0,
         centerY: 0,
       });
+      // Normalize the raw skeleton (rectangles-with-label, line bindings) into
+      // real Excalidraw scene elements (rectangle + bound text element pairs).
+      // Without this step, saved maps are stored as naked rectangles and the
+      // labels never render when the map is reopened.
+      const m = await import("@excalidraw/excalidraw");
+      const elements = m.convertToExcalidrawElements(skeleton);
       const title = `Mapa mental — ${spec.videoTitle}`.slice(0, 200);
 
       if (mode === "save-and-open") {

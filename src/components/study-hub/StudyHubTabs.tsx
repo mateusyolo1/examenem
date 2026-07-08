@@ -831,10 +831,7 @@ function MindMapsTab() {
             onInsert={async (elements, meta) => {
               const api = apiRef.current;
               if (!api) return;
-              // Import Excalidraw helpers to normalize the raw skeleton
-              // (labels, arrow bindings, etc.) into real scene elements.
-              const m = await import("@excalidraw/excalidraw");
-              const built = m.convertToExcalidrawElements(elements);
+              // Elements arrive already normalized via convertToExcalidrawElements.
               // Offset if the canvas already has content, so we don't stack
               // on top of an existing mind map.
               const current = api.getSceneElements() as any[];
@@ -846,7 +843,7 @@ function MindMapsTab() {
                 );
                 offsetX = Math.max(0, maxX + 200);
               }
-              const shifted = built.map((el: any) => ({
+              const shifted = elements.map((el: any) => ({
                 ...el,
                 x: (el.x ?? 0) + offsetX,
               }));
