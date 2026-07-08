@@ -517,6 +517,48 @@ function WatchingView({
       <div className="border border-border bg-card rounded-md overflow-hidden">
         <div className="relative aspect-video bg-black">
           <div ref={iframeRef} className="absolute inset-0 w-full h-full" />
+          {countdown !== null && (
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="bg-card border border-border rounded-lg p-6 max-w-sm mx-4 text-center shadow-xl">
+                <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">
+                  Próximo vídeo em
+                </div>
+                <div className="relative w-20 h-20 mx-auto mb-4">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="4" fill="none" className="text-muted opacity-30" />
+                    <circle
+                      cx="40" cy="40" r="34"
+                      stroke="currentColor" strokeWidth="4" fill="none"
+                      strokeDasharray={2 * Math.PI * 34}
+                      strokeDashoffset={2 * Math.PI * 34 * (1 - countdown / 5)}
+                      className="text-primary transition-all duration-1000 ease-linear"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold">
+                    {countdown}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={() => setCountdown(null)}
+                    className="text-xs font-semibold px-3 py-2 border border-border rounded hover:bg-accent transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCountdown(null);
+                      onNext();
+                    }}
+                    className="text-xs font-semibold px-3 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+                  >
+                    Pular agora <ArrowRight size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="p-4">
           <div className="text-sm font-medium">{video.title ?? "Vídeo do YouTube"}</div>
