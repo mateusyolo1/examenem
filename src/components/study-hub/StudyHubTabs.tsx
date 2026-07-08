@@ -82,7 +82,19 @@ const ExcalidrawLazy = import.meta.env.SSR
   : lazy(async () => {
       await import("@excalidraw/excalidraw/index.css");
       const mod = await import("@excalidraw/excalidraw");
-      return { default: mod.Excalidraw };
+      const { Excalidraw, MainMenu } = mod;
+      // Wrap Excalidraw so callers can inject custom MainMenu items via
+      // a `menuItems` render prop (keeps MainMenu import inside the lazy
+      // chunk so SSR never touches it).
+      const Wrapped = (props: any) => {
+        const { menuItems, children, ...rest } = props;
+        return (
+          <Excalidraw {...rest}>
+            {menuItems ? menuItems(MainMenu) : children}
+          </Excalidraw>
+        );
+      };
+      return { default: Wrapped };
     });
 
 // Connector handles — draws 4 blue dots around the selected shape so the user
@@ -852,14 +864,6 @@ function MindMapsTab() {
               if (!title || title === "Novo mapa") setTitle(meta.title);
             }}
           />
-          <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
-            <ImageIcon size={13} />
-            PNG
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportPdf} className="gap-1">
-            <FileText size={13} />
-            PDF
-          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -931,6 +935,22 @@ function MindMapsTab() {
                     saveAsImage: false,
                   },
                 }}
+                menuItems={(MainMenu: any) => (
+                  <MainMenu>
+                    <MainMenu.DefaultItems.CommandPalette />
+                    <MainMenu.DefaultItems.SearchMenu />
+                    <MainMenu.DefaultItems.Help />
+                    <MainMenu.DefaultItems.ClearCanvas />
+                    <MainMenu.Separator />
+                    <MainMenu.Item onSelect={exportPng}>Exportar PNG</MainMenu.Item>
+                    <MainMenu.Item onSelect={exportPdf}>Exportar PDF</MainMenu.Item>
+                    <MainMenu.Separator />
+                    <MainMenu.DefaultItems.Socials />
+                    <MainMenu.Separator />
+                    <MainMenu.DefaultItems.ToggleTheme />
+                    <MainMenu.DefaultItems.ChangeCanvasBackground />
+                  </MainMenu>
+                )}
               />
               <ConnectorHandles apiRef={apiRef} containerRef={canvasWrapRef} />
               <FigmaBottomToolbar apiRef={apiRef} />
