@@ -78,6 +78,19 @@ function MindMapsTab() {
   // Bump this to force Excalidraw to reload with new initialData
   const [loadKey, setLoadKey] = useState(0);
   const initialDataRef = useRef<any>(null);
+  const [bgStyle, setBgStyle] = useState<"dots" | "grid" | "none">(() => {
+    if (typeof window === "undefined") return "dots";
+    return (localStorage.getItem("mindmap-bg") as any) || "dots";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mindmap-bg", bgStyle);
+    // Toggle Excalidraw's built-in square grid via its API when available
+    const api = apiRef.current;
+    if (api?.updateScene) {
+      api.updateScene({ appState: { gridModeEnabled: bgStyle === "grid", gridSize: 20 } });
+    }
+  }, [bgStyle]);
 
   // Native fullscreen listener (falls back to CSS-only fullscreen when unavailable)
   useEffect(() => {
