@@ -82,6 +82,7 @@ function MindMapsTab() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
   // Bump this to force Excalidraw to reload with new initialData
   const [loadKey, setLoadKey] = useState(0);
