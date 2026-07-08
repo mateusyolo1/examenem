@@ -693,6 +693,53 @@ export type Database = {
           },
         ]
       }
+      video_notes: {
+        Row: {
+          ai_explanation: string
+          created_at: string
+          id: string
+          style: string
+          timestamp_seconds: number
+          updated_at: string
+          user_id: string
+          user_note: string
+          video_id: string
+          youtube_id: string
+        }
+        Insert: {
+          ai_explanation?: string
+          created_at?: string
+          id?: string
+          style?: string
+          timestamp_seconds?: number
+          updated_at?: string
+          user_id: string
+          user_note?: string
+          video_id: string
+          youtube_id: string
+        }
+        Update: {
+          ai_explanation?: string
+          created_at?: string
+          id?: string
+          style?: string
+          timestamp_seconds?: number
+          updated_at?: string
+          user_id?: string
+          user_note?: string
+          video_id?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_notes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "study_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
