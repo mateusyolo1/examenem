@@ -436,7 +436,7 @@ function MindMapsTab() {
             >
               <ExcalidrawLazy
                 key={loadKey}
-                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 }, files: {} }}
+                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 }, files: {} }}
                 excalidrawAPI={(api: any) => (apiRef.current = api)}
                 UIOptions={{
                   canvasActions: {
