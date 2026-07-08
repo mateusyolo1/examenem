@@ -779,8 +779,7 @@ function PlanView({
       <StageTasksSection />
 
       {/* Weekly rail — horizontal scroll preserves card readability */}
-      <section className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory">
-
+      <WeeklyRail>
         {dates.map((iso) => {
           const dayTasks = plan.tasks.filter((t) => t.date === iso);
           const isToday = iso === isoDateInput(new Date());
@@ -790,6 +789,7 @@ function PlanView({
           return (
             <article
               key={iso}
+              data-today={isToday ? "true" : undefined}
               className={
                 "shrink-0 w-[260px] snap-start rounded-2xl border bg-card shadow-sm flex flex-col transition-all " +
                 (isToday
