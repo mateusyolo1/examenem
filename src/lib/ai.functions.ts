@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const tutorInput = z.object({
@@ -102,16 +103,71 @@ const STAGE_LABELS: Record<number, string> = {
   7: "Assunto dominado",
 };
 
+// Tipos serializáveis dos resultados de ferramentas (renderizados no UI)
+export type TutorToolResult =
+  | {
+      kind: "nota_de_aula";
+      titulo: string;
+      definicao: string;
+      pontosChave: string[];
+      exemplo?: string;
+      macete?: string;
+    }
+  | {
+      kind: "mini_quiz";
+      titulo: string;
+      perguntas: Array<{
+        pergunta: string;
+        alternativas: string[];
+        correta: number;
+        explicacao: string;
+      }>;
+    }
+  | {
+      kind: "flashcards";
+      titulo: string;
+      cards: Array<{ frente: string; verso: string }>;
+    }
+  | {
+      kind: "revisar_erro_passado";
+      pergunta: string;
+      respostaCorreta: string;
+      explicacao: string;
+      dica: string;
+    }
+  | {
+      kind: "sugerir_aula_fraca";
+      slug: string;
+      area: string;
+      justificativa: string;
+    }
+  | {
+      kind: "rascunho_redacao";
+      tema: string;
+      tese: string;
+      argumentos: string[];
+      repertorios: string[];
+      propostaIntervencao: string;
+    };
+
 export const askTutor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => tutorInput.parse(data))
-  .handler(async ({ data }) => {
-    const { generateText } = await import("ai");
-    const { createGateway, CHAT_MODEL } = await import("./ai-gateway.server");
+  .handler(async ({ data, context }) => {
+    const { generateText, tool, stepCountIs } = await import("ai");
+    const { z: zod } = await import("zod");
+    const { createGateway } = await import("./ai-gateway.server");
+    const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
+
     const gateway = createGateway();
     const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
     const ctx = data.context?.trim()
       ? `\n\nContexto do(a) aluno(a) (use quando relevante):\n${data.context.trim()}`
       : "";
+
+    // Carrega prontuário do banco
+    const memory = await loadStudentMemory(context.supabase, context.userId);
+    const memoryCtx = memoryToPromptContext(memory);
 
     let stageInstr = "";
     let stageCtx = "";
@@ -157,28 +213,167 @@ export const askTutor = createServerFn({ method: "POST" })
           : "falta = nada (pronto para avançar).");
     }
 
+    const collectedResults: TutorToolResult[] = [];
+
+    const tools = {
+      nota_de_aula: tool({
+        description:
+          "Cria uma NOTA DE AULA visual sobre um conceito — use SEMPRE que for ensinar teoria nova, " +
+          "em vez de despejar texto corrido. Devolve card com definição, pontos-chave e exemplo.",
+        inputSchema: zod.object({
+          titulo: zod.string().describe("Nome do conceito ou tópico"),
+          definicao: zod.string().describe("Definição clara em 1-2 frases"),
+          pontosChave: zod.array(zod.string()).describe("3-5 pontos essenciais"),
+          exemplo: zod.string().nullable().describe("Exemplo aplicado ao ENEM"),
+          macete: zod.string().nullable().describe("Mnemônico ou dica curta"),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = {
+            kind: "nota_de_aula",
+            titulo: input.titulo,
+            definicao: input.definicao,
+            pontosChave: input.pontosChave,
+            exemplo: input.exemplo ?? undefined,
+            macete: input.macete ?? undefined,
+          };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+      mini_quiz: tool({
+        description:
+          "Gera um MINI QUIZ interativo (1 a 3 questões) para o aluno praticar o que acabou de aprender. " +
+          "Use SEMPRE após uma nota_de_aula, ou quando o aluno pedir para praticar/testar.",
+        inputSchema: zod.object({
+          titulo: zod.string().describe("Título do mini quiz"),
+          perguntas: zod
+            .array(
+              zod.object({
+                pergunta: zod.string(),
+                alternativas: zod.array(zod.string()).describe("Exatamente 4 alternativas"),
+                correta: zod.number().int().min(0).max(3),
+                explicacao: zod.string(),
+              }),
+            )
+            .min(1)
+            .max(3),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = { kind: "mini_quiz", ...input };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+      flashcards: tool({
+        description:
+          "Cria um deck de FLASHCARDS (frente/verso) para memorização espaçada. Ideal para vocabulário, " +
+          "datas, fórmulas, definições rápidas.",
+        inputSchema: zod.object({
+          titulo: zod.string(),
+          cards: zod
+            .array(zod.object({ frente: zod.string(), verso: zod.string() }))
+            .min(3)
+            .max(8),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = { kind: "flashcards", ...input };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+      revisar_erro_passado: tool({
+        description:
+          "Retoma UM erro recente do(a) aluno(a) registrado no prontuário e reexplica com outro ângulo. " +
+          "Use quando o(a) aluno(a) parecer confuso(a) sobre um tema em que já errou antes, ou quando " +
+          "quiser mostrar 'a gente já viu isso, olha o que aconteceu'.",
+        inputSchema: zod.object({
+          pergunta: zod.string().describe("A pergunta original que ele(a) errou"),
+          respostaCorreta: zod.string(),
+          explicacao: zod.string().describe("Por que essa era a correta, com outro ângulo"),
+          dica: zod.string().describe("Uma dica para não errar de novo"),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = { kind: "revisar_erro_passado", ...input };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+      sugerir_aula_fraca: tool({
+        description:
+          "Sugere ao aluno estudar um tópico em que ele está fraco (score < 60% no prontuário). " +
+          "Devolve o slug do tópico + área + por que sugere.",
+        inputSchema: zod.object({
+          slug: zod.string(),
+          area: zod.string(),
+          justificativa: zod.string(),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = { kind: "sugerir_aula_fraca", ...input };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+      rascunho_redacao: tool({
+        description:
+          "Monta um RASCUNHO/ROTEIRO estruturado de redação sobre um tema: tese, 2-3 argumentos, " +
+          "repertórios socioculturais aplicáveis e proposta de intervenção. Use quando o aluno " +
+          "quiser ajuda para começar uma redação.",
+        inputSchema: zod.object({
+          tema: zod.string(),
+          tese: zod.string().describe("Tese que o aluno pode defender"),
+          argumentos: zod.array(zod.string()).min(2).max(3),
+          repertorios: zod.array(zod.string()).min(2).max(4),
+          propostaIntervencao: zod
+            .string()
+            .describe("Proposta com agente, ação, meio, efeito, detalhamento"),
+        }),
+        execute: async (input) => {
+          const result: TutorToolResult = { kind: "rascunho_redacao", ...input };
+          collectedResults.push(result);
+          return result;
+        },
+      }),
+    };
+
+    const teachingInstr =
+      "\n\nCOMO ENSINAR (obrigatório):\n" +
+      "Você tem FERRAMENTAS de ensino. USE-AS ativamente — não seja só texto:\n" +
+      "- Ao ensinar conceito novo: chame `nota_de_aula` em vez de despejar teoria.\n" +
+      "- Depois da teoria: chame `mini_quiz` (1-3 questões) para o(a) aluno(a) praticar.\n" +
+      "- Se o aluno pedir para memorizar algo: chame `flashcards`.\n" +
+      "- Se detectar que ele(a) já errou algo parecido no prontuário: chame `revisar_erro_passado`.\n" +
+      "- Se for útil sugerir uma aula do plano: chame `sugerir_aula_fraca`.\n" +
+      "- Se for tema de redação: chame `rascunho_redacao`.\n" +
+      "Pode combinar 2-3 ferramentas em uma mesma resposta (ex.: nota_de_aula + mini_quiz).\n" +
+      "Depois de usar as ferramentas, escreva UM texto curto conectando os cards e propondo o próximo passo.";
+
     const { text } = await generateText({
-      model: gateway(CHAT_MODEL),
+      model: gateway("openai/gpt-5-mini"),
+      providerOptions: { lovable: { service_tier: "priority" } },
+      tools,
+      stopWhen: stepCountIs(50),
       system:
         "Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM, " +
-        "paciente e didático(a). Responda sempre em português brasileiro, com clareza " +
-        "e exemplos curtos. Cite a área (Linguagens, Humanas, Natureza ou Matemática) " +
-        "quando fizer sentido.\n\n" +
+        "paciente e didático(a). Age como um HUMANO ensinando: usa ferramentas visuais " +
+        "(notas de aula, mini quizzes, flashcards), lembra do que o(a) aluno(a) já " +
+        "estudou/errou, e propõe próximos passos concretos. Responda sempre em português " +
+        "brasileiro.\n\n" +
         "FORMATAÇÃO (siga estritamente):\n" +
         "- Use markdown: **negrito**, *itálico*, ### títulos, listas com - ou 1., > citações, `código`.\n" +
         "- Fórmulas e símbolos matemáticos/químicos SEMPRE em LaTeX entre cifrões: " +
         "inline com $...$ e bloco com $$...$$. Ex.: $H_2O$, $$2H_2 + O_2 \\rightarrow 2H_2O$$. " +
-        "Nunca escreva LaTeX sem cifrões (ex.: nunca escreva `\\rightarrow` ou `H_2` solto no texto).\n" +
-        "- Não invente símbolos estranhos (✦, ❖, ►, etc.). Use apenas markdown padrão.\n" +
-        "- Para subscritos/sobrescritos fora de fórmula, use $x_1$, $x^2$ — nunca x_1 ou x^2 em texto puro.\n\n" +
+        "Nunca escreva LaTeX sem cifrões.\n" +
+        "- Não invente símbolos estranhos (✦, ❖, ►, etc.). Use apenas markdown padrão.\n\n" +
         modeInstr +
+        teachingInstr +
         stageInstr +
+        memoryCtx +
         ctx +
         stageCtx +
         closingInstr,
       messages: data.messages,
     });
-    return { text };
+    return { text, toolResults: collectedResults, memorySummary: memory.topicSummary };
   });
 
 const essayInput = z.object({
