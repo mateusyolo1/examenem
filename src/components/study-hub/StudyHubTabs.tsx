@@ -85,10 +85,15 @@ function MindMapsTab() {
 
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("mindmap-bg", bgStyle);
-    // Toggle Excalidraw's built-in square grid via its API when available
     const api = apiRef.current;
     if (api?.updateScene) {
-      api.updateScene({ appState: { gridModeEnabled: bgStyle === "grid", gridSize: 20 } });
+      api.updateScene({
+        appState: {
+          gridModeEnabled: bgStyle === "grid",
+          gridSize: 20,
+          viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff",
+        },
+      });
     }
   }, [bgStyle]);
 
