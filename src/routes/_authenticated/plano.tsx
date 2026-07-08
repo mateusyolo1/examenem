@@ -618,8 +618,11 @@ function PlanView({
   const dates = useMemo(() => {
     const base = new Date(today);
     base.setDate(base.getDate() + weekStart * 7);
-    return weekDates(base);
-  }, [weekStart, today]);
+    const all = weekDates(base);
+    const active = new Set(plan.config.weekdays ?? [1, 2, 3, 4, 5, 6]);
+    return all.filter((iso) => active.has(new Date(iso + "T00:00:00").getDay()));
+  }, [weekStart, today, plan.config.weekdays]);
+
 
   const total = plan.tasks.length;
   const done = plan.tasks.filter((t) => t.status === "concluida").length;
