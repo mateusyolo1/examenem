@@ -108,6 +108,7 @@ function ytSearchUrl(query: string) {
 }
 
 function EstudosPage() {
+  const navigate = useNavigate();
   const listTopics = useServerFn(listStudyTopics);
   const { data: topicsData } = useQuery({
     queryKey: ["study-topics"],
