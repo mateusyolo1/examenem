@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Eye, EyeOff, RefreshCcw, Sun, Moon, Volume2 } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/tutor/lousa")({
+export const Route = createFileRoute("/_authenticated/lousa")({
   head: () => ({
     meta: [
       { title: "Lousa Interativa — Tutor IA" },
