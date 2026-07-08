@@ -947,6 +947,13 @@ function TaskCard({
       )}
 
       <div className="mt-3 flex flex-col gap-1.5">
+        {done ? (
+          <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={12} aria-hidden /> Concluída
+          </span>
+        ) : (
+          <TaskCta task={task} />
+        )}
         <button
           onClick={onToggle}
           aria-label={done ? "Desfazer conclusão" : "Marcar tarefa como concluída"}
@@ -969,13 +976,6 @@ function TaskCard({
             </>
           )}
         </button>
-        {done ? (
-          <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 size={12} aria-hidden /> Concluída
-          </span>
-        ) : (
-          <TaskCta task={task} />
-        )}
       </div>
       {/* keep variable referenced for future highlight rules */}
       <span className="sr-only">{isPastDay ? "Dia passado" : ""}</span>
