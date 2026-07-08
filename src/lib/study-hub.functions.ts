@@ -154,6 +154,174 @@ export const deleteMindMap = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ========== MIND MAP FROM VIDEO ==========
+
+const MindMapFromVideoSpec = z.object({
+  central: z.string(),
+  branches: z.array(
+    z.object({
+      label: z.string(),
+      timestamp: z.number(),
+      children: z.array(
+        z.object({
+          label: z.string(),
+          timestamp: z.number(),
+        }),
+      ),
+    }),
+  ),
+});
+
+export type MindMapFromVideoResult = z.infer<typeof MindMapFromVideoSpec> & {
+  videoTitle: string;
+  youtubeId: string;
+  videoId: string;
+};
+
+/** List videos that the current user has processed (i.e. has notes for) —
+ *  used by the "Gerar do vídeo…" picker inside the mind-map editor toolbar. */
+export const listVideosForMindMap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("video_notes")
+      .select(
+        "video_id, created_at, study_videos:video_id(id, title, channel_name, youtube_id, thumbnail_url)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const seen = new Set<string>();
+    const out: Array<{
+      videoId: string;
+      youtubeId: string;
+      title: string;
+      channel: string;
+      thumbnail: string;
+    }> = [];
+    for (const row of (data ?? []) as any[]) {
+      const v = row.study_videos;
+      if (!v?.id || seen.has(v.id)) continue;
+      seen.add(v.id);
+      out.push({
+        videoId: v.id,
+        youtubeId: v.youtube_id,
+        title: v.title ?? "Vídeo sem título",
+        channel: v.channel_name ?? "",
+        thumbnail: v.thumbnail_url ?? "",
+      });
+    }
+    return out;
+  });
+
+export const generateMindMapFromVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        videoId: z.string().uuid(),
+        depth: z.enum(["panorama", "study", "complete"]).optional(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }): Promise<MindMapFromVideoResult> => {
+    // 1. Load video
+    const { data: video, error: vErr } = await context.supabase
+      .from("study_videos")
+      .select("id, title, youtube_id")
+      .eq("id", data.videoId)
+      .single();
+    if (vErr || !video) throw new Error("Vídeo não encontrado.");
+
+    // 2. Fetch transcript
+    const { fetchTranscriptWithFallback } = await import("./youtube-transcripts.server");
+    let transcript;
+    try {
+      transcript = await fetchTranscriptWithFallback(video.youtube_id);
+    } catch (err) {
+      throw new Error(
+        `Sem legenda disponível para este vídeo. ${err instanceof Error ? err.message : ""}`.trim(),
+      );
+    }
+    if (!transcript.text || transcript.text.length < 40) {
+      throw new Error("Legenda muito curta para gerar um mapa mental.");
+    }
+
+    // 3. Build prompt
+    const depth = data.depth ?? "study";
+    const targets = {
+      panorama: { branches: "3 a 4", children: "0" },
+      study: { branches: "4 a 6", children: "2 a 3" },
+      complete: { branches: "5 a 7", children: "3 a 4" },
+    }[depth];
+
+    const prompt = `Você é um assistente que monta mapas mentais didáticos em português.
+Analise a transcrição abaixo (formato "M:SS — texto") de uma aula do YouTube e devolva um mapa mental hierárquico.
+
+Título do vídeo: "${video.title ?? "Aula"}"
+Profundidade: ${depth} — gere ${targets.branches} ramos principais${targets.children !== "0" ? `, cada ramo com ${targets.children} subitens (folhas)` : ", sem folhas"}.
+
+Regras:
+- "central": tema geral do vídeo em até 6 palavras.
+- Cada ramo ("branches[i].label"): subtema principal, até 5 palavras, sem emoji.
+- Cada folha ("children[i].label"): ponto-chave curto, até 8 palavras, sem markdown.
+- "timestamp": segundos (inteiro) do momento na transcrição onde o assunto é abordado — use o "M:SS" da linha correspondente convertido para segundos.
+- Não repita a mesma frase entre ramos/folhas. Se a profundidade for "panorama", devolva "children": [] em cada ramo.
+- Responda SOMENTE no formato estruturado pedido, sem prosa.
+
+Transcrição:
+${transcript.text}`;
+
+    const gateway = createGateway();
+    let spec: z.infer<typeof MindMapFromVideoSpec>;
+    try {
+      const { output } = await generateText({
+        model: gateway(CHAT_MODEL),
+        output: Output.object({ schema: MindMapFromVideoSpec }),
+        prompt,
+      });
+      spec = output;
+    } catch (error) {
+      if (NoObjectGeneratedError.isInstance(error)) {
+        // Fallback: try to parse raw text
+        try {
+          const raw = (error as any).text ?? "";
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            spec = MindMapFromVideoSpec.parse(JSON.parse(jsonMatch[0]));
+          } else {
+            throw error;
+          }
+        } catch {
+          throw new Error("A IA não conseguiu montar o mapa. Tente novamente.");
+        }
+      } else {
+        throw error;
+      }
+    }
+
+    // 4. Clamp sizes (safety) + return
+    const maxBranches = depth === "panorama" ? 4 : depth === "complete" ? 7 : 6;
+    const maxChildren = depth === "panorama" ? 0 : depth === "complete" ? 4 : 3;
+    const branches = spec.branches.slice(0, maxBranches).map((b) => ({
+      label: (b.label || "").trim().slice(0, 60),
+      timestamp: Math.max(0, Math.floor(b.timestamp || 0)),
+      children: (b.children ?? []).slice(0, maxChildren).map((c) => ({
+        label: (c.label || "").trim().slice(0, 80),
+        timestamp: Math.max(0, Math.floor(c.timestamp || 0)),
+      })),
+    }));
+
+    return {
+      central: (spec.central || video.title || "Aula").trim().slice(0, 80),
+      branches,
+      videoTitle: video.title ?? "Aula",
+      youtubeId: video.youtube_id,
+      videoId: video.id,
+    };
+  });
+
+
 // ========== NOTES (aggregate video_notes) ==========
 
 export const listAllVideoNotes = createServerFn({ method: "GET" })
