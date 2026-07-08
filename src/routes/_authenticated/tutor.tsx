@@ -271,7 +271,7 @@ function Tutor() {
         </header>
 
         <Link
-          to="/tutor/lousa"
+          to="/lousa"
           className="mb-6 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
         >
           <div>

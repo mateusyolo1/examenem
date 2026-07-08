@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ClientOnly, useSearch } from "@tanstack/react-router";
-import { jsPDF } from "jspdf";
+// jsPDF is imported dynamically inside the export handler — importing at the
+// module top made it evaluate during SSR on Cloudflare Workers where `window`
+// doesn't exist, crashing every page ("ReferenceError: window is not defined").
 import { toast } from "sonner";
 import {
   NotebookPen,
@@ -698,6 +700,7 @@ function MindMapsTab() {
       img.src = dataUrl;
       await new Promise((r) => (img.onload = () => r(null)));
       const orientation = img.width >= img.height ? "l" : "p";
+      const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ orientation, unit: "pt", format: "a4" });
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
