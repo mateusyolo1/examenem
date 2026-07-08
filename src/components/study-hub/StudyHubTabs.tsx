@@ -1044,6 +1044,15 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           {shapes.map((s) => (
             <Btn key={s.id} id={s.id} icon={s.icon} label={s.label} onClick={() => { setTool(s.id); setShapesOpen(false); }} />
           ))}
+          <div className="w-px h-6 bg-border/70 mx-1" />
+          <button
+            title="Mapa mental"
+            onClick={() => { insertMindMap(); setShapesOpen(false); }}
+            className="h-10 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Network size={16} strokeWidth={1.75} />
+            Mapa mental
+          </button>
         </div>
       )}
       {moreOpen && (
