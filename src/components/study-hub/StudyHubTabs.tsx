@@ -146,7 +146,7 @@ function MindMapsTab() {
     initialDataRef.current = {
       elements: (m.nodes as any) ?? [],
       appState: {
-        viewBackgroundColor: meta.viewBackgroundColor ?? "#ffffff",
+        viewBackgroundColor: bgStyle === "dots" ? "transparent" : (meta.viewBackgroundColor ?? "#ffffff"),
         gridModeEnabled: bgStyle === "grid",
         gridSize: 20,
       },
