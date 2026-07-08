@@ -161,11 +161,27 @@ export const listAllVideoNotes = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("video_notes")
-      .select("id, video_id, youtube_id, timestamp_seconds, style, ai_explanation, user_note, created_at")
+      .select(
+        "id, video_id, youtube_id, timestamp_seconds, style, ai_explanation, user_note, created_at, study_videos:video_id(title, channel_name, thumbnail_url, topic_id, study_topics:topic_id(title))",
+      )
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return (data ?? []).map((n: any) => ({
+      id: n.id,
+      video_id: n.video_id,
+      youtube_id: n.youtube_id,
+      timestamp_seconds: n.timestamp_seconds,
+      style: n.style,
+      ai_explanation: n.ai_explanation,
+      user_note: n.user_note,
+      created_at: n.created_at,
+      video_title: n.study_videos?.title ?? "Vídeo sem título",
+      channel_name: n.study_videos?.channel_name ?? "",
+      thumbnail_url: n.study_videos?.thumbnail_url ?? "",
+      topic_id: n.study_videos?.topic_id ?? null,
+      topic_title: n.study_videos?.study_topics?.title ?? "Sem tema",
+    }));
   });
 
 // ========== FLASHCARDS ==========
