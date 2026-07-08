@@ -4,7 +4,73 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText } from "ai";
 import { createGateway, CHAT_MODEL } from "./ai-gateway.server";
 
-const NOTE_STYLES = ["post-it", "notinha", "notepad", "notebook"] as const;
+const NOTE_STYLES = [
+  "post-it",
+  "notinha",
+  "topicos",
+  "lembrete",
+  "resumo",
+  "notepad",
+  "notebook",
+] as const;
+type NoteStyle = (typeof NOTE_STYLES)[number];
+
+// Per-style behavior: how much of the video around the marker to use as
+// context, how the AI should phrase the note, and whether to keep bullets.
+const STYLE_CONFIG: Record<
+  NoteStyle,
+  { windowSec: number; keepBullets: boolean; keepLineBreaks: boolean; instruction: string }
+> = {
+  "post-it": {
+    windowSec: 8,
+    keepBullets: false,
+    keepLineBreaks: false,
+    instruction:
+      "Escreva UMA única frase curta (máx. 18 palavras) capturando a ideia-chave desse momento. Sem introdução, sem 'nesta parte'.",
+  },
+  notinha: {
+    windowSec: 10,
+    keepBullets: false,
+    keepLineBreaks: false,
+    instruction:
+      "Escreva 2-3 frases curtas e diretas, em texto corrido, resumindo o conceito principal.",
+  },
+  topicos: {
+    windowSec: 15,
+    keepBullets: true,
+    keepLineBreaks: true,
+    instruction:
+      "Liste 3-5 tópicos objetivos, um por linha, começando com '• '. Cada tópico deve caber em uma linha.",
+  },
+  lembrete: {
+    windowSec: 10,
+    keepBullets: false,
+    keepLineBreaks: false,
+    instruction:
+      "Escreva UM lembrete prático de estudo (1-2 frases) começando com 'Lembre-se:'. Foque no que o aluno precisa memorizar ou não esquecer.",
+  },
+  resumo: {
+    windowSec: 25,
+    keepBullets: false,
+    keepLineBreaks: true,
+    instruction:
+      "Escreva um resumo em 4-5 frases explicando o conceito, o motivo e um exemplo rápido, se aplicável. Texto corrido em um único parágrafo.",
+  },
+  notepad: {
+    windowSec: 30,
+    keepBullets: true,
+    keepLineBreaks: true,
+    instruction:
+      "Estruture as anotações assim (sem markdown pesado): primeira linha em CAIXA ALTA com o tema (máx. 5 palavras); linha em branco; 4-6 tópicos começando com '• '. Direto ao ponto.",
+  },
+  notebook: {
+    windowSec: 60,
+    keepBullets: true,
+    keepLineBreaks: true,
+    instruction:
+      "Aja como um professor explicando com maestria ~1 minuto do vídeo. Escreva 4-6 parágrafos aprofundando o conceito, contexto histórico/teórico quando fizer sentido, um exemplo concreto e por que isso cai no ENEM. Ao final, adicione uma linha 'Pontos-chave:' seguida de 3 bullets com '• '. Sem markdown (**, #), mas use quebras de linha entre parágrafos.",
+  },
+};
 
 interface SupadataSegment {
   text: string;
@@ -42,18 +108,36 @@ async function fetchSegments(youtubeId: string): Promise<SupadataSegment[]> {
   }
 }
 
-function sliceWindow(segments: SupadataSegment[], seconds: number, windowSec = 10) {
+function sliceWindow(segments: SupadataSegment[], seconds: number, windowSec: number) {
   if (segments.length === 0) return "";
   const startMs = Math.max(0, (seconds - windowSec / 2) * 1000);
   const endMs = (seconds + windowSec / 2) * 1000;
   const inside = segments.filter((s) => s.offset + s.duration >= startMs && s.offset <= endMs);
-  return inside.map((s) => s.text.trim()).join(" ").slice(0, 2000);
+  return inside.map((s) => s.text.trim()).join(" ").slice(0, 6000);
 }
 
 function fmt(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function cleanText(raw: string, cfg: { keepBullets: boolean; keepLineBreaks: boolean }) {
+  let out = raw
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(?<!\*)\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)/g, "$1")
+    .replace(/^#+\s*/gm, "");
+  if (cfg.keepBullets) {
+    out = out.replace(/^[-*]\s+/gm, "• ");
+  } else {
+    out = out.replace(/^[-*•]\s+/gm, "");
+  }
+  if (!cfg.keepLineBreaks) {
+    out = out.replace(/\n+/g, " ");
+  } else {
+    out = out.replace(/\n{3,}/g, "\n\n");
+  }
+  return out.trim();
 }
 
 export const listVideoNotes = createServerFn({ method: "GET" })
@@ -84,12 +168,13 @@ export const createVideoNote = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    // Fetch transcript window (best-effort).
-    const segments = await fetchSegments(data.youtubeId);
-    const contextText = sliceWindow(segments, data.timestampSeconds, 10);
+    const cfg = STYLE_CONFIG[data.style];
 
-    // Greeting only on the FIRST note of the day (user's local ≈ server day).
-    // Also personalize with display_name when available.
+    // Fetch transcript window sized by note style.
+    const segments = await fetchSegments(data.youtubeId);
+    const contextText = sliceWindow(segments, data.timestampSeconds, cfg.windowSec);
+
+    // Greeting only on the FIRST note of the day.
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const { count: notesToday } = await context.supabase
@@ -123,32 +208,32 @@ export const createVideoNote = createServerFn({ method: "POST" })
       greeting = openers[Math.floor(Math.random() * openers.length)];
     }
 
-    // AI explanation.
+    // AI explanation, grounded in the exact transcript window.
     let explanation = "";
     try {
       const gateway = createGateway();
-      const baseRules = `Regras de formatação: escreva em texto corrido, SEM markdown (não use **, *, #, listas ou emojis). Use frases curtas e claras.`;
-      const prompt = contextText
-        ? `Você é um professor do ENEM. Explique de forma clara, direta e didática o trecho abaixo (aprox. 10 segundos por volta de ${fmt(data.timestampSeconds)}) do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\n\n${baseRules}\n\nTrecho da fala:\n"""${contextText}"""\n\nResponda em português, em 2-4 frases curtas, focando no conceito principal desse momento. Não repita o texto literal.`
-        : `Você é um professor do ENEM. O aluno marcou o momento ${fmt(data.timestampSeconds)} do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}.\n${baseRules}\nSem transcrição desse trecho, faça uma nota curta (2-3 frases) sobre o que provavelmente está sendo explicado neste ponto do tópico, para servir de referência de estudo.`;
+      const baseRules =
+        "Regras: escreva em português. NÃO use markdown pesado (nada de **, #, tabelas, emojis). Cite fatos apenas do trecho fornecido; se o trecho não disser, mantenha o contexto do tópico do vídeo. Não repita o texto literal — reformule com clareza didática.";
+
+      const header = `Você é um professor do ENEM anotando o momento ${fmt(data.timestampSeconds)} do vídeo "${data.videoTitle}"${data.topicTitle ? ` (tópico: ${data.topicTitle})` : ""}. O aluno escolheu o formato "${data.style}" (janela de ${cfg.windowSec}s ao redor do marcador).`;
+
+      const contextBlock = contextText
+        ? `Transcrição do trecho (~${cfg.windowSec}s):\n"""${contextText}"""`
+        : `Não há transcrição disponível para esse trecho — use conhecimento geral do tópico "${data.topicTitle || data.videoTitle}" para inferir o conteúdo provável neste momento.`;
+
+      const prompt = `${header}\n\n${baseRules}\n\nInstrução de formato (siga estritamente):\n${cfg.instruction}\n\n${contextBlock}`;
 
       const { text } = await generateText({
         model: gateway(CHAT_MODEL),
         prompt,
       });
-      // Strip any residual markdown just in case.
-      explanation = text
-        .replace(/\*\*(.+?)\*\*/g, "$1")
-        .replace(/(?<!\*)\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)/g, "$1")
-        .replace(/^#+\s*/gm, "")
-        .replace(/^[-*]\s+/gm, "• ")
-        .trim();
+      explanation = cleanText(text, cfg);
     } catch {
-      explanation = "Anotação salva. (Explicação automática indisponível no momento — adicione suas próprias observações abaixo.)";
+      explanation =
+        "Anotação salva. (Explicação automática indisponível no momento — adicione suas próprias observações abaixo.)";
     }
 
     if (greeting) explanation = `${greeting}\n\n${explanation}`;
-
 
     const { data: inserted, error } = await context.supabase
       .from("video_notes")
@@ -173,7 +258,7 @@ export const updateVideoNote = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        userNote: z.string().max(4000).optional(),
+        userNote: z.string().max(8000).optional(),
         style: z.enum(NOTE_STYLES).optional(),
       })
       .parse(i),
@@ -182,14 +267,16 @@ export const updateVideoNote = createServerFn({ method: "POST" })
     const patch: { user_note?: string; style?: string } = {};
     if (data.userNote !== undefined) patch.user_note = data.userNote;
     if (data.style !== undefined) patch.style = data.style;
-    if (Object.keys(patch).length === 0) return { ok: true };
-    const { error } = await context.supabase
+    if (Object.keys(patch).length === 0) return { ok: true, user_note: undefined, style: undefined };
+    const { data: row, error } = await context.supabase
       .from("video_notes")
       .update(patch)
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("id, user_note, style")
+      .single();
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, ...row };
   });
 
 export const deleteVideoNote = createServerFn({ method: "POST" })
