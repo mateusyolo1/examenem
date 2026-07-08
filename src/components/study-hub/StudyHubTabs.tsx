@@ -472,6 +472,17 @@ function MindMapsTab() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Auto-open a map when navigated with `?openMap=<id>` (used by the
+  // "Gerar mapa mental" button in NotesTab video cards).
+  const search = useSearch({ strict: false }) as { openMap?: string };
+  useEffect(() => {
+    if (search.openMap && search.openMap !== selectedId) {
+      setSelectedId(search.openMap);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.openMap]);
+
   const [title, setTitle] = useState("Novo mapa");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
