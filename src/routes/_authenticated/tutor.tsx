@@ -372,13 +372,26 @@ function Tutor() {
                 >
                   <div
                     className={
-                      "max-w-[85%] p-4 rounded-lg " +
+                      "max-w-[85%] " +
                       (m.role === "user"
-                        ? "bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
-                        : "bg-background border border-border")
+                        ? "p-4 rounded-lg bg-foreground text-background text-sm leading-relaxed whitespace-pre-wrap"
+                        : "space-y-3")
                     }
                   >
-                    {m.role === "user" ? m.content : <Markdown>{m.content}</Markdown>}
+                    {m.role === "user" ? (
+                      m.content
+                    ) : (
+                      <>
+                        {m.toolResults?.map((tr, ti) => (
+                          <TutorToolCard key={ti} result={tr} />
+                        ))}
+                        {m.content && (
+                          <div className="p-4 rounded-lg bg-background border border-border">
+                            <Markdown>{m.content}</Markdown>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
