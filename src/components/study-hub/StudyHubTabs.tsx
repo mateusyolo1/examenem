@@ -18,6 +18,21 @@ import {
   FileText,
   Image as ImageIcon,
   Frame,
+  MousePointer2,
+  Hand,
+  Pencil,
+  Highlighter,
+  StickyNote,
+  Square,
+  Circle,
+  Diamond,
+  Triangle,
+  ArrowUpRight,
+  Minus,
+  Type,
+  Eraser,
+  Zap,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -814,6 +829,17 @@ function MindMapsTab() {
           }}
           ref={canvasWrapRef}
         >
+          {/* Hide Excalidraw's native top toolbar / lock button — we render a
+              FigJam-style bottom pill instead. Scoped to this container. */}
+          <style>{`
+            .mm-canvas .App-toolbar,
+            .mm-canvas .App-toolbar-container,
+            .mm-canvas .App-toolbar__extra-tools-trigger,
+            .mm-canvas .lock-button,
+            .mm-canvas .App-mobile-menu .App-toolbar { display: none !important; }
+            .mm-canvas .App-menu_top { top: 8px; }
+          `}</style>
+          <div className="mm-canvas h-full w-full">
           <ClientOnly
             fallback={
               <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -847,8 +873,10 @@ function MindMapsTab() {
                 }}
               />
               <ConnectorHandles apiRef={apiRef} containerRef={canvasWrapRef} />
+              <FigmaBottomToolbar apiRef={apiRef} />
             </Suspense>
           </ClientOnly>
+          </div>
         </div>
       </div>
     </div>
@@ -856,7 +884,181 @@ function MindMapsTab() {
 }
 
 
+// ============ FIGMA-STYLE BOTTOM TOOLBAR ============
+
+type ToolId =
+  | "selection" | "hand"
+  | "pen" | "highlighter" | "pencil"
+  | "sticky"
+  | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
+  | "text" | "image" | "eraser" | "laser" | "frame";
+
+function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
+  const [active, setActive] = useState<ToolId>("selection");
+  const [shapesOpen, setShapesOpen] = useState(false);
+  const [penOpen, setPenOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Mirror Excalidraw's current tool for highlighting.
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      const st = apiRef.current?.getAppState?.();
+      const t = st?.activeTool?.type;
+      if (t && t !== active && ["selection","hand","freedraw","rectangle","ellipse","diamond","arrow","line","text","image","eraser","laser","frame"].includes(t)) {
+        // Only overwrite if user picked something in Excalidraw itself
+        if (t === "freedraw") {
+          // keep pen/highlighter/pencil sub-state as-is
+        } else {
+          setActive(t as ToolId);
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [apiRef, active]);
+
+  const setTool = (id: ToolId) => {
+    const api = apiRef.current;
+    if (!api) return;
+    setActive(id);
+    const map: Record<string, string> = {
+      selection: "selection", hand: "hand",
+      pen: "freedraw", highlighter: "freedraw", pencil: "freedraw",
+      sticky: "rectangle",
+      rectangle: "rectangle", ellipse: "ellipse", diamond: "diamond",
+      triangle: "diamond", line: "line", arrow: "arrow",
+      text: "text", image: "image", eraser: "eraser", laser: "laser", frame: "frame",
+    };
+    api.setActiveTool({ type: map[id] as any });
+    // Tune brush / fill per variant
+    const patch: any = {};
+    if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; }
+    if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; }
+    if (id === "highlighter") { patch.currentItemStrokeColor = "#fde047"; patch.currentItemStrokeWidth = 12; patch.currentItemOpacity = 45; }
+    else if (id === "pen" || id === "pencil") { patch.currentItemOpacity = 100; }
+    if (id === "sticky") {
+      patch.currentItemBackgroundColor = "#fef9c3";
+      patch.currentItemFillStyle = "solid";
+      patch.currentItemStrokeColor = "transparent";
+    }
+    if (Object.keys(patch).length) api.updateScene({ appState: patch });
+  };
+
+  const Btn = ({
+    id, label, icon: Icon, onClick,
+  }: { id?: ToolId; label: string; icon: any; onClick?: () => void }) => {
+    const isActive = id && active === id;
+    return (
+      <button
+        onClick={onClick ?? (() => id && setTool(id))}
+        title={label}
+        className={
+          "h-10 w-10 rounded-lg flex items-center justify-center transition-colors " +
+          (isActive
+            ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+            : "text-foreground/70 hover:text-foreground hover:bg-muted")
+        }
+      >
+        <Icon size={18} strokeWidth={1.75} />
+      </button>
+    );
+  };
+
+  const Divider = () => <div className="w-px h-6 bg-border/70 mx-1" />;
+
+  const penMeta: Record<string, { icon: any; label: string }> = {
+    pen: { icon: Pencil, label: "Caneta" },
+    highlighter: { icon: Highlighter, label: "Marca-texto" },
+    pencil: { icon: Pencil, label: "Lápis fino" },
+  };
+  const activePen = (["pen","highlighter","pencil"] as const).includes(active as any)
+    ? (active as "pen" | "highlighter" | "pencil")
+    : "pen";
+
+  const shapes: { id: ToolId; icon: any; label: string }[] = [
+    { id: "rectangle", icon: Square, label: "Retângulo" },
+    { id: "ellipse", icon: Circle, label: "Círculo" },
+    { id: "diamond", icon: Diamond, label: "Losango" },
+    { id: "triangle", icon: Triangle, label: "Triângulo" },
+    { id: "line", icon: Minus, label: "Linha" },
+  ];
+  const activeShape = shapes.find((s) => s.id === active) ?? shapes[0];
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
+      {/* Popovers */}
+      {penOpen && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
+          {(Object.keys(penMeta) as (keyof typeof penMeta)[]).map((k) => (
+            <Btn key={k} id={k as ToolId} icon={penMeta[k].icon} label={penMeta[k].label} onClick={() => { setTool(k as ToolId); setPenOpen(false); }} />
+          ))}
+        </div>
+      )}
+      {shapesOpen && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 translate-x-[30px] flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
+          {shapes.map((s) => (
+            <Btn key={s.id} id={s.id} icon={s.icon} label={s.label} onClick={() => { setTool(s.id); setShapesOpen(false); }} />
+          ))}
+        </div>
+      )}
+      {moreOpen && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 right-0 flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
+          <Btn id="image" icon={ImageIcon} label="Imagem" onClick={() => { setTool("image"); setMoreOpen(false); }} />
+          <Btn id="eraser" icon={Eraser} label="Borracha" onClick={() => { setTool("eraser"); setMoreOpen(false); }} />
+          <Btn id="laser" icon={Zap} label="Ponteiro laser" onClick={() => { setTool("laser"); setMoreOpen(false); }} />
+          <Btn id="frame" icon={Frame} label="Frame" onClick={() => { setTool("frame"); setMoreOpen(false); }} />
+        </div>
+      )}
+
+      {/* Main pill */}
+      <div className="pointer-events-auto flex items-center gap-0.5 bg-card/95 backdrop-blur border border-border rounded-2xl shadow-xl px-2 py-1.5">
+        <Btn id="selection" icon={MousePointer2} label="Selecionar" />
+        <Btn id="hand" icon={Hand} label="Mover" />
+        <Divider />
+        <button
+          onClick={() => { setPenOpen((v) => !v); setShapesOpen(false); setMoreOpen(false); setTool(activePen); }}
+          title={penMeta[activePen].label}
+          className={
+            "h-10 px-2 rounded-lg flex items-center gap-0.5 transition-colors " +
+            (["pen","highlighter","pencil"].includes(active as string)
+              ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+              : "text-foreground/70 hover:text-foreground hover:bg-muted")
+          }
+        >
+          {(() => { const I = penMeta[activePen].icon; return <I size={18} strokeWidth={1.75} />; })()}
+          <ChevronUp size={11} className="opacity-60" />
+        </button>
+        <Btn id="sticky" icon={StickyNote} label="Sticky note" />
+        <Divider />
+        <button
+          onClick={() => { setShapesOpen((v) => !v); setPenOpen(false); setMoreOpen(false); setTool(activeShape.id); }}
+          title={activeShape.label}
+          className={
+            "h-10 px-2 rounded-lg flex items-center gap-0.5 transition-colors " +
+            (shapes.some((s) => s.id === active)
+              ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+              : "text-foreground/70 hover:text-foreground hover:bg-muted")
+          }
+        >
+          {(() => { const I = activeShape.icon; return <I size={18} strokeWidth={1.75} />; })()}
+          <ChevronUp size={11} className="opacity-60" />
+        </button>
+        <Btn id="arrow" icon={ArrowUpRight} label="Seta" />
+        <Divider />
+        <Btn id="text" icon={Type} label="Texto" />
+        <Divider />
+        <Btn label="Mais" icon={Plus} onClick={() => { setMoreOpen((v) => !v); setPenOpen(false); setShapesOpen(false); }} />
+      </div>
+    </div>
+  );
+}
+
+
 // ============ NOTES ============
+
+
 
 
 function NotesTab() {
