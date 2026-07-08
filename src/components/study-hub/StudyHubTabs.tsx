@@ -59,6 +59,213 @@ const ExcalidrawLazy = import.meta.env.SSR
       return { default: mod.Excalidraw };
     });
 
+// Connector handles — draws 4 blue dots around the selected shape so the user
+// can drag out a bound arrow from any side (draw.io / Miro style).
+const BINDABLE = new Set(["rectangle", "diamond", "ellipse", "image", "text"]);
+type SelInfo = { el: any; zoom: number; scrollX: number; scrollY: number; tick: number };
+function ConnectorHandles({
+  apiRef,
+  containerRef,
+}: {
+  apiRef: React.MutableRefObject<any>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [sel, setSel] = useState<SelInfo | null>(null);
+  const draggingRef = useRef(false);
+  const convertRef = useRef<any>(null);
+
+  useEffect(() => {
+    let alive = true;
+    import("@excalidraw/excalidraw").then((m) => {
+      if (alive) convertRef.current = m.convertToExcalidrawElements;
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      const api = apiRef.current;
+      if (api && !draggingRef.current) {
+        try {
+          const st = api.getAppState();
+          const els = api.getSceneElements();
+          const ids = Object.keys(st.selectedElementIds || {}).filter(
+            (id) => st.selectedElementIds[id],
+          );
+          if (ids.length === 1) {
+            const el = els.find((e: any) => e.id === ids[0]);
+            if (el && !el.isDeleted && BINDABLE.has(el.type)) {
+              setSel({
+                el,
+                zoom: st.zoom?.value ?? 1,
+                scrollX: st.scrollX ?? 0,
+                scrollY: st.scrollY ?? 0,
+                tick: Date.now(),
+              });
+            } else {
+              setSel(null);
+            }
+          } else {
+            setSel(null);
+          }
+        } catch {
+          /* noop */
+        }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [apiRef]);
+
+  if (!sel || !containerRef.current) return null;
+  const { el, zoom, scrollX, scrollY } = sel;
+  const toPx = (sx: number, sy: number) => ({
+    x: (sx + scrollX) * zoom,
+    y: (sy + scrollY) * zoom,
+  });
+  const anchors = [
+    { key: "t", sx: el.x + el.width / 2, sy: el.y },
+    { key: "r", sx: el.x + el.width, sy: el.y + el.height / 2 },
+    { key: "b", sx: el.x + el.width / 2, sy: el.y + el.height },
+    { key: "l", sx: el.x, sy: el.y + el.height / 2 },
+  ];
+
+  const startDrag = (e: React.PointerEvent, a: (typeof anchors)[number]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const api = apiRef.current;
+    const convert = convertRef.current;
+    const cont = containerRef.current;
+    if (!api || !convert || !cont) return;
+    const rect = cont.getBoundingClientRect();
+    const st = api.getAppState();
+    const z = st.zoom?.value ?? 1;
+    const sX = st.scrollX ?? 0;
+    const sY = st.scrollY ?? 0;
+    const toScene = (cx: number, cy: number) => ({
+      x: (cx - rect.left) / z - sX,
+      y: (cy - rect.top) / z - sY,
+    });
+    const start = { x: a.sx, y: a.sy };
+    const end0 = toScene(e.clientX, e.clientY);
+    const built = convert([
+      {
+        type: "arrow",
+        x: start.x,
+        y: start.y,
+        points: [
+          [0, 0],
+          [end0.x - start.x, end0.y - start.y],
+        ],
+        strokeColor: st.currentItemStrokeColor ?? "#1e1e1e",
+        strokeWidth: st.currentItemStrokeWidth ?? 2,
+        endArrowhead: "arrow",
+      } as any,
+    ]);
+    const arrow: any = {
+      ...built[0],
+      startBinding: { elementId: el.id, focus: 0, gap: 1, fixedPoint: null },
+      endBinding: null,
+    };
+    const current = api.getSceneElements();
+    api.updateScene({ elements: [...current, arrow] });
+    draggingRef.current = true;
+
+    const onMove = (ev: PointerEvent) => {
+      const api2 = apiRef.current;
+      if (!api2) return;
+      const st2 = api2.getAppState();
+      const z2 = st2.zoom?.value ?? 1;
+      const scn = {
+        x: (ev.clientX - rect.left) / z2 - (st2.scrollX ?? 0),
+        y: (ev.clientY - rect.top) / z2 - (st2.scrollY ?? 0),
+      };
+      const arr = api2.getSceneElements();
+      const next = arr.map((n: any) =>
+        n.id === arrow.id
+          ? {
+              ...n,
+              points: [
+                [0, 0],
+                [scn.x - start.x, scn.y - start.y],
+              ],
+              version: (n.version ?? 1) + 1,
+              versionNonce: Math.floor(Math.random() * 2 ** 31),
+            }
+          : n,
+      );
+      api2.updateScene({ elements: next });
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      draggingRef.current = false;
+      const api2 = apiRef.current;
+      if (!api2) return;
+      const st2 = api2.getAppState();
+      const z2 = st2.zoom?.value ?? 1;
+      const scn = {
+        x: (ev.clientX - rect.left) / z2 - (st2.scrollX ?? 0),
+        y: (ev.clientY - rect.top) / z2 - (st2.scrollY ?? 0),
+      };
+      const arr = api2.getSceneElements();
+      const target = [...arr]
+        .reverse()
+        .find(
+          (n: any) =>
+            !n.isDeleted &&
+            n.id !== el.id &&
+            n.id !== arrow.id &&
+            BINDABLE.has(n.type) &&
+            scn.x >= n.x &&
+            scn.x <= n.x + n.width &&
+            scn.y >= n.y &&
+            scn.y <= n.y + n.height,
+        );
+      if (!target) return;
+      const next = arr.map((n: any) =>
+        n.id === arrow.id
+          ? {
+              ...n,
+              endBinding: { elementId: target.id, focus: 0, gap: 1, fixedPoint: null },
+              version: (n.version ?? 1) + 1,
+              versionNonce: Math.floor(Math.random() * 2 ** 31),
+            }
+          : n,
+      );
+      api2.updateScene({ elements: next });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20">
+      {anchors.map((a) => {
+        const p = toPx(a.sx, a.sy);
+        return (
+          <div
+            key={a.key}
+            onPointerDown={(e) => startDrag(e, a)}
+            title="Arraste para conectar"
+            className="pointer-events-auto absolute rounded-full bg-blue-500 border-2 border-white shadow-md cursor-crosshair hover:scale-125 transition-transform"
+            style={{
+              left: p.x - 6,
+              top: p.y - 6,
+              width: 12,
+              height: 12,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 type SavedMap = {
   id: string;
   title: string;
