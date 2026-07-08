@@ -44,12 +44,20 @@ export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
 // ============ MIND MAPS (Excalidraw whiteboard) ============
 
-// Excalidraw touches window at import time — load lazily on the client only.
-const ExcalidrawLazy = lazy(async () => {
-  await import("@excalidraw/excalidraw/index.css");
-  const mod = await import("@excalidraw/excalidraw");
-  return { default: mod.Excalidraw };
-});
+// Excalidraw touches `window` at module top level and drags mermaid/canvg
+// with it. If any of that lands in the SSR module graph, nitro's dep-splitter
+// groups shared modules (react-dom, jsx-runtime, ...) under the excalidraw chunk
+// and every unrelated lib ends up importing from it — the Worker then executes
+// excalidraw at boot and dies with "window is not defined".
+// The `import.meta.env.SSR` gate tree-shakes the entire import chain out of the
+// server bundle so the vendor chunk is never created.
+const ExcalidrawLazy = import.meta.env.SSR
+  ? (null as unknown as ReturnType<typeof lazy>)
+  : lazy(async () => {
+      await import("@excalidraw/excalidraw/index.css");
+      const mod = await import("@excalidraw/excalidraw");
+      return { default: mod.Excalidraw };
+    });
 
 type SavedMap = {
   id: string;
