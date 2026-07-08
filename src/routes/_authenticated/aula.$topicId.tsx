@@ -267,7 +267,22 @@ function LessonPlayer({
 
   const goNext = () => {
     markCurrentWatched();
-    if (current < total - 1) setCurrent(current + 1);
+    if (current < total - 1) {
+      setAutoplay(true);
+      setCurrent(current + 1);
+    }
+  };
+
+  const goPrev = () => {
+    if (current > 0) {
+      setAutoplay(true);
+      setCurrent(current - 1);
+    }
+  };
+
+  const goSelect = (i: number) => {
+    setAutoplay(true);
+    setCurrent(i);
   };
 
 
