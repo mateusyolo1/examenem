@@ -25,18 +25,20 @@ import {
 import { useStudyPlan, weekDates, dateLabel, areaLabel } from "@/lib/study-plan";
 import type { StudyTask, TopicMastery } from "@/lib/study-plan";
 import { CalendarCheck } from "lucide-react";
-import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw } from "lucide-react";
+import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles, Check, GraduationCap, History, RefreshCw, Brain, StickyNote, Layers, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } from "@/components/study-hub/StudyHubTabs";
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   head: () => ({
     meta: [
-      { title: "Área de Estudos — Exame ENEM" },
+      { title: "Hub de Estudos — Exame ENEM" },
       {
         name: "description",
         content:
-          "Estude cada assunto do ENEM com buscas prontas no YouTube nos melhores canais educacionais brasileiros.",
+          "Vídeos, mapas mentais gerados por IA, notas, flashcards com revisão espaçada e resumos do que aprendi — tudo num só lugar.",
       },
     ],
   }),
@@ -147,14 +149,14 @@ function EstudosPage() {
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0 flex-1">
                 <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                  Área de Estudos
+                  Hub de Estudos
                 </span>
                 <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter mt-2">
-                  Aprenda por vídeo.
+                  Aprenda, revise, domine.
                 </h1>
                 <p className="text-muted-foreground mt-3 max-w-2xl">
-                  Escolha um assunto e abra buscas prontas no YouTube nos melhores canais educacionais
-                  brasileiros para o ENEM.
+                  Vídeos, mapas mentais, notas, flashcards e resumos — tudo num só lugar,
+                  personalizado pra você.
                 </p>
               </div>
               <div className="hidden md:block shrink-0">
@@ -168,75 +170,96 @@ function EstudosPage() {
 
 
 
-          {/* Assuntos - barra horizontal no topo */}
-          <div className="border border-border bg-card p-4 rounded-md mb-6">
-            <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
-              Assuntos
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {roots.map((area) => {
-                const children = byParent[area.id] ?? [];
-                const expanded = expandedAreas.has(area.id);
-                return (
-                  <div key={area.id} className="relative">
-                    <button
-                      onClick={() => toggleArea(area.id)}
-                      className={
-                        "w-full flex items-center justify-between text-left px-3 py-2 rounded border transition-colors " +
-                        (expanded
-                          ? "border-foreground bg-accent"
-                          : "border-border hover:bg-accent")
-                      }
-                    >
-                      <span className="text-sm font-bold">
-                        {AREA_LABEL[area.area] ?? area.title}
-                      </span>
-                      <ChevronRight
-                        size={14}
-                        className={`transition-transform ${expanded ? "rotate-90" : ""}`}
-                      />
-                    </button>
-                    {expanded && (
-                      <div className="absolute z-20 left-0 right-0 mt-1 border border-border bg-popover rounded-md shadow-lg p-1 space-y-0.5 max-h-80 overflow-y-auto">
-                        {children.map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() => {
-                              setSelectedTopicId(t.id);
-                              toggleArea(area.id);
-                            }}
-                            className={
-                              "w-full text-left px-2 py-1.5 rounded text-sm transition-colors " +
-                              (selectedTopicId === t.id
-                                ? "bg-foreground text-background font-medium"
-                                : "text-muted-foreground hover:bg-accent hover:text-foreground")
-                            }
-                          >
-                            {t.title}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <Tabs defaultValue="videos" className="w-full">
+            <TabsList className="flex flex-wrap w-full h-auto justify-start gap-1 mb-4">
+              <TabsTrigger value="videos" className="gap-1.5"><Youtube size={14} /> Vídeos</TabsTrigger>
+              <TabsTrigger value="mapas" className="gap-1.5"><Brain size={14} /> Mapas mentais</TabsTrigger>
+              <TabsTrigger value="notas" className="gap-1.5"><StickyNote size={14} /> Notas</TabsTrigger>
+              <TabsTrigger value="flashcards" className="gap-1.5"><Layers size={14} /> Flashcards</TabsTrigger>
+              <TabsTrigger value="resumos" className="gap-1.5"><FileText size={14} /> Resumos</TabsTrigger>
+            </TabsList>
 
-          {/* Conteúdo centralizado */}
-          <section className="max-w-5xl mx-auto">
-            {selectedTopic ? (
-              <TopicSearches topic={selectedTopic} />
-            ) : (
-              <div className="border border-dashed border-border rounded-md p-12 text-center bg-card">
-                <Youtube size={48} className="mx-auto text-muted-foreground mb-4" />
-                <h2 className="text-xl font-bold mb-2">Escolha um assunto</h2>
-                <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                  Abra uma área acima e clique num assunto para ver as buscas recomendadas.
-                </p>
+            <TabsContent value="videos">
+              {/* Assuntos - barra horizontal no topo */}
+              <div className="border border-border bg-card p-4 rounded-md mb-6">
+                <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
+                  Assuntos
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {roots.map((area) => {
+                    const children = byParent[area.id] ?? [];
+                    const expanded = expandedAreas.has(area.id);
+                    return (
+                      <div key={area.id} className="relative">
+                        <button
+                          onClick={() => toggleArea(area.id)}
+                          className={
+                            "w-full flex items-center justify-between text-left px-3 py-2 rounded border transition-colors " +
+                            (expanded
+                              ? "border-foreground bg-accent"
+                              : "border-border hover:bg-accent")
+                          }
+                        >
+                          <span className="text-sm font-bold">
+                            {AREA_LABEL[area.area] ?? area.title}
+                          </span>
+                          <ChevronRight
+                            size={14}
+                            className={`transition-transform ${expanded ? "rotate-90" : ""}`}
+                          />
+                        </button>
+                        {expanded && (
+                          <div className="absolute z-20 left-0 right-0 mt-1 border border-border bg-popover rounded-md shadow-lg p-1 space-y-0.5 max-h-80 overflow-y-auto">
+                            {children.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => {
+                                  setSelectedTopicId(t.id);
+                                  toggleArea(area.id);
+                                }}
+                                className={
+                                  "w-full text-left px-2 py-1.5 rounded text-sm transition-colors " +
+                                  (selectedTopicId === t.id
+                                    ? "bg-foreground text-background font-medium"
+                                    : "text-muted-foreground hover:bg-accent hover:text-foreground")
+                                }
+                              >
+                                {t.title}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </section>
+
+              {/* Conteúdo centralizado */}
+              <section className="max-w-5xl mx-auto">
+                {selectedTopic ? (
+                  <TopicSearches topic={selectedTopic} />
+                ) : (
+                  <div className="border border-dashed border-border rounded-md p-12 text-center bg-card">
+                    <Youtube size={48} className="mx-auto text-muted-foreground mb-4" />
+                    <h2 className="text-xl font-bold mb-2">Escolha um assunto</h2>
+                    <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                      Abra uma área acima e clique num assunto para ver as buscas recomendadas.
+                    </p>
+                  </div>
+                )}
+              </section>
+            </TabsContent>
+
+            <TabsContent value="mapas"><MindMapsTab /></TabsContent>
+            <TabsContent value="notas"><NotesTab /></TabsContent>
+            <TabsContent value="flashcards"><FlashcardsTab /></TabsContent>
+            <TabsContent value="resumos">
+              <SummariesTab />
+              <div className="mt-8"><DraftsSection /></div>
+            </TabsContent>
+          </Tabs>
+
 
         </div>
       </main>
