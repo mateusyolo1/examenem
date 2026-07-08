@@ -16,10 +16,7 @@ import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import {
-  Brain,
-  StickyNote,
   Layers,
-  FileText,
   NotebookPen,
   Sparkles,
   Trash2,
@@ -30,7 +27,6 @@ import {
   RotateCcw,
   ChevronRight,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,9 +50,6 @@ import {
 } from "@/lib/study-hub.functions";
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
-// no-op refs so bundlers keep the tabs UI imports meaningful
-void Tabs; void TabsList; void TabsTrigger; void TabsContent;
-void Brain; void StickyNote; void Layers; void FileText;
 
 // ============ MIND MAPS ============
 
