@@ -26,6 +26,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { COLOR_SCHEMES, useColorScheme } from "@/lib/color-scheme";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
