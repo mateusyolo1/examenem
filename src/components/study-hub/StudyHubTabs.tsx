@@ -78,6 +78,24 @@ function MindMapsTab() {
   // Bump this to force Excalidraw to reload with new initialData
   const [loadKey, setLoadKey] = useState(0);
   const initialDataRef = useRef<any>(null);
+  const [bgStyle, setBgStyle] = useState<"dots" | "grid" | "none">(() => {
+    if (typeof window === "undefined") return "dots";
+    return (localStorage.getItem("mindmap-bg") as any) || "dots";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mindmap-bg", bgStyle);
+    const api = apiRef.current;
+    if (api?.updateScene) {
+      api.updateScene({
+        appState: {
+          gridModeEnabled: bgStyle === "grid",
+          gridSize: 20,
+          viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff",
+        },
+      });
+    }
+  }, [bgStyle]);
 
   // Native fullscreen listener (falls back to CSS-only fullscreen when unavailable)
   useEffect(() => {
@@ -128,8 +146,8 @@ function MindMapsTab() {
     initialDataRef.current = {
       elements: (m.nodes as any) ?? [],
       appState: {
-        viewBackgroundColor: meta.viewBackgroundColor ?? "#ffffff",
-        gridModeEnabled: true,
+        viewBackgroundColor: bgStyle === "dots" ? "transparent" : (meta.viewBackgroundColor ?? "#ffffff"),
+        gridModeEnabled: bgStyle === "grid",
         gridSize: 20,
       },
       files: meta.files ?? {},
@@ -144,7 +162,7 @@ function MindMapsTab() {
     setTitle("Novo mapa");
     initialDataRef.current = {
       elements: [],
-      appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: true, gridSize: 20 },
+      appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 },
       files: {},
     };
     setLoadKey((k) => k + 1);
@@ -345,6 +363,25 @@ function MindMapsTab() {
             className="h-8 text-sm max-w-xs"
           />
           <div className="flex-1" />
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-background">
+            {(["dots", "grid", "none"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setBgStyle(s)}
+                className={
+                  "px-2 py-1 text-[11px] font-mono rounded transition-colors " +
+                  (bgStyle === s
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+                title={
+                  s === "dots" ? "Fundo com bolinhas" : s === "grid" ? "Grade quadriculada" : "Sem fundo"
+                }
+              >
+                {s === "dots" ? "• • •" : s === "grid" ? "▦" : "∅"}
+              </button>
+            ))}
+          </div>
           <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
             <ImageIcon size={13} />
             PNG
@@ -369,10 +406,17 @@ function MindMapsTab() {
           </Button>
         </div>
 
-        {/* Canvas — explicit height so Excalidraw fills */}
+        {/* Canvas — explicit height so Excalidraw fills; dot bg via CSS layer */}
         <div
-          className="bg-background w-full"
-          style={{ height: isFullscreen ? "calc(100vh - 49px)" : "640px" }}
+          className="bg-background w-full relative"
+          style={{
+            height: isFullscreen ? "calc(100vh - 49px)" : "640px",
+            backgroundImage:
+              bgStyle === "dots"
+                ? "radial-gradient(circle, rgba(0,0,0,0.22) 1px, transparent 1px)"
+                : undefined,
+            backgroundSize: bgStyle === "dots" ? "20px 20px" : undefined,
+          }}
         >
           <ClientOnly
             fallback={
@@ -392,7 +436,7 @@ function MindMapsTab() {
             >
               <ExcalidrawLazy
                 key={loadKey}
-                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: "#ffffff", gridModeEnabled: true, gridSize: 20 }, files: {} }}
+                initialData={initialDataRef.current ?? { elements: [], appState: { viewBackgroundColor: bgStyle === "dots" ? "transparent" : "#ffffff", gridModeEnabled: bgStyle === "grid", gridSize: 20 }, files: {} }}
                 excalidrawAPI={(api: any) => (apiRef.current = api)}
                 UIOptions={{
                   canvasActions: {
