@@ -401,10 +401,17 @@ function MindMapsTab() {
           </Button>
         </div>
 
-        {/* Canvas — explicit height so Excalidraw fills */}
+        {/* Canvas — explicit height so Excalidraw fills; dot bg via CSS layer */}
         <div
-          className="bg-background w-full"
-          style={{ height: isFullscreen ? "calc(100vh - 49px)" : "640px" }}
+          className="bg-background w-full relative"
+          style={{
+            height: isFullscreen ? "calc(100vh - 49px)" : "640px",
+            backgroundImage:
+              bgStyle === "dots"
+                ? "radial-gradient(circle, rgba(0,0,0,0.22) 1px, transparent 1px)"
+                : undefined,
+            backgroundSize: bgStyle === "dots" ? "20px 20px" : undefined,
+          }}
         >
           <ClientOnly
             fallback={
