@@ -803,6 +803,44 @@ function MindMapsTab() {
               </button>
             ))}
           </div>
+          <GenerateFromVideoButton
+            variant="toolbar"
+            onInsert={async (elements, meta) => {
+              const api = apiRef.current;
+              if (!api) return;
+              // Import Excalidraw helpers to normalize the raw skeleton
+              // (labels, arrow bindings, etc.) into real scene elements.
+              const m = await import("@excalidraw/excalidraw");
+              const built = m.convertToExcalidrawElements(elements);
+              // Offset if the canvas already has content, so we don't stack
+              // on top of an existing mind map.
+              const current = api.getSceneElements() as any[];
+              let offsetX = 0;
+              if (current.length > 0) {
+                const maxX = current.reduce(
+                  (m: number, el: any) => Math.max(m, (el.x ?? 0) + (el.width ?? 0)),
+                  -Infinity,
+                );
+                offsetX = Math.max(0, maxX + 200);
+              }
+              const shifted = built.map((el: any) => ({
+                ...el,
+                x: (el.x ?? 0) + offsetX,
+              }));
+              const selected: Record<string, true> = {};
+              for (const el of shifted) selected[el.id] = true;
+              api.updateScene({
+                elements: [...current, ...shifted],
+                appState: { selectedElementIds: selected },
+              });
+              api.scrollToContent(shifted, {
+                animate: true,
+                fitToViewport: true,
+                maxZoom: 1,
+              });
+              if (!title || title === "Novo mapa") setTitle(meta.title);
+            }}
+          />
           <Button size="sm" variant="outline" onClick={exportPng} className="gap-1">
             <ImageIcon size={13} />
             PNG
