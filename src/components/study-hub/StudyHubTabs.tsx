@@ -1106,6 +1106,48 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     api.scrollToContent(built, { animate: true, fitToViewport: true, maxZoom: 1 });
   };
 
+  // Insert a FigJam-style sticky note (yellow rounded square with editable text)
+  // at the current viewport center. Sticky is NOT a native Excalidraw tool, so
+  // we drop a pre-styled element the user can immediately move / edit.
+  const insertStickyNote = async () => {
+    const api = apiRef.current;
+    if (!api) return;
+    const m = await import("@excalidraw/excalidraw");
+    const convert = m.convertToExcalidrawElements;
+    const st = api.getAppState();
+    const zoom = st.zoom?.value ?? 1;
+    const vw = st.width ?? 800;
+    const vh = st.height ?? 600;
+    const centerX = -st.scrollX + vw / (2 * zoom);
+    const centerY = -st.scrollY + vh / (2 * zoom);
+    const size = 180;
+    const id = `sticky-${Date.now()}`;
+    const built = convert([
+      {
+        type: "rectangle",
+        id,
+        x: centerX - size / 2,
+        y: centerY - size / 2,
+        width: size,
+        height: size,
+        backgroundColor: "#fef08a",
+        fillStyle: "solid",
+        strokeColor: "transparent",
+        strokeWidth: 1,
+        roundness: { type: 3 },
+        label: { text: "Nota adesiva", fontSize: 18, textAlign: "center", verticalAlign: "middle" },
+      },
+    ] as any);
+    const current = api.getSceneElements();
+    api.updateScene({
+      elements: [...current, ...built],
+      appState: { selectedElementIds: { [id]: true } },
+    });
+    api.scrollToContent(built, { animate: true, fitToViewport: true, maxZoom: 1 });
+    setActive("selection");
+    api.setActiveTool({ type: "selection" });
+  };
+
 
   const Btn = ({
     id, label, icon: Icon, image, onClick,
@@ -1244,7 +1286,8 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
           />
           <ChevronUp size={11} className="opacity-60" />
         </button>
-        <Btn id="sticky" image={toolPostit.url} label="Sticky note" />
+        <Btn id="sticky" image={toolPostit.url} label="Nota adesiva" onClick={() => insertStickyNote()} />
+        <Btn id="eraser" image={toolEraser.url} label="Borracha" onClick={() => setTool("eraser")} />
         <Divider />
         <button
           onClick={() => { setShapesOpen((v) => !v); setPenOpen(false); setMoreOpen(false); setTool(activeShape.id); }}
