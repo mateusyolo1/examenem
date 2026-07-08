@@ -652,6 +652,56 @@ function WatchingView({
         <div className="relative aspect-video bg-black rounded-t-md overflow-hidden">
 
           <div ref={iframeRef} className="absolute inset-0 w-full h-full" />
+          {shortcutHint && (
+            <div className="pointer-events-none absolute top-3 left-3 z-20 px-2.5 py-1 rounded bg-black/70 text-white text-xs font-mono tracking-wide animate-in fade-in">
+              {shortcutHint}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowHelp(true)}
+            title="Atalhos do teclado (?)"
+            className="absolute bottom-3 right-3 z-20 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 text-white text-xs font-mono flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
+          >
+            ?
+          </button>
+          {showHelp && (
+            <div
+              className="absolute inset-0 z-30 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setShowHelp(false)}
+            >
+              <div
+                className="bg-card border border-border rounded-lg p-5 max-w-sm w-full shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold">Atalhos do teclado</div>
+                  <button onClick={() => setShowHelp(false)} className="text-muted-foreground hover:text-foreground">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  {[
+                    ["Espaço / K", "Play / Pausa"],
+                    ["J / L", "−10s / +10s"],
+                    ["← / →", "−5s / +5s"],
+                    ["↑ / ↓", "Volume"],
+                    ["M", "Mudo"],
+                    ["F", "Tela cheia"],
+                    ["0–9", "Ir para 0–90%"],
+                    ["Shift + , / .", "Velocidade"],
+                    ["?", "Este menu"],
+                  ].map(([k, d]) => (
+                    <div key={k} className="contents">
+                      <div className="font-mono text-muted-foreground">{k}</div>
+                      <div>{d}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {countdown !== null && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10">
               <div className="bg-card border border-border rounded-lg p-6 max-w-sm mx-4 text-center shadow-xl">
