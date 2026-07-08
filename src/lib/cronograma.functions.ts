@@ -121,7 +121,7 @@ export const getTodayPlan = createServerFn({ method: "GET" })
         .in("day_id", dayIds)
         .order("order_index", { ascending: true });
       if (aerr) throw new Error(aerr.message);
-      activities = (acts ?? []) as typeof activities;
+      activities = ((acts ?? []) as unknown) as typeof activities;
     }
 
     // settings
