@@ -873,30 +873,69 @@ function NotesTab() {
       </div>
     );
   }
+
+  // Group: topic → video → notes
+  const byTopic = new Map<
+    string,
+    { topicTitle: string; videos: Map<string, { videoTitle: string; channel: string; youtubeId: string; notes: typeof notes }> }
+  >();
+  for (const n of notes as any[]) {
+    const tKey = n.topic_id ?? `__no_topic__`;
+    if (!byTopic.has(tKey)) byTopic.set(tKey, { topicTitle: n.topic_title, videos: new Map() });
+    const bucket = byTopic.get(tKey)!;
+    if (!bucket.videos.has(n.video_id)) {
+      bucket.videos.set(n.video_id, {
+        videoTitle: n.video_title,
+        channel: n.channel_name,
+        youtubeId: n.youtube_id,
+        notes: [] as any,
+      });
+    }
+    (bucket.videos.get(n.video_id)!.notes as any[]).push(n);
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {notes.map((n) => (
-        <div key={n.id} className="border border-border rounded-md p-3 bg-card">
-          <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
-            <span>{n.style}</span>
-            <span>{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
-          </div>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">{n.ai_explanation}</p>
-          {n.user_note && (
-            <div className="mt-2 pt-2 border-t border-border text-xs text-foreground/90 whitespace-pre-wrap">
-              <span className="font-mono uppercase text-[10px] text-muted-foreground">Eu: </span>
-              {n.user_note}
+    <div className="space-y-8">
+      {Array.from(byTopic.entries()).map(([tKey, { topicTitle, videos }]) => (
+        <section key={tKey} className="space-y-4">
+          <h2 className="text-sm font-mono uppercase tracking-widest text-foreground/80 border-b border-border pb-1">
+            {topicTitle}
+          </h2>
+          {Array.from(videos.entries()).map(([vId, v]) => (
+            <div key={vId} className="space-y-2">
+              <div className="flex items-baseline gap-2 text-xs">
+                <span className="font-medium text-foreground truncate">{v.videoTitle}</span>
+                {v.channel && <span className="text-muted-foreground truncate">· {v.channel}</span>}
+                <span className="text-muted-foreground">· {v.notes.length} nota{v.notes.length > 1 ? "s" : ""}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {v.notes.map((n: any) => (
+                  <div key={n.id} className="border border-border rounded-md p-3 bg-card">
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
+                      <span>{n.style}</span>
+                      <span>{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{n.ai_explanation}</p>
+                    {n.user_note && (
+                      <div className="mt-2 pt-2 border-t border-border text-xs text-foreground/90 whitespace-pre-wrap">
+                        <span className="font-mono uppercase text-[10px] text-muted-foreground">Eu: </span>
+                        {n.user_note}
+                      </div>
+                    )}
+                    <a
+                      href={`https://youtu.be/${n.youtube_id}?t=${n.timestamp_seconds}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight size={11} /> Abrir no YouTube
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-          <a
-            href={`https://youtu.be/${n.youtube_id}?t=${n.timestamp_seconds}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            <ChevronRight size={11} /> Abrir no YouTube
-          </a>
-        </div>
+          ))}
+        </section>
       ))}
     </div>
   );
