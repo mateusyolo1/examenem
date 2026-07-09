@@ -85,7 +85,11 @@ import {
   removeStrike,
 } from "./sticky-utils";
 
-export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
+export { MindMapsTab };
+export { NotesTab } from "./NotesTab";
+export { FlashcardsTab } from "./FlashcardsTab";
+export { SummariesTab } from "./SummariesTab";
+export { DraftsSection } from "./DraftsSection";
 
 // ============ MIND MAPS (Excalidraw whiteboard) ============
 
