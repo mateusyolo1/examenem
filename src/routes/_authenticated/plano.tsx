@@ -123,6 +123,48 @@ const TYPE_STYLES: Record<
     ring: "ring-rose-500/30",
     icon: FileText,
   },
+  mapa_mental: {
+    dot: "bg-fuchsia-500",
+    chip:
+      "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/20",
+    ring: "ring-fuchsia-500/30",
+    icon: Network,
+  },
+  flashcards: {
+    dot: "bg-cyan-500",
+    chip:
+      "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 ring-1 ring-inset ring-cyan-500/20",
+    ring: "ring-cyan-500/30",
+    icon: Layers,
+  },
+  resumo: {
+    dot: "bg-indigo-500",
+    chip:
+      "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-500/20",
+    ring: "ring-indigo-500/30",
+    icon: ScrollText,
+  },
+  prova_antiga: {
+    dot: "bg-orange-500",
+    chip:
+      "bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-inset ring-orange-500/25",
+    ring: "ring-orange-500/30",
+    icon: ClipboardList,
+  },
+  videoaula: {
+    dot: "bg-blue-500",
+    chip:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-500/20",
+    ring: "ring-blue-500/30",
+    icon: Video,
+  },
+  projeto: {
+    dot: "bg-teal-500",
+    chip:
+      "bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-500/20",
+    ring: "ring-teal-500/30",
+    icon: Wrench,
+  },
 };
 
 function Plano() {
