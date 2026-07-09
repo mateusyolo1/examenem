@@ -86,11 +86,31 @@ function LessonPage() {
   const { topicId } = Route.useParams();
   const { taskId } = Route.useSearch();
   const getPlaylist = useServerFn(getLessonPlaylist);
+  const suggestVideos = useServerFn(suggestVideosForTopic);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["lesson-playlist", topicId],
     queryFn: () => getPlaylist({ data: { topicId } }),
   });
+
+  const autoSuggest = useMutation({
+    mutationFn: () => suggestVideos({ data: { topicId } }),
+    onSuccess: () => {
+      refetch();
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Não consegui gerar a playlist."),
+  });
+
+  // Auto-trigger suggestion if the topic has no AI-suggested videos yet.
+  const triggeredRef = useRef(false);
+  useEffect(() => {
+    if (!data) return;
+    if (data.videos.length > 0) return;
+    if (triggeredRef.current) return;
+    if (autoSuggest.isPending) return;
+    triggeredRef.current = true;
+    autoSuggest.mutate();
+  }, [data, autoSuggest]);
 
   if (isLoading) {
     return (
@@ -101,23 +121,54 @@ function LessonPage() {
   }
 
   if (!data || data.videos.length === 0) {
+    const isGenerating = autoSuggest.isPending || (!!data && data.videos.length === 0 && !autoSuggest.isError);
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-3">
-          <h1 className="text-lg font-semibold">Nenhum vídeo na playlist</h1>
-          <p className="text-sm text-muted-foreground">
-            Volte para o tópico e clique em "Sugerir com IA" para gerar a playlist.
-          </p>
-          <Link
-            to="/estudos"
-            className="inline-block text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent"
-          >
-            Voltar
-          </Link>
+          {isGenerating ? (
+            <>
+              <div className="flex items-center justify-center">
+                <Sparkles className="animate-pulse text-primary" size={32} />
+              </div>
+              <h1 className="text-lg font-semibold">Montando sua playlist…</h1>
+              <p className="text-sm text-muted-foreground">
+                A IA está garimpando os melhores vídeos de professores brasileiros para este tópico.
+                Isso costuma levar 20–40 segundos.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-semibold">Não consegui montar a playlist</h1>
+              <p className="text-sm text-muted-foreground">
+                {autoSuggest.error instanceof Error
+                  ? autoSuggest.error.message
+                  : "Tente novamente em alguns segundos."}
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggeredRef.current = true;
+                    autoSuggest.mutate();
+                  }}
+                  className="inline-block text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent"
+                >
+                  Tentar de novo
+                </button>
+                <Link
+                  to="/estudos"
+                  className="inline-block text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent"
+                >
+                  Voltar
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
   }
+
 
   return (
     <LessonPlayer
