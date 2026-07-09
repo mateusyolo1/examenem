@@ -79,6 +79,7 @@ export function GenerateFromVideoButton(props: Props) {
       // real Excalidraw scene elements (rectangle + bound text element pairs).
       // Without this step, saved maps are stored as naked rectangles and the
       // labels never render when the map is reopened.
+      if (import.meta.env.SSR) return;
       const m = await import("@excalidraw/excalidraw");
       const elements = m.convertToExcalidrawElements(skeleton);
       const title = `Mapa mental — ${spec.videoTitle}`.slice(0, 200);

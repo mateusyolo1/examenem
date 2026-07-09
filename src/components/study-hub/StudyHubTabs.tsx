@@ -116,9 +116,11 @@ function ConnectorHandles({
 
   useEffect(() => {
     let alive = true;
-    import("@excalidraw/excalidraw").then((m) => {
-      if (alive) convertRef.current = m.convertToExcalidrawElements;
-    });
+    if (!import.meta.env.SSR) {
+      import("@excalidraw/excalidraw").then((m) => {
+        if (alive) convertRef.current = m.convertToExcalidrawElements;
+      });
+    }
     return () => {
       alive = false;
     };
