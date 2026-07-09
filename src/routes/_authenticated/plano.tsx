@@ -1081,11 +1081,24 @@ function TaskCard({
         {areaLabel(task.area)}
       </p>
 
+      {task.note && (
+        <p className="mt-2 text-[11px] leading-snug text-foreground/70 border-l-2 border-primary/40 pl-2">
+          {task.note}
+        </p>
+      )}
+
+      {task.aiEnriched && (
+        <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-primary">
+          <Wand2 size={10} aria-hidden /> Enriquecido por IA
+        </span>
+      )}
+
       {late && !done && (
         <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
           <AlertCircle size={11} aria-hidden /> Atrasada
         </p>
       )}
+
 
       <div className="mt-3 flex flex-col gap-1.5">
         {done ? (
