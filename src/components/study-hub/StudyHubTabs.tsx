@@ -724,7 +724,12 @@ function MindMapsTab() {
       if (!api) return;
       const st = api.getAppState?.();
       const tool = st?.activeTool?.type;
-      if (tool && STICKY_TOOLS.has(tool)) stickyTool = tool;
+      if (tool === "selection" || tool === "hand" || tool === "eraser") {
+        // Usuário escolheu explicitamente seleção/mão/borracha — não restaurar
+        stickyTool = null;
+      } else if (tool && STICKY_TOOLS.has(tool)) {
+        stickyTool = tool;
+      }
       if (tool !== "freedraw") return;
       drawing = true;
       ctrlEver = e.ctrlKey || e.metaKey;
