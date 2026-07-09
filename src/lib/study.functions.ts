@@ -653,7 +653,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
           {
             cache_key: cacheKey,
             prompt_type: "video-suggestions",
-
             response: JSON.parse(JSON.stringify({ suggestions })),
           },
           { onConflict: "cache_key" },
@@ -672,17 +671,38 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     }
 
     if (suggestions.length > 0) {
-      // Coloca vídeos de dica/macete/bizu/truque/mnemônico ANTES dos vídeos
-      // de conteúdo direto, para não quebrar o padrão de aprendizado.
-      const TIP_REGEX =
-        /\b(dica|dicas|macete|macetes|bizu|bizus|truque|truques|hack|hacks|mnem[oô]nic\w*|resumão|resumao|atalho|atalhos)\b/i;
-      const isTip = (s: AiVideoSuggestion) =>
-        TIP_REGEX.test(s.title ?? "") || TIP_REGEX.test(s.channel_name ?? "");
-      const ordered = [
-        ...suggestions.filter(isTip),
-        ...suggestions.filter((s) => !isTip(s)),
+      // Ordena INTERCALANDO estilos: macete → aula → exercício → resumo →
+      // mapa mental → aplicação. Assim a lista renderizada nunca tem 4
+      // vídeos seguidos do mesmo formato didático.
+      const ORDER: VideoStyle[] = [
+        "macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao",
       ];
+      const bucketed = new Map<VideoStyle, AiVideoSuggestion[]>();
+      for (const s of suggestions) {
+        const style = (s.style ?? classifyStyle(s.title, s.channel_name)) as VideoStyle;
+        const arr = bucketed.get(style) ?? [];
+        arr.push(s);
+        bucketed.set(style, arr);
+      }
+      const ordered: AiVideoSuggestion[] = [];
+      let added = true;
+      while (added) {
+        added = false;
+        for (const style of ORDER) {
+          const arr = bucketed.get(style);
+          if (arr && arr.length) { ordered.push(arr.shift()!); added = true; }
+        }
+      }
       const rows = ordered.map((s, i) => ({
+        topic_id: topic.id,
+        youtube_id: s.youtube_id,
+        title: s.title,
+        channel_name: s.channel_name,
+        duration_seconds: s.duration_seconds ?? null,
+        source: "ai" as const,
+        sort_order: 100 + i,
+        suggested_at: new Date().toISOString(),
+      }));
         topic_id: topic.id,
         youtube_id: s.youtube_id,
         title: s.title,
