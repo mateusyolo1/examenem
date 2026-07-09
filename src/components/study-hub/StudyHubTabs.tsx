@@ -593,6 +593,16 @@ function MindMapsTab() {
     let swappedToLine = false;
     let drawing = false;
     let ctrlEver = false;
+    let skipNextRestore = false;
+
+    const isToolbarEvent = (target: EventTarget | null) =>
+      target instanceof HTMLElement && Boolean(target.closest("[data-mindmap-toolbar]"));
+
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+    };
 
     // Ajusta um círculo aos pontos (método de Kasa, mínimos quadrados) e,
     // se o resíduo for baixo, devolve pontos reamostrados ao longo do arco
@@ -725,6 +735,11 @@ function MindMapsTab() {
     const onDown = (e: PointerEvent) => {
       const api = apiRef.current;
       if (!api) return;
+      if (isToolbarEvent(e.target)) {
+        stickyTool = null;
+        skipNextRestore = true;
+        return;
+      }
       const st = api.getAppState?.();
       const tool = st?.activeTool?.type;
       if (tool === "selection" || tool === "hand" || tool === "eraser") {
@@ -743,6 +758,17 @@ function MindMapsTab() {
     };
 
     const onKey = (e: KeyboardEvent) => {
+      if (
+        e.key.toLowerCase() === "v" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !isTypingTarget(e.target)
+      ) {
+        stickyTool = null;
+        apiRef.current?.setActiveTool?.({ type: "selection" });
+        return;
+      }
       if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
     };
     const onMove = (e: PointerEvent) => {
@@ -768,6 +794,11 @@ function MindMapsTab() {
       drawing = false;
       ctrlEver = false;
       if (!api) return;
+      if (skipNextRestore) {
+        skipNextRestore = false;
+        swappedToLine = false;
+        return;
+      }
       if (swappedToLine) {
         api.setActiveTool?.({ type: "freedraw" });
         swappedToLine = false;
@@ -1531,7 +1562,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
       {cursorCss && (
         <style>{`.mm-canvas canvas, .mm-canvas .excalidraw .interactive { cursor: ${cursorCss} !important; }`}</style>
       )}
-      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
+      <div data-mindmap-toolbar="true" className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
       {/* Popovers */}
       {penOpen && (
         <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-end gap-1 bg-card border border-border rounded-2xl shadow-lg px-2 py-2">
