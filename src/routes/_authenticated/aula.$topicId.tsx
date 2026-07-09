@@ -41,6 +41,7 @@ import {
   saveVideoPosition,
   markVideoWatched,
   recordTopicMastery,
+  suggestVideosForTopic,
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
