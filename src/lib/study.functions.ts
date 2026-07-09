@@ -483,65 +483,39 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     }
 
     if (!suggestions) {
-      // B) rotação de sufixo — força a busca a variar entre chamadas.
-      const seed = forceRefresh
-        ? Math.floor(Math.random() * SEARCH_SUFFIXES.length)
-        : 0;
-      const suffix = pickSuffix(seed);
-      const query = `"${topic.title}" ${topic.subject ?? ""} ${suffix}`.trim();
+      // 1) BUSCA MULTI-ÂNGULO — dispara N queries em paralelo, cada uma focada
+      // num estilo didático (aula, macete, exercício, resumo, mapa mental,
+      // aplicação prática). Assim a lista final não fica "tudo cara falando
+      // a mesma coisa".
+      const base = `${topic.title} ${topic.subject ?? ""}`.trim();
+      const angles = forceRefresh
+        ? shuffleInPlace([...SEARCH_ANGLES])
+        : SEARCH_ANGLES;
 
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
-      let html = "";
-      try {
-        const res = await fetch(searchUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-          },
-        });
-        html = await res.text();
-      } catch {
-        html = "";
-      }
+      const perAngle = await Promise.all(
+        angles.map(async ({ style, suffix }) => {
+          const list = await fetchYoutubeSearch(`${base} ${suffix}`);
+          return list.map((v) => ({ ...v, style }));
+        }),
+      );
 
-      const parsed: AiVideoSuggestion[] = [];
-      const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
-      if (match) {
-        try {
-          const json = JSON.parse(match[1]);
-          const sections =
-            json?.contents?.twoColumnSearchResultsRenderer?.primaryContents
-              ?.sectionListRenderer?.contents ?? [];
-          for (const section of sections) {
-            const items = section?.itemSectionRenderer?.contents ?? [];
-            for (const item of items) {
-              const v = item?.videoRenderer;
-              if (!v?.videoId) continue;
-              const title = v.title?.runs?.[0]?.text ?? v.title?.simpleText ?? "";
-              const channel =
-                v.ownerText?.runs?.[0]?.text ??
-                v.longBylineText?.runs?.[0]?.text ??
-                "";
-              if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
-              const lengthText: string | undefined =
-                v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
-              const duration = parseLengthText(lengthText);
-              if (duration == null || duration <= 0) continue;
-              parsed.push({
-                youtube_id: v.videoId,
-                title,
-                channel_name: channel,
-                duration_seconds: duration,
-              });
-              if (parsed.length >= 30) break;
-            }
-            if (parsed.length >= 30) break;
-          }
-        } catch {
-          /* ignore parse errors */
+      // Também rodamos uma busca "aberta" pra pegar vídeos populares que não
+      // caem em nenhum ângulo.
+      const openQuery = `"${topic.title}" ${topic.subject ?? ""} ENEM`.trim();
+      const open = (await fetchYoutubeSearch(openQuery)).map((v) => ({
+        ...v,
+        style: classifyStyle(v.title, v.channel_name),
+      }));
+
+      // Mescla e deduplica por youtube_id, preservando o style do primeiro
+      // ângulo que descobriu o vídeo (o ângulo é a "intenção" da busca).
+      const parsedMap = new Map<string, AiVideoSuggestion>();
+      for (const list of [...perAngle, open]) {
+        for (const v of list) {
+          if (!parsedMap.has(v.youtube_id)) parsedMap.set(v.youtube_id, v);
         }
       }
+      const parsed = Array.from(parsedMap.values());
 
       // De-dup contra vídeos AI já usados em OUTROS tópicos (global).
       const candidateIds = parsed.map((p) => p.youtube_id);
@@ -555,7 +529,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         for (const row of existing ?? []) usedIds.add(row.youtube_id);
       }
 
-      // D) exclui vídeos que já apareceram para ESTE usuário neste tópico.
+      // Exclui vídeos que já apareceram para ESTE usuário neste tópico.
       const historyIds = new Set<string>();
       if (candidateIds.length > 0) {
         const { data: history } = await supabase
@@ -571,35 +545,106 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         (p) => !usedIds.has(p.youtube_id) && !historyIds.has(p.youtube_id),
       );
 
-      // A) embaralha para variar a seleção mesmo quando a query volta igual.
-      if (forceRefresh) unique = shuffleInPlace([...unique]);
-
       // Fallback: se o histórico esvaziou a lista, permite reutilizar vídeos
       // do histórico (mas ainda evita colisão com outros tópicos).
       if (unique.length < 3) {
-        const relaxed = parsed.filter((p) => !usedIds.has(p.youtube_id));
-        unique = forceRefresh ? shuffleInPlace([...relaxed]) : relaxed;
+        unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
       }
 
-      const fits: AiVideoSuggestion[] = [];
-      let running = 0;
-      for (const v of unique) {
+      // 2) FILTRA CLICKBAIT ÓBVIO — títulos 100% em CAIXA ALTA gritando,
+      // excesso de emojis, palavras de isca sem sinal didático.
+      const CLICKBAIT_RE = /(🔥|😱|🚨|⚠️|❌){2,}|!!{2,}/;
+      const isClickbait = (v: AiVideoSuggestion) => {
+        const t = v.title ?? "";
+        if (CLICKBAIT_RE.test(t)) return true;
+        const letters = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
+        if (letters.length > 20) {
+          const upper = letters.replace(/[^A-ZÀ-Ý]/g, "").length;
+          if (upper / letters.length > 0.75) return true;
+        }
+        return false;
+      };
+      const clean = unique.filter((v) => !isClickbait(v));
+      if (clean.length >= 6) unique = clean;
+
+      // 3) SELEÇÃO DIVERSA — pegamos no MÁXIMO 1 vídeo por canal e tentamos
+      // cobrir estilos didáticos diferentes antes de repetir.
+      const STYLE_ORDER: VideoStyle[] = forceRefresh
+        ? shuffleInPlace(["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"])
+        : ["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"];
+
+      // Ordena candidatos dentro de cada estilo por "qualidade" heurística:
+      // views (log) + bônus se a duração cair na faixa 6-25 min (ideal p/ estudo).
+      const scoreOf = (v: AiVideoSuggestion) => {
+        const views = Math.log10((v.view_count ?? 0) + 10);
         const d = v.duration_seconds ?? 0;
-        if (d > maxSeconds) continue;
-        if (running + d > maxSeconds) break;
-        fits.push(v);
-        running += d;
-        if (fits.length >= 6) break;
+        const durationBonus = d >= 360 && d <= 1500 ? 1.5 : d < 240 || d > 2400 ? -0.5 : 0;
+        return views + durationBonus;
+      };
+      const byStyle = new Map<VideoStyle, AiVideoSuggestion[]>();
+      for (const v of unique) {
+        const s = (v.style ?? classifyStyle(v.title, v.channel_name)) as VideoStyle;
+        const arr = byStyle.get(s) ?? [];
+        arr.push(v);
+        byStyle.set(s, arr);
       }
-      if (fits.length < 3) {
-        const shortest = [...unique]
-          .filter((v) => (v.duration_seconds ?? Infinity) <= maxSeconds)
-          .sort((a, b) => (a.duration_seconds ?? 0) - (b.duration_seconds ?? 0))
-          .slice(0, 3);
-        suggestions = shortest;
-      } else {
-        suggestions = fits;
+      for (const arr of byStyle.values()) arr.sort((a, b) => scoreOf(b) - scoreOf(a));
+
+      const seenChannels = new Set<string>();
+      const norm = (c: string) => c.toLowerCase().trim();
+      const picked: AiVideoSuggestion[] = [];
+      let running = 0;
+      const TARGET = 6;
+
+      // Passada 1: no máximo 1 por estilo e 1 por canal.
+      for (const style of STYLE_ORDER) {
+        if (picked.length >= TARGET) break;
+        const bucket = byStyle.get(style) ?? [];
+        for (const v of bucket) {
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          if (running + d > maxSeconds) continue;
+          const ch = norm(v.channel_name);
+          if (ch && seenChannels.has(ch)) continue;
+          picked.push(v);
+          if (ch) seenChannels.add(ch);
+          running += d;
+          break;
+        }
       }
+
+      // Passada 2: completa até TARGET permitindo repetir estilo mas ainda
+      // sem repetir canal.
+      if (picked.length < TARGET) {
+        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
+        for (const v of flat) {
+          if (picked.length >= TARGET) break;
+          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          if (running + d > maxSeconds) continue;
+          const ch = norm(v.channel_name);
+          if (ch && seenChannels.has(ch)) continue;
+          picked.push(v);
+          if (ch) seenChannels.add(ch);
+          running += d;
+        }
+      }
+
+      // Passada 3 (fallback): se ainda faltar, ignora restrição de canal.
+      if (picked.length < 3) {
+        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
+        for (const v of flat) {
+          if (picked.length >= TARGET) break;
+          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          picked.push(v);
+          running += d;
+        }
+      }
+
+      suggestions = picked;
 
       // Atualiza cache (upsert para permitir a chamada com forceRefresh
       // sobrescrever o cache antigo).
@@ -608,6 +653,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
           {
             cache_key: cacheKey,
             prompt_type: "video-suggestions",
+
             response: JSON.parse(JSON.stringify({ suggestions })),
           },
           { onConflict: "cache_key" },
