@@ -1804,7 +1804,11 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const opacity = typeof s.opacity === "number" ? s.opacity : 100;
 
   return (
-    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30">
+    <div
+      data-mindmap-toolbar="true"
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30"
+    >
       {openPop === "stroke" && (
         <div className="pointer-events-auto absolute bottom-full mb-2 left-0 flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
           {STROKE_SWATCHES.map((c) => (
