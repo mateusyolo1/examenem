@@ -63,6 +63,7 @@ import {
 import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
 import { PropertiesBar } from "./PropertiesBar";
 import { FigmaBottomToolbar } from "./FigmaBottomToolbar";
+import { ConnectorHandles } from "./ConnectorHandles";
 
 export { MindMapsTab };
 export { NotesTab } from "./NotesTab";
