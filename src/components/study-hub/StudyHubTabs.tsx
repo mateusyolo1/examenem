@@ -578,6 +578,115 @@ function MindMapsTab() {
     return () => el.removeEventListener("wheel", handler, { capture: true } as any);
   }, []);
 
+  // ── Freedraw modifiers ─────────────────────────────────────────────
+  // SHIFT while iniciando um rabisco → troca temporariamente para a
+  //   ferramenta "line" (que já trava em ângulos com Shift), voltando
+  //   para freedraw ao soltar.
+  // CTRL ao soltar um rabisco → suaviza os pontos capturados usando
+  //   Chaikin (2 passes), substituindo o elemento por uma curva limpa.
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+
+    let swappedToLine = false;
+    let ctrlAtDown = false;
+
+    const chaikin = (pts: [number, number][], passes = 2): [number, number][] => {
+      let out = pts;
+      for (let p = 0; p < passes; p++) {
+        if (out.length < 3) break;
+        const next: [number, number][] = [out[0]];
+        for (let i = 0; i < out.length - 1; i++) {
+          const [x0, y0] = out[i];
+          const [x1, y1] = out[i + 1];
+          next.push([0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1]);
+          next.push([0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1]);
+        }
+        next.push(out[out.length - 1]);
+        out = next;
+      }
+      return out;
+    };
+
+    const onDown = (e: PointerEvent) => {
+      const api = apiRef.current;
+      if (!api) return;
+      const st = api.getAppState?.();
+      const tool = st?.activeTool?.type;
+      if (tool !== "freedraw") return;
+      if (e.shiftKey) {
+        // Passa para line — o Shift nativo do line trava em ângulos de 15°
+        api.setActiveTool?.({ type: "line" });
+        swappedToLine = true;
+      } else if (e.ctrlKey || e.metaKey) {
+        ctrlAtDown = true;
+      }
+    };
+
+    const finishStroke = () => {
+      const api = apiRef.current;
+      if (!api) return;
+      if (swappedToLine) {
+        api.setActiveTool?.({ type: "freedraw" });
+        swappedToLine = false;
+      }
+      if (ctrlAtDown) {
+        ctrlAtDown = false;
+        // Suaviza o último elemento freedraw criado
+        setTimeout(() => {
+          try {
+            const elements = api.getSceneElements?.();
+            if (!elements || !elements.length) return;
+            // último freedraw
+            let idx = -1;
+            for (let i = elements.length - 1; i >= 0; i--) {
+              if ((elements[i] as any).type === "freedraw") { idx = i; break; }
+            }
+            if (idx < 0) return;
+            const target = elements[idx] as any;
+            const pts = target.points as [number, number][] | undefined;
+            if (!pts || pts.length < 4) return;
+            const smoothed = chaikin(pts, 2);
+            // Recalcula bounding box relativo (freedraw usa pontos relativos a x/y)
+            const xs = smoothed.map((p) => p[0]);
+            const ys = smoothed.map((p) => p[1]);
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const shifted = smoothed.map(([x, y]) => [x - minX, y - minY] as [number, number]);
+            const width = Math.max(...xs) - minX;
+            const height = Math.max(...ys) - minY;
+            const updated = {
+              ...target,
+              x: target.x + minX,
+              y: target.y + minY,
+              width,
+              height,
+              points: shifted,
+              pressures: shifted.map(() => 0.5),
+              lastCommittedPoint: shifted[shifted.length - 1],
+              versionNonce: Math.floor(Math.random() * 2 ** 31),
+              version: (target.version ?? 1) + 1,
+            };
+            const nextElements = elements.slice();
+            nextElements[idx] = updated;
+            api.updateScene?.({ elements: nextElements });
+          } catch {
+            /* noop */
+          }
+        }, 0);
+      }
+    };
+
+    el.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("pointerup", finishStroke, true);
+    window.addEventListener("pointercancel", finishStroke, true);
+    return () => {
+      el.removeEventListener("pointerdown", onDown, true);
+      window.removeEventListener("pointerup", finishStroke, true);
+      window.removeEventListener("pointercancel", finishStroke, true);
+    };
+  }, []);
+
   // Nudge Excalidraw to re-measure on fullscreen toggle
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
