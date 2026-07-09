@@ -702,6 +702,47 @@ function PlanView({
 }) {
   const today = new Date();
   const [weekStart, setWeekStart] = useState(0);
+  const enrichFn = useServerFn(enrichStudyPlan);
+  const enrichMutation = useMutation({
+    mutationFn: async () => {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 14);
+      const horizonIso = horizon.toISOString().slice(0, 10);
+      const window = plan.tasks
+        .filter((t) => t.date >= todayIso && t.date <= horizonIso)
+        .slice(0, 40);
+      if (!window.length) throw new Error("Sem tarefas nos próximos 14 dias para enriquecer.");
+      const weakTopics = mastery
+        .filter((m) => m.last_score < 0.6)
+        .sort((a, b) => a.last_score - b.last_score)
+        .slice(0, 10)
+        .map((m) => ({ title: m.topic_slug, area: m.area, score: m.last_score }));
+      return enrichFn({
+        data: {
+          focus: plan.config.focus,
+          hoursPerDay: plan.config.hoursPerDay,
+          targetScore: plan.config.targetScore,
+          hardAreas: plan.config.hardAreas,
+          weakTopics,
+          tasks: window.map((t) => ({
+            id: t.id,
+            date: t.date,
+            title: t.title,
+            area: t.area,
+            type: t.type,
+            minutes: t.minutes,
+            topicTitle: t.topicSlug,
+          })),
+        },
+      });
+    },
+    onSuccess: (res) => {
+      applyAiEnrichment(res.updates);
+      toast.success(`IA reescreveu ${res.updates.length} tarefa${res.updates.length === 1 ? "" : "s"}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const dates = useMemo(() => {
     const base = new Date(today);
