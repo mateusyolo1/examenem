@@ -1157,12 +1157,16 @@ function ctaFor(
   switch (t.type) {
     case "questoes":
       return { to: "/questoes", label: "Praticar" };
+    case "prova_antiga":
+      return { to: "/simulados-reais" as any, label: "Abrir provas" };
     case "simulado":
       return { to: "/simulados", label: "Iniciar" };
     case "redacao":
       return { to: "/redacao", label: "Escrever" };
     case "revisao":
       return { to: "/revisar", label: "Revisar" };
+    case "flashcards":
+      return { to: "/revisar", label: "Estudar cards" };
     default:
       return null;
   }
@@ -1199,7 +1203,8 @@ function TaskCta({ task }: { task: StudyTask }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (task.type === "teoria") {
+  const lessonTypes: StudyTask["type"][] = ["teoria", "videoaula", "mapa_mental", "resumo", "projeto"];
+  if (lessonTypes.includes(task.type)) {
     const canResolve = !!(task.topicSlug || task.topicArea);
     if (!canResolve) {
       return (
