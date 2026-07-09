@@ -1907,7 +1907,12 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
               {STROKE_STYLES.map((st) => (
                 <button
                   key={st.id}
-                  onClick={() => patch((el) => ({ ...el, strokeStyle: st.id }))}
+                  onClick={() => patch((el) => ({
+                    ...el,
+                    strokeStyle: st.id,
+                    // Força regeneração do path roughjs (o cache é por seed)
+                    seed: Math.floor(Math.random() * 2 ** 31),
+                  }))}
                   className={
                     "h-8 px-2 rounded-lg text-[11px] hover:bg-muted transition-colors " +
                     ((s.strokeStyle ?? "solid") === st.id ? "bg-primary/15 text-primary ring-1 ring-primary/40" : "text-foreground/70")
