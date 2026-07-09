@@ -1180,7 +1180,10 @@ function MindMapsTab() {
             .mm-canvas .App-toolbar-container,
             .mm-canvas .App-toolbar__extra-tools-trigger,
             .mm-canvas .lock-button,
-            .mm-canvas .App-mobile-menu .App-toolbar { display: none !important; }
+            .mm-canvas .App-mobile-menu .App-toolbar,
+            .mm-canvas .App-menu__left,
+            .mm-canvas .layer-ui__wrapper__top-right,
+            .mm-canvas .App-menu_top__left { display: none !important; }
             .mm-canvas .App-menu_top { top: 8px; }
           `}</style>
           <div className="mm-canvas h-full w-full">
