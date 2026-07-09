@@ -60,14 +60,9 @@ import {
   deleteDraft,
 } from "@/lib/study-hub.functions";
 
-import toolPencil from "@/assets/tools/pencil.png.asset.json";
-import toolPen from "@/assets/tools/pen.png.asset.json";
-import toolEraser from "@/assets/tools/eraser.png.asset.json";
-import toolMarker from "@/assets/tools/marker.png.asset.json";
-import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
-import toolPostit from "@/assets/tools/postit.png.asset.json";
 import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
 import { PropertiesBar } from "./PropertiesBar";
+import { FigmaBottomToolbar } from "./FigmaBottomToolbar";
 
 export { MindMapsTab };
 export { NotesTab } from "./NotesTab";
