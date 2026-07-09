@@ -1303,6 +1303,20 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
   const [penOpen, setPenOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
+  // Fecha popovers ao clicar fora da toolbar (ex.: começar a desenhar no canvas)
+  useEffect(() => {
+    if (!penOpen && !shapesOpen && !moreOpen) return;
+    const close = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && t.closest?.("[data-mindmap-toolbar]")) return;
+      setPenOpen(false);
+      setShapesOpen(false);
+      setMoreOpen(false);
+    };
+    window.addEventListener("pointerdown", close, true);
+    return () => window.removeEventListener("pointerdown", close, true);
+  }, [penOpen, shapesOpen, moreOpen]);
+
   // Mirror Excalidraw's current tool for highlighting.
   useEffect(() => {
     let raf = 0;
