@@ -637,7 +637,7 @@ function MindMapsTab() {
         err += Math.abs(Math.hypot(x - cx, y - cy) - r);
       }
       err /= n * r;
-      if (err > 0.06) return null;
+      if (err > 0.09) return null;
 
       // Ângulos start/end e sentido a partir de um ponto do meio
       const angleOf = (p: [number, number]) => Math.atan2(p[1] - cy, p[0] - cx);
@@ -780,14 +780,17 @@ function MindMapsTab() {
           const pts = target.points as [number, number][] | undefined;
           if (!pts || pts.length < 4) return;
 
-          // Coordenadas absolutas para detecção de círculo
+          // Coordenadas absolutas para os fits
           const absPts = pts.map(([x, y]) => [x + target.x, y + target.y] as [number, number]);
-          const ellipse = detectEllipse(absPts);
 
           const nextElements = elements.slice();
 
+          // 1) Tenta arco/círculo perfeito (funciona pra aberto e fechado)
+          const arcPts = fitArc(absPts);
+          // 2) Se não for circular mas fechar bem, tenta elipse (oval alongado)
+          const ellipse = arcPts ? null : detectEllipse(absPts);
+
           if (ellipse) {
-            // Substitui por elipse perfeita usando convertToExcalidrawElements
             const mod = await import("@excalidraw/excalidraw");
             const [ell] = mod.convertToExcalidrawElements([
               {
@@ -806,10 +809,7 @@ function MindMapsTab() {
             ]);
             nextElements[idx] = ell;
           } else {
-            // Tenta ajustar um arco de círculo perfeito (Kasa fit)
-            const arcPts = fitArc(absPts);
             const source = arcPts ?? chaikin(pts, 3).map(([x, y]) => [x + target.x, y + target.y] as [number, number]);
-            // volta pra coordenadas relativas
             const xs = source.map((p) => p[0]);
             const ys = source.map((p) => p[1]);
             const minX = Math.min(...xs);
