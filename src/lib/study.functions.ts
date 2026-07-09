@@ -313,22 +313,44 @@ interface AiVideoSuggestion {
   title: string;
   channel_name: string;
   duration_seconds: number | null;
+  view_count?: number | null;
+  style?: VideoStyle;
 }
 
-// Sufixos rotacionados para variar a query do YouTube a cada busca.
-const SEARCH_SUFFIXES = [
-  "ENEM aula explicação",
-  "ENEM aula completa",
-  "ENEM resumo",
-  "ENEM exercícios resolvidos",
-  "ENEM professor",
-  "ENEM em 10 minutos",
-  "ENEM revisão",
-  "vestibular explicação",
+// Estilos didáticos que queremos GARANTIR na lista final (diversidade).
+type VideoStyle =
+  | "aula_completa"    // explicação teórica aprofundada
+  | "macete"           // dicas, bizus, atalhos, mnemônicos
+  | "exercicio"        // resolução de questões/ENEM
+  | "resumo"           // revisão rápida, "em X minutos"
+  | "mapa_mental"      // esquema, mapa mental, quadro-resumo
+  | "aplicacao";       // caso real, exemplo prático, curiosidade
+
+// Ângulos de busca — cada um puxa um estilo diferente de conteúdo.
+// A ordem também vira "peso": os primeiros costumam render mais volume.
+const SEARCH_ANGLES: Array<{ style: VideoStyle; suffix: string }> = [
+  { style: "aula_completa", suffix: "aula completa explicação professor" },
+  { style: "macete", suffix: "macete dica bizu ENEM rápido" },
+  { style: "exercicio", suffix: "questão ENEM resolvida passo a passo" },
+  { style: "resumo", suffix: "resumo revisão em 10 minutos ENEM" },
+  { style: "mapa_mental", suffix: "mapa mental esquema resumo visual" },
+  { style: "aplicacao", suffix: "exemplo prático aplicação vestibular" },
 ];
 
-function pickSuffix(seed: number) {
-  return SEARCH_SUFFIXES[seed % SEARCH_SUFFIXES.length];
+// Regex que classifica um vídeo por estilo a partir do título.
+const STYLE_PATTERNS: Array<{ style: VideoStyle; re: RegExp }> = [
+  { style: "macete", re: /\b(macete|macetes|bizu|bizus|dica|dicas|truque|truques|hack|hacks|mnem[oô]nic\w*|atalho|atalhos|infal[íi]vel|segredo)\b/i },
+  { style: "exercicio", re: /\b(quest[ãa]o|quest[õo]es|exerc[íi]cio|exerc[íi]cios|resolvid\w*|corre[çc][ãa]o|gabarito|prova comentada)\b/i },
+  { style: "resumo", re: /\b(resumo|resum[ãa]o|revis[ãa]o|em\s*\d+\s*(min|minutos)|r[áa]pido|rapid[íi]nho|tudo sobre)\b/i },
+  { style: "mapa_mental", re: /\b(mapa mental|mapa\s+mental|esquema|quadro resumo|infogr[áa]fico|resumo visual)\b/i },
+  { style: "aplicacao", re: /\b(exemplo|na pr[áa]tica|aplica[çc][ãa]o|caso real|curiosidade|hist[óo]ria da|por que|voc[eê] sabia)\b/i },
+  { style: "aula_completa", re: /\b(aula|explica[çc][ãa]o|introdu[çc][ãa]o a|completa|do zero|entenda)\b/i },
+];
+
+function classifyStyle(title: string, channel: string): VideoStyle {
+  const hay = `${title} ${channel}`;
+  for (const { style, re } of STYLE_PATTERNS) if (re.test(hay)) return style;
+  return "aula_completa";
 }
 
 function shuffleInPlace<T>(arr: T[]): T[] {
@@ -349,6 +371,82 @@ function parseLengthText(text: string | undefined | null): number | null {
   if (parts.length === 1) return parts[0];
   return null;
 }
+
+// "1,2 mi de visualizações" / "532 mil" / "12.345 views" → number
+function parseViewCount(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const t = text.toLowerCase().replace(/\./g, "").replace(",", ".");
+  const m = t.match(/([\d.]+)\s*(mi|mil|k|m|bi|b)?/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const unit = m[2];
+  const mult =
+    unit === "mi" || unit === "m" ? 1_000_000 :
+    unit === "bi" || unit === "b" ? 1_000_000_000 :
+    unit === "mil" || unit === "k" ? 1_000 : 1;
+  return Math.round(n * mult);
+}
+
+async function fetchYoutubeSearch(query: string): Promise<AiVideoSuggestion[]> {
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
+  let html = "";
+  try {
+    const res = await fetch(searchUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+    html = await res.text();
+  } catch {
+    return [];
+  }
+  const out: AiVideoSuggestion[] = [];
+  const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
+  if (!match) return out;
+  try {
+    const json = JSON.parse(match[1]);
+    const sections =
+      json?.contents?.twoColumnSearchResultsRenderer?.primaryContents
+        ?.sectionListRenderer?.contents ?? [];
+    for (const section of sections) {
+      const items = section?.itemSectionRenderer?.contents ?? [];
+      for (const item of items) {
+        const v = item?.videoRenderer;
+        if (!v?.videoId) continue;
+        if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
+        const title = v.title?.runs?.[0]?.text ?? v.title?.simpleText ?? "";
+        const channel =
+          v.ownerText?.runs?.[0]?.text ??
+          v.longBylineText?.runs?.[0]?.text ??
+          "";
+        const lengthText: string | undefined =
+          v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
+        const duration = parseLengthText(lengthText);
+        if (duration == null || duration <= 0) continue;
+        // Descarta shorts (< 90s) — não servem como material de estudo.
+        if (duration < 90) continue;
+        const viewText: string | undefined =
+          v.viewCountText?.simpleText ?? v.shortViewCountText?.simpleText;
+        out.push({
+          youtube_id: v.videoId,
+          title,
+          channel_name: channel,
+          duration_seconds: duration,
+          view_count: parseViewCount(viewText),
+        });
+        if (out.length >= 25) break;
+      }
+      if (out.length >= 25) break;
+    }
+  } catch {
+    /* ignore parse errors */
+  }
+  return out;
+}
+
 
 export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -385,65 +483,39 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     }
 
     if (!suggestions) {
-      // B) rotação de sufixo — força a busca a variar entre chamadas.
-      const seed = forceRefresh
-        ? Math.floor(Math.random() * SEARCH_SUFFIXES.length)
-        : 0;
-      const suffix = pickSuffix(seed);
-      const query = `"${topic.title}" ${topic.subject ?? ""} ${suffix}`.trim();
+      // 1) BUSCA MULTI-ÂNGULO — dispara N queries em paralelo, cada uma focada
+      // num estilo didático (aula, macete, exercício, resumo, mapa mental,
+      // aplicação prática). Assim a lista final não fica "tudo cara falando
+      // a mesma coisa".
+      const base = `${topic.title} ${topic.subject ?? ""}`.trim();
+      const angles = forceRefresh
+        ? shuffleInPlace([...SEARCH_ANGLES])
+        : SEARCH_ANGLES;
 
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
-      let html = "";
-      try {
-        const res = await fetch(searchUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-          },
-        });
-        html = await res.text();
-      } catch {
-        html = "";
-      }
+      const perAngle = await Promise.all(
+        angles.map(async ({ style, suffix }) => {
+          const list = await fetchYoutubeSearch(`${base} ${suffix}`);
+          return list.map((v) => ({ ...v, style }));
+        }),
+      );
 
-      const parsed: AiVideoSuggestion[] = [];
-      const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
-      if (match) {
-        try {
-          const json = JSON.parse(match[1]);
-          const sections =
-            json?.contents?.twoColumnSearchResultsRenderer?.primaryContents
-              ?.sectionListRenderer?.contents ?? [];
-          for (const section of sections) {
-            const items = section?.itemSectionRenderer?.contents ?? [];
-            for (const item of items) {
-              const v = item?.videoRenderer;
-              if (!v?.videoId) continue;
-              const title = v.title?.runs?.[0]?.text ?? v.title?.simpleText ?? "";
-              const channel =
-                v.ownerText?.runs?.[0]?.text ??
-                v.longBylineText?.runs?.[0]?.text ??
-                "";
-              if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
-              const lengthText: string | undefined =
-                v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
-              const duration = parseLengthText(lengthText);
-              if (duration == null || duration <= 0) continue;
-              parsed.push({
-                youtube_id: v.videoId,
-                title,
-                channel_name: channel,
-                duration_seconds: duration,
-              });
-              if (parsed.length >= 30) break;
-            }
-            if (parsed.length >= 30) break;
-          }
-        } catch {
-          /* ignore parse errors */
+      // Também rodamos uma busca "aberta" pra pegar vídeos populares que não
+      // caem em nenhum ângulo.
+      const openQuery = `"${topic.title}" ${topic.subject ?? ""} ENEM`.trim();
+      const open = (await fetchYoutubeSearch(openQuery)).map((v) => ({
+        ...v,
+        style: classifyStyle(v.title, v.channel_name),
+      }));
+
+      // Mescla e deduplica por youtube_id, preservando o style do primeiro
+      // ângulo que descobriu o vídeo (o ângulo é a "intenção" da busca).
+      const parsedMap = new Map<string, AiVideoSuggestion>();
+      for (const list of [...perAngle, open]) {
+        for (const v of list) {
+          if (!parsedMap.has(v.youtube_id)) parsedMap.set(v.youtube_id, v);
         }
       }
+      const parsed = Array.from(parsedMap.values());
 
       // De-dup contra vídeos AI já usados em OUTROS tópicos (global).
       const candidateIds = parsed.map((p) => p.youtube_id);
@@ -457,7 +529,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         for (const row of existing ?? []) usedIds.add(row.youtube_id);
       }
 
-      // D) exclui vídeos que já apareceram para ESTE usuário neste tópico.
+      // Exclui vídeos que já apareceram para ESTE usuário neste tópico.
       const historyIds = new Set<string>();
       if (candidateIds.length > 0) {
         const { data: history } = await supabase
@@ -473,35 +545,106 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         (p) => !usedIds.has(p.youtube_id) && !historyIds.has(p.youtube_id),
       );
 
-      // A) embaralha para variar a seleção mesmo quando a query volta igual.
-      if (forceRefresh) unique = shuffleInPlace([...unique]);
-
       // Fallback: se o histórico esvaziou a lista, permite reutilizar vídeos
       // do histórico (mas ainda evita colisão com outros tópicos).
       if (unique.length < 3) {
-        const relaxed = parsed.filter((p) => !usedIds.has(p.youtube_id));
-        unique = forceRefresh ? shuffleInPlace([...relaxed]) : relaxed;
+        unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
       }
 
-      const fits: AiVideoSuggestion[] = [];
-      let running = 0;
-      for (const v of unique) {
+      // 2) FILTRA CLICKBAIT ÓBVIO — títulos 100% em CAIXA ALTA gritando,
+      // excesso de emojis, palavras de isca sem sinal didático.
+      const CLICKBAIT_RE = /(🔥|😱|🚨|⚠️|❌){2,}|!!{2,}/;
+      const isClickbait = (v: AiVideoSuggestion) => {
+        const t = v.title ?? "";
+        if (CLICKBAIT_RE.test(t)) return true;
+        const letters = t.replace(/[^A-Za-zÀ-ÿ]/g, "");
+        if (letters.length > 20) {
+          const upper = letters.replace(/[^A-ZÀ-Ý]/g, "").length;
+          if (upper / letters.length > 0.75) return true;
+        }
+        return false;
+      };
+      const clean = unique.filter((v) => !isClickbait(v));
+      if (clean.length >= 6) unique = clean;
+
+      // 3) SELEÇÃO DIVERSA — pegamos no MÁXIMO 1 vídeo por canal e tentamos
+      // cobrir estilos didáticos diferentes antes de repetir.
+      const STYLE_ORDER: VideoStyle[] = forceRefresh
+        ? shuffleInPlace(["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"])
+        : ["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"];
+
+      // Ordena candidatos dentro de cada estilo por "qualidade" heurística:
+      // views (log) + bônus se a duração cair na faixa 6-25 min (ideal p/ estudo).
+      const scoreOf = (v: AiVideoSuggestion) => {
+        const views = Math.log10((v.view_count ?? 0) + 10);
         const d = v.duration_seconds ?? 0;
-        if (d > maxSeconds) continue;
-        if (running + d > maxSeconds) break;
-        fits.push(v);
-        running += d;
-        if (fits.length >= 6) break;
+        const durationBonus = d >= 360 && d <= 1500 ? 1.5 : d < 240 || d > 2400 ? -0.5 : 0;
+        return views + durationBonus;
+      };
+      const byStyle = new Map<VideoStyle, AiVideoSuggestion[]>();
+      for (const v of unique) {
+        const s = (v.style ?? classifyStyle(v.title, v.channel_name)) as VideoStyle;
+        const arr = byStyle.get(s) ?? [];
+        arr.push(v);
+        byStyle.set(s, arr);
       }
-      if (fits.length < 3) {
-        const shortest = [...unique]
-          .filter((v) => (v.duration_seconds ?? Infinity) <= maxSeconds)
-          .sort((a, b) => (a.duration_seconds ?? 0) - (b.duration_seconds ?? 0))
-          .slice(0, 3);
-        suggestions = shortest;
-      } else {
-        suggestions = fits;
+      for (const arr of byStyle.values()) arr.sort((a, b) => scoreOf(b) - scoreOf(a));
+
+      const seenChannels = new Set<string>();
+      const norm = (c: string) => c.toLowerCase().trim();
+      const picked: AiVideoSuggestion[] = [];
+      let running = 0;
+      const TARGET = 6;
+
+      // Passada 1: no máximo 1 por estilo e 1 por canal.
+      for (const style of STYLE_ORDER) {
+        if (picked.length >= TARGET) break;
+        const bucket = byStyle.get(style) ?? [];
+        for (const v of bucket) {
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          if (running + d > maxSeconds) continue;
+          const ch = norm(v.channel_name);
+          if (ch && seenChannels.has(ch)) continue;
+          picked.push(v);
+          if (ch) seenChannels.add(ch);
+          running += d;
+          break;
+        }
       }
+
+      // Passada 2: completa até TARGET permitindo repetir estilo mas ainda
+      // sem repetir canal.
+      if (picked.length < TARGET) {
+        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
+        for (const v of flat) {
+          if (picked.length >= TARGET) break;
+          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          if (running + d > maxSeconds) continue;
+          const ch = norm(v.channel_name);
+          if (ch && seenChannels.has(ch)) continue;
+          picked.push(v);
+          if (ch) seenChannels.add(ch);
+          running += d;
+        }
+      }
+
+      // Passada 3 (fallback): se ainda faltar, ignora restrição de canal.
+      if (picked.length < 3) {
+        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
+        for (const v of flat) {
+          if (picked.length >= TARGET) break;
+          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
+          const d = v.duration_seconds ?? 0;
+          if (d > maxSeconds) continue;
+          picked.push(v);
+          running += d;
+        }
+      }
+
+      suggestions = picked;
 
       // Atualiza cache (upsert para permitir a chamada com forceRefresh
       // sobrescrever o cache antigo).
@@ -528,16 +671,28 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     }
 
     if (suggestions.length > 0) {
-      // Coloca vídeos de dica/macete/bizu/truque/mnemônico ANTES dos vídeos
-      // de conteúdo direto, para não quebrar o padrão de aprendizado.
-      const TIP_REGEX =
-        /\b(dica|dicas|macete|macetes|bizu|bizus|truque|truques|hack|hacks|mnem[oô]nic\w*|resumão|resumao|atalho|atalhos)\b/i;
-      const isTip = (s: AiVideoSuggestion) =>
-        TIP_REGEX.test(s.title ?? "") || TIP_REGEX.test(s.channel_name ?? "");
-      const ordered = [
-        ...suggestions.filter(isTip),
-        ...suggestions.filter((s) => !isTip(s)),
+      // Ordena INTERCALANDO estilos: macete → aula → exercício → resumo →
+      // mapa mental → aplicação. Assim a lista renderizada nunca tem 4
+      // vídeos seguidos do mesmo formato didático.
+      const ORDER: VideoStyle[] = [
+        "macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao",
       ];
+      const bucketed = new Map<VideoStyle, AiVideoSuggestion[]>();
+      for (const s of suggestions) {
+        const style = (s.style ?? classifyStyle(s.title, s.channel_name)) as VideoStyle;
+        const arr = bucketed.get(style) ?? [];
+        arr.push(s);
+        bucketed.set(style, arr);
+      }
+      const ordered: AiVideoSuggestion[] = [];
+      let added = true;
+      while (added) {
+        added = false;
+        for (const style of ORDER) {
+          const arr = bucketed.get(style);
+          if (arr && arr.length) { ordered.push(arr.shift()!); added = true; }
+        }
+      }
       const rows = ordered.map((s, i) => ({
         topic_id: topic.id,
         youtube_id: s.youtube_id,
