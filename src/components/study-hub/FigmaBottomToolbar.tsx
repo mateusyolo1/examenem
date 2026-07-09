@@ -33,11 +33,20 @@ export type ToolId =
   | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
   | "text" | "image" | "eraser" | "laser" | "frame";
 
+// Paletas no estilo FigJam — cor de traço para desenho e cor de fundo para sticky/shape
+const INK_COLORS = ["#1e1e1e", "#e03131", "#f08c00", "#f59f00", "#2f9e44", "#1971c2", "#9c36b5", "#ffffff"];
+const STICKY_COLORS = ["#e5e5e5", "#f8b4d9", "#ffd8a8", "#fde68a", "#c7f9cc", "#bde0fe", "#e0c3fc", "#ffffff"];
+
 export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const [active, setActive] = useState<ToolId>("selection");
   const [shapesOpen, setShapesOpen] = useState(false);
   const [penOpen, setPenOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Estado da cor por família de ferramenta (Figma-like: cada tool lembra sua cor)
+  const [inkColor, setInkColor] = useState("#1e1e1e");
+  const [stickyColor, setStickyColor] = useState("#fde68a");
+  const [shapeFill, setShapeFill] = useState("transparent");
+  const [inkStyle, setInkStyle] = useState<"solid" | "dashed">("solid");
 
   // Fecha popovers ao clicar fora da toolbar (ex.: começar a desenhar no canvas)
   useEffect(() => {
@@ -96,14 +105,18 @@ export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<
       requestAnimationFrame(() => api.setActiveTool?.({ type: "selection", locked: false }));
     }
     const patch: any = {};
-    if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; }
-    if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; }
-    if (id === "marker") { patch.currentItemStrokeColor = "#0f172a"; patch.currentItemStrokeWidth = 4; patch.currentItemOpacity = 100; }
+    if (id === "pen") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
+    if (id === "pencil") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
+    if (id === "marker") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 4; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
     if (id === "highlighter") { patch.currentItemStrokeColor = "#fde047"; patch.currentItemStrokeWidth = 12; patch.currentItemOpacity = 45; }
     if (id === "sticky") {
-      patch.currentItemBackgroundColor = "#fef9c3";
+      patch.currentItemBackgroundColor = stickyColor;
       patch.currentItemFillStyle = "solid";
       patch.currentItemStrokeColor = "transparent";
+    }
+    if (["rectangle","ellipse","diamond","triangle"].includes(id)) {
+      patch.currentItemBackgroundColor = shapeFill;
+      patch.currentItemFillStyle = shapeFill === "transparent" ? "hachure" : "solid";
     }
     if (Object.keys(patch).length) api.updateScene({ appState: patch });
   };
@@ -342,32 +355,143 @@ export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<
         <style>{`.mm-canvas canvas, .mm-canvas .excalidraw .interactive { cursor: ${cursorCss} !important; }`}</style>
       )}
       <div data-mindmap-toolbar="true" className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
-      {/* Popovers */}
+      {/* Popover Caneta — FigJam style: ferramentas + estilo + cores */}
       {penOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-end gap-1 bg-card border border-border rounded-2xl shadow-lg px-2 py-2">
-          {(Object.keys(penMeta) as (keyof typeof penMeta)[]).map((k) => (
-            <Btn key={k} id={k as ToolId} image={penMeta[k].image} label={penMeta[k].label} onClick={() => { setTool(k as ToolId); setPenOpen(false); }} />
+        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-end gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-2">
+          {(Object.keys(penMeta) as (keyof typeof penMeta)[]).map((k) => {
+            const isOn = activePen === k;
+            return (
+              <button
+                key={k}
+                title={penMeta[k].label}
+                onClick={() => { setTool(k as ToolId); }}
+                className={
+                  "relative h-12 w-11 rounded-xl flex items-end justify-center transition-all hover:bg-muted " +
+                  (isOn ? "-translate-y-1" : "")
+                }
+              >
+                <img
+                  src={penMeta[k].image}
+                  alt={penMeta[k].label}
+                  draggable={false}
+                  className={"object-contain select-none transition-all " + (isOn ? "h-11 w-10 drop-shadow-[0_4px_8px_rgba(0,0,0,0.25)]" : "h-9 w-8 drop-shadow-[0_2px_3px_rgba(0,0,0,0.15)]")}
+                />
+              </button>
+            );
+          })}
+          <div className="w-px h-8 bg-border/70 mx-1 self-center" />
+          {(["solid","dashed"] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => {
+                setInkStyle(st);
+                const api = apiRef.current;
+                if (api) api.updateScene({ appState: { currentItemStrokeStyle: st } });
+              }}
+              title={st === "solid" ? "Traço contínuo" : "Traço tracejado"}
+              className={
+                "h-9 w-9 self-center rounded-lg flex items-center justify-center transition-colors " +
+                (inkStyle === st ? "bg-muted text-foreground" : "text-foreground/60 hover:bg-muted/70")
+              }
+            >
+              <svg width="22" height="10" viewBox="0 0 22 10" fill="none">
+                <path d="M1 5 Q 6 -1, 11 5 T 21 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeDasharray={st === "dashed" ? "3 3" : "0"} />
+              </svg>
+            </button>
           ))}
+          <div className="w-px h-8 bg-border/70 mx-1 self-center" />
+          <div className="flex items-center gap-1.5 self-center pr-1">
+            {INK_COLORS.map((c) => {
+              const isOn = inkColor.toLowerCase() === c.toLowerCase();
+              return (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setInkColor(c);
+                    const api = apiRef.current;
+                    if (api) api.updateScene({ appState: { currentItemStrokeColor: c } });
+                  }}
+                  title={c}
+                  className={
+                    "h-6 w-6 rounded-full transition-transform hover:scale-110 " +
+                    (isOn ? "ring-2 ring-offset-2 ring-offset-card ring-foreground/80 scale-110" : "ring-1 ring-border/70")
+                  }
+                  style={{ background: c }}
+                />
+              );
+            })}
+            <label
+              className="h-6 w-6 rounded-full ring-1 ring-border/70 cursor-pointer overflow-hidden relative"
+              style={{ background: "conic-gradient(from 180deg, #ef4444, #f59e0b, #eab308, #22c55e, #0ea5e9, #6366f1, #a855f7, #ec4899, #ef4444)" }}
+              title="Cor personalizada"
+            >
+              <input
+                type="color"
+                value={inkColor}
+                onChange={(e) => {
+                  setInkColor(e.target.value);
+                  const api = apiRef.current;
+                  if (api) api.updateScene({ appState: { currentItemStrokeColor: e.target.value } });
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
+          </div>
         </div>
       )}
       {shapesOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-2 left-1/2 -translate-x-1/2 translate-x-[30px] flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg px-2 py-1.5">
-          {shapes.map((s) => (
-            <Btn key={s.id} id={s.id} icon={s.icon} label={s.label} onClick={() => { setTool(s.id); setShapesOpen(false); }} />
-          ))}
+        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 translate-x-[30px] flex items-center gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-1.5">
+          {shapes.map((s) => {
+            const isOn = active === s.id;
+            const I = s.icon;
+            return (
+              <button
+                key={s.id}
+                onClick={() => { setTool(s.id); }}
+                title={s.label}
+                className={
+                  "h-10 w-10 rounded-lg flex items-center justify-center transition-all " +
+                  (isOn ? "bg-primary/10 text-primary ring-1 ring-primary/50" : "text-foreground/70 hover:bg-muted")
+                }
+              >
+                <I size={18} strokeWidth={1.6} />
+              </button>
+            );
+          })}
+          <div className="w-px h-6 bg-border/70 mx-1" />
+          <div className="flex items-center gap-1.5 px-1">
+            {["transparent", ...STICKY_COLORS.slice(1)].map((c) => {
+              const isOn = shapeFill.toLowerCase() === c.toLowerCase();
+              return (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setShapeFill(c);
+                    const api = apiRef.current;
+                    if (api) api.updateScene({ appState: { currentItemBackgroundColor: c, currentItemFillStyle: c === "transparent" ? "hachure" : "solid" } });
+                  }}
+                  title={c === "transparent" ? "Sem preenchimento" : c}
+                  className={"h-5 w-5 rounded-full transition-transform hover:scale-110 " + (isOn ? "ring-2 ring-offset-2 ring-offset-card ring-foreground/80" : "ring-1 ring-border/70")}
+                  style={c === "transparent"
+                    ? { background: "repeating-conic-gradient(#e5e7eb 0% 25%, #fff 0% 50%) 50% / 6px 6px" }
+                    : { background: c }}
+                />
+              );
+            })}
+          </div>
           <div className="w-px h-6 bg-border/70 mx-1" />
           <button
             title="Mapa mental"
             onClick={() => { insertMindMap(); setShapesOpen(false); }}
-            className="h-10 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
+            className="h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
           >
-            <Network size={16} strokeWidth={1.75} />
+            <Network size={15} strokeWidth={1.75} />
             Mapa mental
           </button>
         </div>
       )}
       {moreOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-2 right-0 flex items-end gap-1 bg-card border border-border rounded-2xl shadow-lg px-2 py-2">
+        <div className="pointer-events-auto absolute bottom-full mb-3 right-0 flex items-end gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2 py-2">
           <Btn id="image" icon={ImageIcon} label="Imagem" onClick={() => { setTool("image"); setMoreOpen(false); }} />
           <Btn id="eraser" image={toolEraser.url} label="Borracha" onClick={() => { setTool("eraser"); setMoreOpen(false); }} />
           <Btn id="laser" icon={Zap} label="Ponteiro laser" onClick={() => { setTool("laser"); setMoreOpen(false); }} />
