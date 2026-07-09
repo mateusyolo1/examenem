@@ -45,6 +45,7 @@ import {
   Strikethrough,
   Link2,
   ChevronDown,
+  UserCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1499,8 +1500,19 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     const vh = st.height ?? 600;
     const centerX = -st.scrollX + vw / (2 * zoom);
     const centerY = -st.scrollY + vh / (2 * zoom);
-    const size = 180;
+    const size = 200;
     const id = `sticky-${Date.now()}`;
+    // Busca nome do autor da sessão (fallback "Você")
+    let author = "Você";
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.getUser();
+      const u: any = data?.user;
+      author =
+        u?.user_metadata?.full_name ||
+        u?.user_metadata?.name ||
+        (u?.email ? String(u.email).split("@")[0] : "Você");
+    } catch {}
     const built = convert([
       {
         type: "rectangle",
@@ -1514,8 +1526,8 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         strokeColor: "transparent",
         strokeWidth: 1,
         roundness: { type: 3 },
-        customData: { sticky: true, bold: false, strike: false, list: false },
-        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
+        customData: { sticky: true, bold: false, strike: false, list: false, showAuthor: true, author },
+        label: { text: "", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
       },
     ] as any);
     const current = api.getSceneElements();
@@ -1527,6 +1539,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     setActive("selection");
     api.setActiveTool({ type: "selection" });
   };
+
 
 
   const Btn = ({
@@ -2054,19 +2067,38 @@ const removeBold = (s: string) => Array.from(s).map(fromBoldChar).join("");
 const applyStrike = (s: string) => Array.from(s.replace(/\u0336/g, "")).map((ch) => ch + "\u0336").join("");
 const removeStrike = (s: string) => s.replace(/\u0336/g, "");
 
-function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; rect: any }) {
+function StickyToolbar({ apiRef, rect: initialRect }: { apiRef: React.MutableRefObject<any>; rect: any }) {
   const [openPop, setOpenPop] = useState<null | "color" | "font" | "size">(null);
 
   const api = apiRef.current;
+
+  // Ticker rAF: re-renderiza para acompanhar pan/zoom/movimento da nota
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => { forceTick((t) => (t + 1) % 1_000_000); raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Sempre lê a versão atual do retângulo — evita snapshot vencido quando
+  // a nota é movida, redimensionada, recolorida etc.
+  const liveRect: any = (api?.getSceneElements?.() as any[])?.find((e) => e.id === initialRect.id) ?? initialRect;
+  const rect = liveRect;
+
   const textId: string | undefined = rect?.boundElements?.find((b: any) => b.type === "text")?.id;
   const textEl: any = textId
     ? (api?.getSceneElements?.() as any[])?.find((e) => e.id === textId)
     : null;
 
-  const flags = (rect.customData ?? {}) as { bold?: boolean; strike?: boolean; list?: boolean };
+  const flags = (rect.customData ?? {}) as {
+    bold?: boolean; strike?: boolean; list?: boolean; showAuthor?: boolean; author?: string;
+  };
   const bold = !!flags.bold;
   const strike = !!flags.strike;
   const list = !!flags.list;
+  const showAuthor = flags.showAuthor !== false;
+  const author = flags.author ?? "Você";
   const fontSize: number = textEl?.fontSize ?? 20;
   const fontFamily: number = textEl?.fontFamily ?? 1;
   const bg: string = rect.backgroundColor ?? "#fef08a";
@@ -2129,36 +2161,40 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
     patchRect((el) => ({ ...el, link: value.trim() || null }));
   };
 
-  const runAI = () => {
-    toast.info("Aprimorar com IA em breve nesta nota.");
+  const toggleAuthor = () => {
+    patchRect((el) => ({ ...el, customData: { ...(el.customData ?? {}), showAuthor: !showAuthor } }));
   };
 
   const currentPreset = STICKY_SIZE_PRESETS.find((p) => p.value === fontSize);
-
-  // Ticker rAF: re-renderiza para acompanhar pan/zoom/movimento da nota
-  const [, forceTick] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    const loop = () => { forceTick((t) => (t + 1) % 1_000_000); raf = requestAnimationFrame(loop); };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
 
   // Converte bbox da nota para coords de tela
   const st = api?.getAppState?.();
   const zoom = st?.zoom?.value ?? 1;
   const scrollX = st?.scrollX ?? 0;
   const scrollY = st?.scrollY ?? 0;
-  const screenX = (rect.x + rect.width / 2 + scrollX) * zoom;
-  const screenY = (rect.y + scrollY) * zoom - 14; // 14px acima do topo da nota
+  const topScreenX = (rect.x + rect.width / 2 + scrollX) * zoom;
+  const topScreenY = (rect.y + scrollY) * zoom - 14;
+  const authorScreenX = (rect.x + scrollX) * zoom + 10;
+  const authorScreenY = (rect.y + rect.height + scrollY) * zoom - 22;
 
   return (
-    <div
-      data-mindmap-toolbar="true"
-      onPointerDownCapture={(e) => e.stopPropagation()}
-      className="pointer-events-none absolute z-30"
-      style={{ left: screenX, top: screenY, transform: "translate(-50%, -100%)" }}
-    >
+    <>
+      {showAuthor && (
+        <div
+          data-mindmap-toolbar="true"
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          className="pointer-events-none absolute z-30 text-[11px] font-medium text-neutral-800/80 select-none"
+          style={{ left: authorScreenX, top: authorScreenY }}
+        >
+          {author}
+        </div>
+      )}
+      <div
+        data-mindmap-toolbar="true"
+        onPointerDownCapture={(e) => e.stopPropagation()}
+        className="pointer-events-none absolute z-30"
+        style={{ left: topScreenX, top: topScreenY, transform: "translate(-50%, -100%)" }}
+      >
       {openPop === "color" && (
         <div className="pointer-events-auto absolute bottom-full mb-2 left-0 flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg px-2 py-1.5">
           {STICKY_COLORS.map((c) => (
@@ -2235,20 +2271,19 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
 
         <button
           onClick={() => setOpenPop((v) => (v === "font" ? null : "font"))}
-          className="h-8 px-2 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors"
+          className="h-8 px-2.5 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors"
           title="Fonte"
         >
-          <span className="text-[13px] leading-none">A</span>
-          <span className="text-[10px] opacity-70 -ml-0.5">a</span>
+          <span className="text-[13px] leading-none font-medium">A0</span>
           <ChevronDown size={11} className="opacity-70" />
         </button>
 
         <button
           onClick={() => setOpenPop((v) => (v === "size" ? null : "size"))}
-          className="h-8 px-2.5 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors text-[11px]"
+          className="h-8 px-3 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors text-[12px] font-medium min-w-[92px] justify-between"
           title="Tamanho"
         >
-          {currentPreset?.label ?? `${fontSize}px`}
+          <span>{currentPreset?.label ?? `${fontSize}px`}</span>
           <ChevronDown size={11} className="opacity-70" />
         </button>
 
@@ -2256,23 +2291,23 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
 
         <button
           onClick={toggleBold}
-          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (bold ? "bg-white/15 text-white" : "text-neutral-300")}
+          className={"h-8 w-8 rounded-lg flex items-center justify-center transition-colors " + (bold ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
           title="Negrito"
         >
-          <Bold size={14} />
+          <Bold size={14} strokeWidth={2.5} />
         </button>
 
         <button
           onClick={toggleStrike}
-          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (strike ? "bg-white/15 text-white" : "text-neutral-300")}
+          className={"h-8 w-8 rounded-lg flex items-center justify-center transition-colors " + (strike ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
           title="Tachado"
         >
-          <Strikethrough size={14} />
+          <Strikethrough size={14} strokeWidth={2.5} />
         </button>
 
         <button
           onClick={setLink}
-          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (link ? "bg-white/15 text-white" : "text-neutral-300")}
+          className={"h-8 w-8 rounded-lg flex items-center justify-center transition-colors " + (link ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
           title={link ? `Link: ${link}` : "Adicionar link"}
         >
           <Link2 size={14} />
@@ -2280,7 +2315,7 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
 
         <button
           onClick={toggleList}
-          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (list ? "bg-white/15 text-white" : "text-neutral-300")}
+          className={"h-8 w-8 rounded-lg flex items-center justify-center transition-colors " + (list ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
           title="Lista"
         >
           <List size={14} />
@@ -2289,16 +2324,18 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
         <div className="w-px h-5 bg-white/15 mx-0.5" />
 
         <button
-          onClick={runAI}
-          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:brightness-110 transition-all"
-          title="Aprimorar com IA"
+          onClick={toggleAuthor}
+          className={"h-8 w-8 rounded-lg flex items-center justify-center transition-colors " + (showAuthor ? "bg-primary text-primary-foreground" : "text-neutral-300 hover:bg-white/10")}
+          title="Exibir/ocultar autor"
         >
-          <Sparkles size={14} />
+          <UserCircle2 size={15} />
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
+
 
 
 
