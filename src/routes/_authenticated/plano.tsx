@@ -1158,7 +1158,7 @@ function ctaFor(
     case "questoes":
       return { to: "/questoes", label: "Praticar" };
     case "prova_antiga":
-      return { to: "/simulados-reais" as any, label: "Abrir provas" };
+      return { to: "/simulados", label: "Abrir provas" };
     case "simulado":
       return { to: "/simulados", label: "Iniciar" };
     case "redacao":
