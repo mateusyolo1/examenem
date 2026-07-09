@@ -1500,8 +1500,19 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     const vh = st.height ?? 600;
     const centerX = -st.scrollX + vw / (2 * zoom);
     const centerY = -st.scrollY + vh / (2 * zoom);
-    const size = 180;
+    const size = 200;
     const id = `sticky-${Date.now()}`;
+    // Busca nome do autor da sessão (fallback "Você")
+    let author = "Você";
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.getUser();
+      const u: any = data?.user;
+      author =
+        u?.user_metadata?.full_name ||
+        u?.user_metadata?.name ||
+        (u?.email ? String(u.email).split("@")[0] : "Você");
+    } catch {}
     const built = convert([
       {
         type: "rectangle",
@@ -1515,8 +1526,8 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         strokeColor: "transparent",
         strokeWidth: 1,
         roundness: { type: 3 },
-        customData: { sticky: true, bold: false, strike: false, list: false },
-        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
+        customData: { sticky: true, bold: false, strike: false, list: false, showAuthor: true, author },
+        label: { text: "", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
       },
     ] as any);
     const current = api.getSceneElements();
@@ -1528,6 +1539,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     setActive("selection");
     api.setActiveTool({ type: "selection" });
   };
+
 
 
   const Btn = ({
