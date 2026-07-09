@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -29,7 +29,41 @@ import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles,
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection } from "@/components/study-hub/StudyHubTabs";
+
+const StudyHubPanels = import.meta.env.SSR
+  ? null
+  : lazy(async () => {
+      const mod = await import("@/components/study-hub/StudyHubTabs");
+      return {
+        default: function StudyHubPanelsComponent() {
+          return (
+            <>
+              <TabsContent value="mapas"><mod.MindMapsTab /></TabsContent>
+              <TabsContent value="notas"><mod.NotesTab /></TabsContent>
+              <TabsContent value="flashcards"><mod.FlashcardsTab /></TabsContent>
+              <TabsContent value="resumos">
+                <mod.SummariesTab />
+                <div className="mt-8"><mod.DraftsSection /></div>
+              </TabsContent>
+            </>
+          );
+        },
+      };
+    });
+
+function StudyHubLoadingPanels() {
+  return (
+    <>
+      {(["mapas", "notas", "flashcards", "resumos"] as const).map((tab) => (
+        <TabsContent key={tab} value={tab}>
+          <div className="border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            Carregando…
+          </div>
+        </TabsContent>
+      ))}
+    </>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/estudos")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -266,13 +300,13 @@ function EstudosPage() {
               </section>
             </TabsContent>
 
-            <TabsContent value="mapas"><MindMapsTab /></TabsContent>
-            <TabsContent value="notas"><NotesTab /></TabsContent>
-            <TabsContent value="flashcards"><FlashcardsTab /></TabsContent>
-            <TabsContent value="resumos">
-              <SummariesTab />
-              <div className="mt-8"><DraftsSection /></div>
-            </TabsContent>
+            {StudyHubPanels ? (
+              <Suspense fallback={<StudyHubLoadingPanels />}>
+                <StudyHubPanels />
+              </Suspense>
+            ) : (
+              <StudyHubLoadingPanels />
+            )}
           </Tabs>
 
 
