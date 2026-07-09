@@ -1237,6 +1237,7 @@ function MindMapsTab() {
               />
               <ConnectorHandles apiRef={apiRef} containerRef={canvasWrapRef} />
               <FigmaBottomToolbar apiRef={apiRef} />
+              <PropertiesBar apiRef={apiRef} />
             </Suspense>
           </ClientOnly>
           </div>
