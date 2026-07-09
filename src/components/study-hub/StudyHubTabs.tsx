@@ -775,6 +775,17 @@ function MindMapsTab() {
       }
       if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
     };
+
+    const onToolbarToolChange = (e: Event) => {
+      const tool = (e as CustomEvent<{ tool?: string }>).detail?.tool;
+      if (tool === "selection" || tool === "hand" || tool === "eraser") {
+        stickyTool = null;
+        skipNextRestore = true;
+        drawing = false;
+        swappedToLine = false;
+      }
+    };
+
     const onMove = (e: PointerEvent) => {
       if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
     };
@@ -883,12 +894,14 @@ function MindMapsTab() {
     el.addEventListener("pointerdown", onDown, true);
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("keydown", onKey, true);
+    window.addEventListener("mindmap-toolbar-tool-change", onToolbarToolChange);
     window.addEventListener("pointerup", finishStroke, true);
     window.addEventListener("pointercancel", finishStroke, true);
     return () => {
       el.removeEventListener("pointerdown", onDown, true);
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("mindmap-toolbar-tool-change", onToolbarToolChange);
       window.removeEventListener("pointerup", finishStroke, true);
       window.removeEventListener("pointercancel", finishStroke, true);
     };
@@ -1348,7 +1361,17 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
       triangle: "diamond", line: "line", arrow: "arrow",
       text: "text", image: "image", eraser: "eraser", laser: "laser", frame: "frame",
     };
-    api.setActiveTool({ type: map[id] as any });
+    const toolType = map[id];
+    window.dispatchEvent(new CustomEvent("mindmap-toolbar-tool-change", { detail: { id, tool: toolType } }));
+    api.setActiveTool({ type: toolType as any, locked: false });
+    if (toolType === "selection") {
+      api.updateScene?.({
+        appState: {
+          activeTool: { type: "selection", locked: false, lastActiveTool: null },
+        },
+      });
+      requestAnimationFrame(() => api.setActiveTool?.({ type: "selection", locked: false }));
+    }
     const patch: any = {};
     if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; }
     if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; }
@@ -1510,8 +1533,19 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
     id, label, icon: Icon, image, onClick,
   }: { id?: ToolId; label: string; icon?: any; image?: string; onClick?: () => void }) => {
     const isActive = id && active === id;
+    const switchOnPress = id === "selection" || id === "hand" || id === "eraser";
     return (
       <button
+        type="button"
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (id && switchOnPress) {
+            setTool(id);
+            setPenOpen(false);
+            setShapesOpen(false);
+            setMoreOpen(false);
+          }
+        }}
         onClick={onClick ?? (() => id && setTool(id))}
         title={label}
         className={
