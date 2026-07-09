@@ -2042,15 +2042,6 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
 
 // ============ STICKY NOTE TOOLBAR (FigJam-style) ============
 
-import {
-  STICKY_COLORS,
-  STICKY_FONT_FAMILIES,
-  STICKY_SIZE_PRESETS,
-  applyBold,
-  removeBold,
-  applyStrike,
-  removeStrike,
-} from "./sticky-utils";
 
 function StickyToolbar({ apiRef, rect: initialRect }: { apiRef: React.MutableRefObject<any>; rect: any }) {
   const [openPop, setOpenPop] = useState<null | "color" | "font" | "size">(null);
