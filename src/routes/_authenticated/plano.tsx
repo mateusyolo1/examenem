@@ -618,6 +618,40 @@ function PlanForm({
         </div>
       </Field>
 
+      <Field label="Variação semanal (o quanto o cronograma muda de uma semana para a outra)">
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: "baixa", label: "Baixa", desc: "Rotina previsível" },
+              { id: "media", label: "Média", desc: "Equilíbrio recomendado" },
+              { id: "alta", label: "Alta", desc: "Novos formatos toda semana" },
+            ] as { id: Variation; label: string; desc: string }[]
+          ).map((opt) => {
+            const active = variation === opt.id;
+            return (
+              <button
+                type="button"
+                key={opt.id}
+                onClick={() => setVariation(opt.id)}
+                aria-pressed={active}
+                className={
+                  "min-h-11 px-4 rounded-full text-sm font-semibold border transition-all text-left " +
+                  (active
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border bg-background hover:bg-accent hover:border-foreground/30")
+                }
+              >
+                {opt.label}
+                <span className={"ml-2 text-[10px] font-normal " + (active ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                  {opt.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
+
       <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-border">
         <button
           type="submit"
