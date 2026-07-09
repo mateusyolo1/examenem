@@ -863,6 +863,18 @@ function PlanView({
 
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => enrichMutation.mutate()}
+              disabled={enrichMutation.isPending}
+              className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition disabled:opacity-60"
+            >
+              {enrichMutation.isPending ? (
+                <Loader2 size={14} aria-hidden className="animate-spin" />
+              ) : (
+                <Wand2 size={14} aria-hidden />
+              )}
+              {enrichMutation.isPending ? "Enriquecendo…" : "Enriquecer com IA"}
+            </button>
+            <button
               onClick={onEdit}
               className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-accent transition"
             >
