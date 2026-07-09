@@ -1492,7 +1492,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         strokeWidth: 1,
         roundness: { type: 3 },
         customData: { sticky: true, bold: false, strike: false, list: false },
-        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle" },
+        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
       },
     ] as any);
     const current = api.getSceneElements();
