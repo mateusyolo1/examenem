@@ -2083,7 +2083,11 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
   const currentPreset = STICKY_SIZE_PRESETS.find((p) => p.value === fontSize);
 
   return (
-    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30">
+    <div
+      data-mindmap-toolbar="true"
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30"
+    >
       {openPop === "color" && (
         <div className="pointer-events-auto absolute bottom-full mb-2 left-0 flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg px-2 py-1.5">
           {STICKY_COLORS.map((c) => (
