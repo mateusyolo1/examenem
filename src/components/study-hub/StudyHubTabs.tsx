@@ -1906,7 +1906,7 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
             <div className="w-px h-5 bg-border/70 mx-0.5" />
           </>
         )}
-        <div className="flex items-center gap-1 px-1" title="Opacidade">
+        <div className="flex items-center gap-1.5 px-1" title="Opacidade">
           <span className="text-foreground/60 text-[10px]">Opac</span>
           <input
             type="range"
@@ -1914,9 +1914,22 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
             max={100}
             value={opacity}
             onChange={(e) => patch((el) => ({ ...el, opacity: Number(e.target.value) }))}
-            className="w-20 accent-primary"
+            className="w-14 h-1 accent-primary cursor-pointer"
           />
-          <span className="text-foreground/70 w-8 text-right tabular-nums">{opacity}%</span>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={opacity}
+            onChange={(e) => {
+              const raw = Number(e.target.value);
+              if (Number.isNaN(raw)) return;
+              const v = Math.max(0, Math.min(100, raw));
+              patch((el) => ({ ...el, opacity: v }));
+            }}
+            className="w-11 h-6 text-[11px] text-right tabular-nums bg-muted/60 border border-border/60 rounded px-1 outline-none focus:ring-1 focus:ring-primary/40"
+          />
+          <span className="text-foreground/60 text-[10px]">%</span>
         </div>
         <div className="w-px h-5 bg-border/70 mx-0.5" />
         <button onClick={() => reorder("forward")} title="Trazer pra frente" className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-foreground/70">
