@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
+import { enrichStudyPlan } from "@/lib/study-plan.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 
 import {
@@ -27,6 +28,14 @@ import {
   ArrowRight,
   Undo2,
   Check,
+  Video,
+  Network,
+  Layers,
+  ScrollText,
+  ClipboardList,
+  Wrench,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
@@ -36,15 +45,16 @@ import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
 import {
   WEEKDAYS,
   useStudyPlan,
+  applyAiEnrichment,
   type StudyPlanConfig,
   type Focus,
+  type Variation,
   type StudyTask,
   type TaskType,
   type TopicCatalogEntry,
   type TopicMastery,
   resolvedStatus,
   weekDates,
-  dateLabel,
   areaLabel,
   typeLabel,
   rescheduleOverdue,
