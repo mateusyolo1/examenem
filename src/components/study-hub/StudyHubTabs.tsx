@@ -75,6 +75,7 @@ import toolMarker from "@/assets/tools/marker.png.asset.json";
 import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
 import toolPostit from "@/assets/tools/postit.png.asset.json";
 import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
+import { StickyToolbar } from "./StickyToolbar";
 import {
   STICKY_COLORS,
   STICKY_FONT_FAMILIES,
