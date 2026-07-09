@@ -1492,7 +1492,7 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         strokeWidth: 1,
         roundness: { type: 3 },
         customData: { sticky: true, bold: false, strike: false, list: false },
-        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle" },
+        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle", strokeColor: "#1e293b" },
       },
     ] as any);
     const current = api.getSceneElements();
@@ -2101,11 +2101,29 @@ function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; 
 
   const currentPreset = STICKY_SIZE_PRESETS.find((p) => p.value === fontSize);
 
+  // Ticker rAF: re-renderiza para acompanhar pan/zoom/movimento da nota
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => { forceTick((t) => (t + 1) % 1_000_000); raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Converte bbox da nota para coords de tela
+  const st = api?.getAppState?.();
+  const zoom = st?.zoom?.value ?? 1;
+  const scrollX = st?.scrollX ?? 0;
+  const scrollY = st?.scrollY ?? 0;
+  const screenX = (rect.x + rect.width / 2 + scrollX) * zoom;
+  const screenY = (rect.y + scrollY) * zoom - 14; // 14px acima do topo da nota
+
   return (
     <div
       data-mindmap-toolbar="true"
       onPointerDownCapture={(e) => e.stopPropagation()}
-      className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30"
+      className="pointer-events-none absolute z-30"
+      style={{ left: screenX, top: screenY, transform: "translate(-50%, -100%)" }}
     >
       {openPop === "color" && (
         <div className="pointer-events-auto absolute bottom-full mb-2 left-0 flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg px-2 py-1.5">
