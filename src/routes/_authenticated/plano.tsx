@@ -367,6 +367,7 @@ function PlanForm({
   const [hardAreas, setHardAreas] = useState<Area[]>(initial?.hardAreas ?? []);
   const [targetScore, setTargetScore] = useState<number>(initial?.targetScore ?? 700);
   const [focus, setFocus] = useState<Focus>(initial?.focus ?? "balanced");
+  const [variation, setVariation] = useState<Variation>(initial?.variation ?? "media");
   const [subjects, setSubjects] = useState<string[]>(initial?.subjects ?? []);
 
   function toggleDay(d: number) {
@@ -397,6 +398,7 @@ function PlanForm({
           targetScore,
           focus,
           subjects,
+          variation,
         });
       }}
       className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
