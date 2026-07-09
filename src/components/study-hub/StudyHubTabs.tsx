@@ -75,6 +75,15 @@ import toolMarker from "@/assets/tools/marker.png.asset.json";
 import toolHighlighter from "@/assets/tools/highlighter.png.asset.json";
 import toolPostit from "@/assets/tools/postit.png.asset.json";
 import { GenerateFromVideoButton } from "./GenerateFromVideoButton";
+import {
+  STICKY_COLORS,
+  STICKY_FONT_FAMILIES,
+  STICKY_SIZE_PRESETS,
+  applyBold,
+  removeBold,
+  applyStrike,
+  removeStrike,
+} from "./sticky-utils";
 
 export { MindMapsTab, NotesTab, FlashcardsTab, SummariesTab, DraftsSection };
 
