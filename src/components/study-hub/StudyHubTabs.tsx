@@ -591,6 +591,82 @@ function MindMapsTab() {
     let drawing = false;
     let ctrlEver = false;
 
+    // Ajusta um círculo aos pontos (método de Kasa, mínimos quadrados) e,
+    // se o resíduo for baixo, devolve pontos reamostrados ao longo do arco
+    // perfeito indo do primeiro ao último ponto no sentido do traço.
+    const fitArc = (pts: [number, number][]): [number, number][] | null => {
+      const n = pts.length;
+      if (n < 8) return null;
+      let Sx = 0, Sy = 0, Sxx = 0, Syy = 0, Sxy = 0;
+      let Sxz = 0, Syz = 0, Sz = 0;
+      for (const [x, y] of pts) {
+        const z = x * x + y * y;
+        Sx += x; Sy += y; Sxx += x * x; Syy += y * y; Sxy += x * y;
+        Sxz += x * z; Syz += y * z; Sz += z;
+      }
+      // Resolve M·[a,b,c] = v, onde centro = (a/2, b/2), r² = c + a²/4 + b²/4
+      const M = [
+        [Sxx, Sxy, Sx],
+        [Sxy, Syy, Sy],
+        [Sx,  Sy,  n ],
+      ];
+      const v = [Sxz, Syz, Sz];
+      const det =
+        M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) -
+        M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
+        M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+      if (Math.abs(det) < 1e-6) return null;
+      const solve = (col: number) => {
+        const A = M.map((row, i) => row.map((val, j) => (j === col ? v[i] : val)));
+        return (
+          A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) -
+          A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
+          A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0])
+        ) / det;
+      };
+      const a = solve(0), b = solve(1), c = solve(2);
+      const cx = a / 2, cy = b / 2;
+      const r2 = c + (a * a + b * b) / 4;
+      if (r2 <= 0) return null;
+      const r = Math.sqrt(r2);
+      if (r < 15 || r > 20000) return null;
+
+      // Resíduo médio normalizado
+      let err = 0;
+      for (const [x, y] of pts) {
+        err += Math.abs(Math.hypot(x - cx, y - cy) - r);
+      }
+      err /= n * r;
+      if (err > 0.06) return null;
+
+      // Ângulos start/end e sentido a partir de um ponto do meio
+      const angleOf = (p: [number, number]) => Math.atan2(p[1] - cy, p[0] - cx);
+      const a0 = angleOf(pts[0]);
+      const a1 = angleOf(pts[n - 1]);
+      const am = angleOf(pts[Math.floor(n / 2)]);
+      // determina delta angular do traço (soma de deltas assinados)
+      let total = 0;
+      let prev = a0;
+      for (let i = 1; i < n; i++) {
+        let cur = angleOf(pts[i]);
+        let d = cur - prev;
+        if (d > Math.PI) d -= 2 * Math.PI;
+        else if (d < -Math.PI) d += 2 * Math.PI;
+        total += d;
+        prev = cur;
+      }
+      // Reamostra ao longo do arco a0 → a0 + total
+      const steps = Math.max(32, Math.min(128, Math.round(Math.abs(total) * r / 4)));
+      const out: [number, number][] = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const ang = a0 + total * t;
+        out.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+      }
+      void a1; void am;
+      return out;
+    };
+
     const chaikin = (pts: [number, number][], passes = 3): [number, number][] => {
       let out = pts;
       for (let p = 0; p < passes; p++) {
