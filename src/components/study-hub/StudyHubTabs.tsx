@@ -637,7 +637,7 @@ function MindMapsTab() {
         err += Math.abs(Math.hypot(x - cx, y - cy) - r);
       }
       err /= n * r;
-      if (err > 0.06) return null;
+      if (err > 0.09) return null;
 
       // Ângulos start/end e sentido a partir de um ponto do meio
       const angleOf = (p: [number, number]) => Math.atan2(p[1] - cy, p[0] - cx);
