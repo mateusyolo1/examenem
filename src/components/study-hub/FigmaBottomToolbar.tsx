@@ -357,7 +357,7 @@ export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<
       <div data-mindmap-toolbar="true" className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-30">
       {/* Popover Caneta — FigJam style: ferramentas + estilo + cores */}
       {penOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 -translate-x-[80px] flex items-end gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-2">
+        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex items-end gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-2">
           {(Object.keys(penMeta) as (keyof typeof penMeta)[]).map((k) => {
             const isOn = activePen === k;
             return (
@@ -440,7 +440,7 @@ export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<
         </div>
       )}
       {shapesOpen && (
-        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 translate-x-[30px] flex items-center gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-1.5">
+        <div className="pointer-events-auto absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/95 backdrop-blur border border-border/70 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] px-2.5 py-1.5">
           {shapes.map((s) => {
             const isOn = active === s.id;
             const I = s.icon;
