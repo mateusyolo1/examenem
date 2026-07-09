@@ -714,11 +714,17 @@ function MindMapsTab() {
       return { cx, cy, rx, ry };
     };
 
+    const STICKY_TOOLS = new Set([
+      "freedraw", "rectangle", "ellipse", "diamond", "arrow", "line", "text",
+    ]);
+    let stickyTool: string | null = null;
+
     const onDown = (e: PointerEvent) => {
       const api = apiRef.current;
       if (!api) return;
       const st = api.getAppState?.();
       const tool = st?.activeTool?.type;
+      if (tool && STICKY_TOOLS.has(tool)) stickyTool = tool;
       if (tool !== "freedraw") return;
       drawing = true;
       ctrlEver = e.ctrlKey || e.metaKey;
@@ -735,6 +741,18 @@ function MindMapsTab() {
       if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
     };
 
+    const restoreSticky = () => {
+      const api = apiRef.current;
+      if (!api || !stickyTool) return;
+      // Se o Excalidraw resetou pra "selection", volta pra ferramenta anterior
+      setTimeout(() => {
+        const cur = api.getAppState?.()?.activeTool?.type;
+        if (cur === "selection" && stickyTool) {
+          api.setActiveTool?.({ type: stickyTool });
+        }
+      }, 0);
+    };
+
     const finishStroke = () => {
       const api = apiRef.current;
       const wasDrawing = drawing;
@@ -746,6 +764,7 @@ function MindMapsTab() {
         api.setActiveTool?.({ type: "freedraw" });
         swappedToLine = false;
       }
+      restoreSticky();
       if (!wasDrawing || !wasCtrl) return;
 
       setTimeout(async () => {
