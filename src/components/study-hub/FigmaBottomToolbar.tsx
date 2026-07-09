@@ -105,14 +105,18 @@ export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<
       requestAnimationFrame(() => api.setActiveTool?.({ type: "selection", locked: false }));
     }
     const patch: any = {};
-    if (id === "pen") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; }
-    if (id === "pencil") { patch.currentItemStrokeColor = "#1e1e1e"; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; }
-    if (id === "marker") { patch.currentItemStrokeColor = "#0f172a"; patch.currentItemStrokeWidth = 4; patch.currentItemOpacity = 100; }
+    if (id === "pen") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 2; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
+    if (id === "pencil") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 1; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
+    if (id === "marker") { patch.currentItemStrokeColor = inkColor; patch.currentItemStrokeWidth = 4; patch.currentItemOpacity = 100; patch.currentItemStrokeStyle = inkStyle; }
     if (id === "highlighter") { patch.currentItemStrokeColor = "#fde047"; patch.currentItemStrokeWidth = 12; patch.currentItemOpacity = 45; }
     if (id === "sticky") {
-      patch.currentItemBackgroundColor = "#fef9c3";
+      patch.currentItemBackgroundColor = stickyColor;
       patch.currentItemFillStyle = "solid";
       patch.currentItemStrokeColor = "transparent";
+    }
+    if (["rectangle","ellipse","diamond","triangle"].includes(id)) {
+      patch.currentItemBackgroundColor = shapeFill;
+      patch.currentItemFillStyle = shapeFill === "transparent" ? "hachure" : "solid";
     }
     if (Object.keys(patch).length) api.updateScene({ appState: patch });
   };
