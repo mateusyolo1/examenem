@@ -579,19 +579,19 @@ function MindMapsTab() {
   }, []);
 
   // ── Freedraw modifiers ─────────────────────────────────────────────
-  // SHIFT while iniciando um rabisco → troca temporariamente para a
-  //   ferramenta "line" (que já trava em ângulos com Shift), voltando
-  //   para freedraw ao soltar.
-  // CTRL ao soltar um rabisco → suaviza os pontos capturados usando
-  //   Chaikin (2 passes), substituindo o elemento por uma curva limpa.
+  // SHIFT ao iniciar rabisco → usa "line" (Shift trava em ângulos).
+  // CTRL (em qualquer momento do traço) → ao soltar, suaviza os pontos
+  //   com Chaikin. Se o traço parecer um círculo fechado, substitui
+  //   por uma elipse perfeita.
   useEffect(() => {
     const el = canvasWrapRef.current;
     if (!el) return;
 
     let swappedToLine = false;
-    let ctrlAtDown = false;
+    let drawing = false;
+    let ctrlEver = false;
 
-    const chaikin = (pts: [number, number][], passes = 2): [number, number][] => {
+    const chaikin = (pts: [number, number][], passes = 3): [number, number][] => {
       let out = pts;
       for (let p = 0; p < passes; p++) {
         if (out.length < 3) break;
@@ -608,46 +608,111 @@ function MindMapsTab() {
       return out;
     };
 
+    // Retorna {cx, cy, rx, ry} se os pontos formarem um círculo/elipse
+    // fechado; senão null.
+    const detectEllipse = (pts: [number, number][]) => {
+      if (pts.length < 20) return null;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const xs = pts.map((p) => p[0]);
+      const ys = pts.map((p) => p[1]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const w = maxX - minX, h = maxY - minY;
+      if (w < 30 || h < 30) return null;
+      // endpoints próximos (relativo ao tamanho)
+      const gap = Math.hypot(first[0] - last[0], first[1] - last[1]);
+      if (gap > Math.max(w, h) * 0.35) return null;
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const rx = w / 2, ry = h / 2;
+      // desvio médio dos raios normalizados — círculo/elipse tem baixo desvio
+      let err = 0;
+      for (const [x, y] of pts) {
+        const dx = (x - cx) / rx;
+        const dy = (y - cy) / ry;
+        err += Math.abs(Math.hypot(dx, dy) - 1);
+      }
+      err /= pts.length;
+      if (err > 0.22) return null;
+      return { cx, cy, rx, ry };
+    };
+
     const onDown = (e: PointerEvent) => {
       const api = apiRef.current;
       if (!api) return;
       const st = api.getAppState?.();
       const tool = st?.activeTool?.type;
       if (tool !== "freedraw") return;
+      drawing = true;
+      ctrlEver = e.ctrlKey || e.metaKey;
       if (e.shiftKey) {
-        // Passa para line — o Shift nativo do line trava em ângulos de 15°
         api.setActiveTool?.({ type: "line" });
         swappedToLine = true;
-      } else if (e.ctrlKey || e.metaKey) {
-        ctrlAtDown = true;
       }
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (drawing && (e.ctrlKey || e.metaKey)) ctrlEver = true;
     };
 
     const finishStroke = () => {
       const api = apiRef.current;
+      const wasDrawing = drawing;
+      const wasCtrl = ctrlEver;
+      drawing = false;
+      ctrlEver = false;
       if (!api) return;
       if (swappedToLine) {
         api.setActiveTool?.({ type: "freedraw" });
         swappedToLine = false;
       }
-      if (ctrlAtDown) {
-        ctrlAtDown = false;
-        // Suaviza o último elemento freedraw criado
-        setTimeout(() => {
-          try {
-            const elements = api.getSceneElements?.();
-            if (!elements || !elements.length) return;
-            // último freedraw
-            let idx = -1;
-            for (let i = elements.length - 1; i >= 0; i--) {
-              if ((elements[i] as any).type === "freedraw") { idx = i; break; }
-            }
-            if (idx < 0) return;
-            const target = elements[idx] as any;
-            const pts = target.points as [number, number][] | undefined;
-            if (!pts || pts.length < 4) return;
-            const smoothed = chaikin(pts, 2);
-            // Recalcula bounding box relativo (freedraw usa pontos relativos a x/y)
+      if (!wasDrawing || !wasCtrl) return;
+
+      setTimeout(async () => {
+        try {
+          const elements = api.getSceneElements?.();
+          if (!elements || !elements.length) return;
+          let idx = -1;
+          for (let i = elements.length - 1; i >= 0; i--) {
+            if ((elements[i] as any).type === "freedraw") { idx = i; break; }
+          }
+          if (idx < 0) return;
+          const target = elements[idx] as any;
+          const pts = target.points as [number, number][] | undefined;
+          if (!pts || pts.length < 4) return;
+
+          // Coordenadas absolutas para detecção de círculo
+          const absPts = pts.map(([x, y]) => [x + target.x, y + target.y] as [number, number]);
+          const ellipse = detectEllipse(absPts);
+
+          const nextElements = elements.slice();
+
+          if (ellipse) {
+            // Substitui por elipse perfeita usando convertToExcalidrawElements
+            const mod = await import("@excalidraw/excalidraw");
+            const [ell] = mod.convertToExcalidrawElements([
+              {
+                type: "ellipse",
+                x: ellipse.cx - ellipse.rx,
+                y: ellipse.cy - ellipse.ry,
+                width: ellipse.rx * 2,
+                height: ellipse.ry * 2,
+                strokeColor: target.strokeColor,
+                backgroundColor: target.backgroundColor,
+                strokeWidth: target.strokeWidth,
+                strokeStyle: target.strokeStyle,
+                roughness: target.roughness,
+                opacity: target.opacity,
+              } as any,
+            ]);
+            nextElements[idx] = ell;
+          } else {
+            // Suaviza (Chaikin) — em coordenadas relativas
+            const smoothed = chaikin(pts, 3);
             const xs = smoothed.map((p) => p[0]);
             const ys = smoothed.map((p) => p[1]);
             const minX = Math.min(...xs);
@@ -655,7 +720,7 @@ function MindMapsTab() {
             const shifted = smoothed.map(([x, y]) => [x - minX, y - minY] as [number, number]);
             const width = Math.max(...xs) - minX;
             const height = Math.max(...ys) - minY;
-            const updated = {
+            nextElements[idx] = {
               ...target,
               x: target.x + minX,
               y: target.y + minY,
@@ -667,21 +732,23 @@ function MindMapsTab() {
               versionNonce: Math.floor(Math.random() * 2 ** 31),
               version: (target.version ?? 1) + 1,
             };
-            const nextElements = elements.slice();
-            nextElements[idx] = updated;
-            api.updateScene?.({ elements: nextElements });
-          } catch {
-            /* noop */
           }
-        }, 0);
-      }
+          api.updateScene?.({ elements: nextElements });
+        } catch {
+          /* noop */
+        }
+      }, 0);
     };
 
     el.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("keydown", onKey, true);
     window.addEventListener("pointerup", finishStroke, true);
     window.addEventListener("pointercancel", finishStroke, true);
     return () => {
       el.removeEventListener("pointerdown", onDown, true);
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("pointerup", finishStroke, true);
       window.removeEventListener("pointercancel", finishStroke, true);
     };
