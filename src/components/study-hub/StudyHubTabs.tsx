@@ -1719,6 +1719,11 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
 
   if (!selection.ids.length || !selection.sample) return null;
 
+  // Sticky notes têm barra especializada estilo FigJam
+  if (selection.ids.length === 1 && selection.sample?.customData?.sticky) {
+    return <StickyToolbar apiRef={apiRef} rect={selection.sample} />;
+  }
+
   const s = selection.sample as any;
 
   const patch = (fn: (el: any) => any) => {
