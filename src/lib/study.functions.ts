@@ -313,22 +313,44 @@ interface AiVideoSuggestion {
   title: string;
   channel_name: string;
   duration_seconds: number | null;
+  view_count?: number | null;
+  style?: VideoStyle;
 }
 
-// Sufixos rotacionados para variar a query do YouTube a cada busca.
-const SEARCH_SUFFIXES = [
-  "ENEM aula explicação",
-  "ENEM aula completa",
-  "ENEM resumo",
-  "ENEM exercícios resolvidos",
-  "ENEM professor",
-  "ENEM em 10 minutos",
-  "ENEM revisão",
-  "vestibular explicação",
+// Estilos didáticos que queremos GARANTIR na lista final (diversidade).
+type VideoStyle =
+  | "aula_completa"    // explicação teórica aprofundada
+  | "macete"           // dicas, bizus, atalhos, mnemônicos
+  | "exercicio"        // resolução de questões/ENEM
+  | "resumo"           // revisão rápida, "em X minutos"
+  | "mapa_mental"      // esquema, mapa mental, quadro-resumo
+  | "aplicacao";       // caso real, exemplo prático, curiosidade
+
+// Ângulos de busca — cada um puxa um estilo diferente de conteúdo.
+// A ordem também vira "peso": os primeiros costumam render mais volume.
+const SEARCH_ANGLES: Array<{ style: VideoStyle; suffix: string }> = [
+  { style: "aula_completa", suffix: "aula completa explicação professor" },
+  { style: "macete", suffix: "macete dica bizu ENEM rápido" },
+  { style: "exercicio", suffix: "questão ENEM resolvida passo a passo" },
+  { style: "resumo", suffix: "resumo revisão em 10 minutos ENEM" },
+  { style: "mapa_mental", suffix: "mapa mental esquema resumo visual" },
+  { style: "aplicacao", suffix: "exemplo prático aplicação vestibular" },
 ];
 
-function pickSuffix(seed: number) {
-  return SEARCH_SUFFIXES[seed % SEARCH_SUFFIXES.length];
+// Regex que classifica um vídeo por estilo a partir do título.
+const STYLE_PATTERNS: Array<{ style: VideoStyle; re: RegExp }> = [
+  { style: "macete", re: /\b(macete|macetes|bizu|bizus|dica|dicas|truque|truques|hack|hacks|mnem[oô]nic\w*|atalho|atalhos|infal[íi]vel|segredo)\b/i },
+  { style: "exercicio", re: /\b(quest[ãa]o|quest[õo]es|exerc[íi]cio|exerc[íi]cios|resolvid\w*|corre[çc][ãa]o|gabarito|prova comentada)\b/i },
+  { style: "resumo", re: /\b(resumo|resum[ãa]o|revis[ãa]o|em\s*\d+\s*(min|minutos)|r[áa]pido|rapid[íi]nho|tudo sobre)\b/i },
+  { style: "mapa_mental", re: /\b(mapa mental|mapa\s+mental|esquema|quadro resumo|infogr[áa]fico|resumo visual)\b/i },
+  { style: "aplicacao", re: /\b(exemplo|na pr[áa]tica|aplica[çc][ãa]o|caso real|curiosidade|hist[óo]ria da|por que|voc[eê] sabia)\b/i },
+  { style: "aula_completa", re: /\b(aula|explica[çc][ãa]o|introdu[çc][ãa]o a|completa|do zero|entenda)\b/i },
+];
+
+function classifyStyle(title: string, channel: string): VideoStyle {
+  const hay = `${title} ${channel}`;
+  for (const { style, re } of STYLE_PATTERNS) if (re.test(hay)) return style;
+  return "aula_completa";
 }
 
 function shuffleInPlace<T>(arr: T[]): T[] {
@@ -349,6 +371,82 @@ function parseLengthText(text: string | undefined | null): number | null {
   if (parts.length === 1) return parts[0];
   return null;
 }
+
+// "1,2 mi de visualizações" / "532 mil" / "12.345 views" → number
+function parseViewCount(text: string | undefined | null): number | null {
+  if (!text) return null;
+  const t = text.toLowerCase().replace(/\./g, "").replace(",", ".");
+  const m = t.match(/([\d.]+)\s*(mi|mil|k|m|bi|b)?/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const unit = m[2];
+  const mult =
+    unit === "mi" || unit === "m" ? 1_000_000 :
+    unit === "bi" || unit === "b" ? 1_000_000_000 :
+    unit === "mil" || unit === "k" ? 1_000 : 1;
+  return Math.round(n * mult);
+}
+
+async function fetchYoutubeSearch(query: string): Promise<AiVideoSuggestion[]> {
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=pt-BR&gl=BR`;
+  let html = "";
+  try {
+    const res = await fetch(searchUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+    html = await res.text();
+  } catch {
+    return [];
+  }
+  const out: AiVideoSuggestion[] = [];
+  const match = html.match(/var ytInitialData\s*=\s*(\{.*?\});\s*<\/script>/s);
+  if (!match) return out;
+  try {
+    const json = JSON.parse(match[1]);
+    const sections =
+      json?.contents?.twoColumnSearchResultsRenderer?.primaryContents
+        ?.sectionListRenderer?.contents ?? [];
+    for (const section of sections) {
+      const items = section?.itemSectionRenderer?.contents ?? [];
+      for (const item of items) {
+        const v = item?.videoRenderer;
+        if (!v?.videoId) continue;
+        if (!/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) continue;
+        const title = v.title?.runs?.[0]?.text ?? v.title?.simpleText ?? "";
+        const channel =
+          v.ownerText?.runs?.[0]?.text ??
+          v.longBylineText?.runs?.[0]?.text ??
+          "";
+        const lengthText: string | undefined =
+          v.lengthText?.simpleText ?? v.lengthText?.runs?.[0]?.text;
+        const duration = parseLengthText(lengthText);
+        if (duration == null || duration <= 0) continue;
+        // Descarta shorts (< 90s) — não servem como material de estudo.
+        if (duration < 90) continue;
+        const viewText: string | undefined =
+          v.viewCountText?.simpleText ?? v.shortViewCountText?.simpleText;
+        out.push({
+          youtube_id: v.videoId,
+          title,
+          channel_name: channel,
+          duration_seconds: duration,
+          view_count: parseViewCount(viewText),
+        });
+        if (out.length >= 25) break;
+      }
+      if (out.length >= 25) break;
+    }
+  } catch {
+    /* ignore parse errors */
+  }
+  return out;
+}
+
 
 export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
