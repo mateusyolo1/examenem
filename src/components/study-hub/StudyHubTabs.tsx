@@ -711,19 +711,21 @@ function MindMapsTab() {
             ]);
             nextElements[idx] = ell;
           } else {
-            // Suaviza (Chaikin) — em coordenadas relativas
-            const smoothed = chaikin(pts, 3);
-            const xs = smoothed.map((p) => p[0]);
-            const ys = smoothed.map((p) => p[1]);
+            // Tenta ajustar um arco de círculo perfeito (Kasa fit)
+            const arcPts = fitArc(absPts);
+            const source = arcPts ?? chaikin(pts, 3).map(([x, y]) => [x + target.x, y + target.y] as [number, number]);
+            // volta pra coordenadas relativas
+            const xs = source.map((p) => p[0]);
+            const ys = source.map((p) => p[1]);
             const minX = Math.min(...xs);
             const minY = Math.min(...ys);
-            const shifted = smoothed.map(([x, y]) => [x - minX, y - minY] as [number, number]);
+            const shifted = source.map(([x, y]) => [x - minX, y - minY] as [number, number]);
             const width = Math.max(...xs) - minX;
             const height = Math.max(...ys) - minY;
             nextElements[idx] = {
               ...target,
-              x: target.x + minX,
-              y: target.y + minY,
+              x: minX,
+              y: minY,
               width,
               height,
               points: shifted,
