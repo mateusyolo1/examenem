@@ -92,7 +92,20 @@ export function StickyToolbar({
     setOpenPop(null);
   };
   const setFontSize = (v: number) => {
-    patchText((el) => ({ ...el, fontSize: Math.max(8, Math.min(200, v)) }));
+    const next = Math.max(8, Math.min(200, v));
+    patchText((el) => {
+      const prev = el.fontSize || 20;
+      if (prev === next) return el;
+      const scale = next / prev;
+      const baseline = typeof el.baseline === "number" ? el.baseline * scale : el.baseline;
+      return {
+        ...el,
+        fontSize: next,
+        width: Math.max(1, (el.width ?? 0) * scale),
+        height: Math.max(1, (el.height ?? 0) * scale),
+        baseline,
+      };
+    });
   };
 
   const toggleBold = () => {
