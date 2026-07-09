@@ -33,11 +33,20 @@ export type ToolId =
   | "rectangle" | "ellipse" | "diamond" | "triangle" | "line" | "arrow"
   | "text" | "image" | "eraser" | "laser" | "frame";
 
+// Paletas no estilo FigJam — cor de traço para desenho e cor de fundo para sticky/shape
+const INK_COLORS = ["#1e1e1e", "#e03131", "#f08c00", "#f59f00", "#2f9e44", "#1971c2", "#9c36b5", "#ffffff"];
+const STICKY_COLORS = ["#e5e5e5", "#f8b4d9", "#ffd8a8", "#fde68a", "#c7f9cc", "#bde0fe", "#e0c3fc", "#ffffff"];
+
 export function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const [active, setActive] = useState<ToolId>("selection");
   const [shapesOpen, setShapesOpen] = useState(false);
   const [penOpen, setPenOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Estado da cor por família de ferramenta (Figma-like: cada tool lembra sua cor)
+  const [inkColor, setInkColor] = useState("#1e1e1e");
+  const [stickyColor, setStickyColor] = useState("#fde68a");
+  const [shapeFill, setShapeFill] = useState("transparent");
+  const [inkStyle, setInkStyle] = useState<"solid" | "dashed">("solid");
 
   // Fecha popovers ao clicar fora da toolbar (ex.: começar a desenhar no canvas)
   useEffect(() => {
