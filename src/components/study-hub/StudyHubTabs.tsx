@@ -1670,32 +1670,46 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
   const [selection, setSelection] = useState<{ ids: string[]; sample: any | null }>({ ids: [], sample: null });
   const [openPop, setOpenPop] = useState<null | "stroke" | "fill">(null);
 
-  // Sincroniza seleção via loop rAF (o Excalidraw não expõe evento estável)
+  // Sincroniza seleção em tempo real via onChange do Excalidraw + fallback rAF
   useEffect(() => {
     let raf = 0;
-    const loop = () => {
+    let unsub: (() => void) | null = null;
+
+    const sync = () => {
       const api = apiRef.current;
-      if (api) {
-        const st = api.getAppState?.();
-        const selMap = (st?.selectedElementIds ?? {}) as Record<string, boolean>;
-        const ids = Object.keys(selMap).filter((k) => selMap[k]);
-        const els = (api.getSceneElements?.() ?? []) as any[];
-        const sample = ids.length ? els.find((e) => e.id === ids[0]) ?? null : null;
-        setSelection((prev) => {
-          if (
-            prev.ids.length === ids.length &&
-            prev.ids.every((id, i) => id === ids[i]) &&
-            prev.sample?.version === sample?.version
-          ) {
-            return prev;
-          }
-          return { ids, sample };
-        });
-      }
-      raf = requestAnimationFrame(loop);
+      if (!api) return;
+      const st = api.getAppState?.();
+      const selMap = (st?.selectedElementIds ?? {}) as Record<string, boolean>;
+      const ids = Object.keys(selMap).filter((k) => selMap[k]);
+      const els = (api.getSceneElements?.() ?? []) as any[];
+      const sample = ids.length ? els.find((e) => e.id === ids[0]) ?? null : null;
+      setSelection((prev) => {
+        if (
+          prev.ids.length === ids.length &&
+          prev.ids.every((id, i) => id === ids[i]) &&
+          prev.sample?.version === sample?.version
+        ) {
+          return prev;
+        }
+        return { ids, sample };
+      });
     };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+
+    const tryAttach = () => {
+      const api = apiRef.current;
+      if (api?.onChange && !unsub) {
+        try {
+          unsub = api.onChange(() => sync());
+        } catch {}
+      }
+      sync();
+      raf = requestAnimationFrame(tryAttach);
+    };
+    raf = requestAnimationFrame(tryAttach);
+    return () => {
+      cancelAnimationFrame(raf);
+      try { unsub?.(); } catch {}
+    };
   }, [apiRef]);
 
   if (!selection.ids.length || !selection.sample) return null;
