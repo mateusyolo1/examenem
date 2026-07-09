@@ -41,6 +41,10 @@ import {
   Copy,
   ArrowUpFromLine,
   ArrowDownFromLine,
+  Bold,
+  Strikethrough,
+  Link2,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1473,7 +1477,8 @@ function FigmaBottomToolbar({ apiRef }: { apiRef: React.MutableRefObject<any> })
         strokeColor: "transparent",
         strokeWidth: 1,
         roundness: { type: 3 },
-        label: { text: "Nota adesiva", fontSize: 18, textAlign: "center", verticalAlign: "middle" },
+        customData: { sticky: true, bold: false, strike: false, list: false },
+        label: { text: "Nota adesiva", fontSize: 20, textAlign: "center", verticalAlign: "middle" },
       },
     ] as any);
     const current = api.getSceneElements();
@@ -1714,6 +1719,11 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
 
   if (!selection.ids.length || !selection.sample) return null;
 
+  // Sticky notes têm barra especializada estilo FigJam
+  if (selection.ids.length === 1 && selection.sample?.customData?.sticky) {
+    return <StickyToolbar apiRef={apiRef} rect={selection.sample} />;
+  }
+
   const s = selection.sample as any;
 
   const patch = (fn: (el: any) => any) => {
@@ -1949,6 +1959,269 @@ function PropertiesBar({ apiRef }: { apiRef: React.MutableRefObject<any> }) {
     </div>
   );
 }
+
+
+// ============ STICKY NOTE TOOLBAR (FigJam-style) ============
+
+const STICKY_COLORS = ["#fef08a", "#fca5a5", "#fdba74", "#86efac", "#93c5fd", "#c4b5fd", "#f9a8d4", "#e5e7eb"];
+const STICKY_FONT_FAMILIES: { id: number; label: string }[] = [
+  { id: 1, label: "Manuscrita" },
+  { id: 2, label: "Normal" },
+  { id: 3, label: "Código" },
+];
+const STICKY_SIZE_PRESETS: { id: string; label: string; value: number }[] = [
+  { id: "sm", label: "Pequeno", value: 16 },
+  { id: "md", label: "Médio", value: 20 },
+  { id: "lg", label: "Grande", value: 28 },
+  { id: "xl", label: "Extra grande", value: 36 },
+  { id: "xxl", label: "Enorme", value: 48 },
+];
+
+// Excalidraw text elements não têm fontWeight/textDecoration; simulamos com Unicode.
+const toBoldChar = (ch: string) => {
+  const c = ch.codePointAt(0)!;
+  if (c >= 0x41 && c <= 0x5a) return String.fromCodePoint(0x1d400 + (c - 0x41));
+  if (c >= 0x61 && c <= 0x7a) return String.fromCodePoint(0x1d41a + (c - 0x61));
+  if (c >= 0x30 && c <= 0x39) return String.fromCodePoint(0x1d7ce + (c - 0x30));
+  return ch;
+};
+const fromBoldChar = (ch: string) => {
+  const c = ch.codePointAt(0)!;
+  if (c >= 0x1d400 && c <= 0x1d419) return String.fromCharCode(0x41 + (c - 0x1d400));
+  if (c >= 0x1d41a && c <= 0x1d433) return String.fromCharCode(0x61 + (c - 0x1d41a));
+  if (c >= 0x1d7ce && c <= 0x1d7d7) return String.fromCharCode(0x30 + (c - 0x1d7ce));
+  return ch;
+};
+const applyBold = (s: string) => Array.from(s).map(toBoldChar).join("");
+const removeBold = (s: string) => Array.from(s).map(fromBoldChar).join("");
+const applyStrike = (s: string) => Array.from(s.replace(/\u0336/g, "")).map((ch) => ch + "\u0336").join("");
+const removeStrike = (s: string) => s.replace(/\u0336/g, "");
+
+function StickyToolbar({ apiRef, rect }: { apiRef: React.MutableRefObject<any>; rect: any }) {
+  const [openPop, setOpenPop] = useState<null | "color" | "font" | "size">(null);
+
+  const api = apiRef.current;
+  const textId: string | undefined = rect?.boundElements?.find((b: any) => b.type === "text")?.id;
+  const textEl: any = textId
+    ? (api?.getSceneElements?.() as any[])?.find((e) => e.id === textId)
+    : null;
+
+  const flags = (rect.customData ?? {}) as { bold?: boolean; strike?: boolean; list?: boolean };
+  const bold = !!flags.bold;
+  const strike = !!flags.strike;
+  const list = !!flags.list;
+  const fontSize: number = textEl?.fontSize ?? 20;
+  const fontFamily: number = textEl?.fontFamily ?? 1;
+  const bg: string = rect.backgroundColor ?? "#fef08a";
+  const link: string | null = rect.link ?? null;
+
+  const bump = (el: any) => ({
+    ...el,
+    versionNonce: Math.floor(Math.random() * 2 ** 31),
+    version: (el.version ?? 1) + 1,
+  });
+
+  const patchRect = (fn: (el: any) => any) => {
+    if (!api) return;
+    const next = (api.getSceneElements() as any[]).map((el) => (el.id === rect.id ? bump(fn(el)) : el));
+    api.updateScene({ elements: next });
+  };
+
+  const patchText = (fn: (el: any) => any) => {
+    if (!api || !textId) return;
+    const next = (api.getSceneElements() as any[]).map((el) => (el.id === textId ? bump(fn(el)) : el));
+    api.updateScene({ elements: next });
+  };
+
+  const setColor = (c: string) => { patchRect((el) => ({ ...el, backgroundColor: c })); setOpenPop(null); };
+  const setFontFamily = (id: number) => { patchText((el) => ({ ...el, fontFamily: id })); setOpenPop(null); };
+  const setFontSize = (v: number) => { patchText((el) => ({ ...el, fontSize: Math.max(8, Math.min(200, v)) })); };
+
+  const toggleBold = () => {
+    patchText((el) => {
+      const nextText = bold ? removeBold(el.text) : applyBold(removeBold(el.text));
+      return { ...el, text: nextText, originalText: nextText };
+    });
+    patchRect((el) => ({ ...el, customData: { ...(el.customData ?? {}), bold: !bold } }));
+  };
+
+  const toggleStrike = () => {
+    patchText((el) => {
+      const nextText = strike ? removeStrike(el.text) : applyStrike(el.text);
+      return { ...el, text: nextText, originalText: nextText };
+    });
+    patchRect((el) => ({ ...el, customData: { ...(el.customData ?? {}), strike: !strike } }));
+  };
+
+  const toggleList = () => {
+    patchText((el) => {
+      const lines = String(el.text ?? "").split("\n");
+      const nextLines = list
+        ? lines.map((l) => l.replace(/^•\s?/, ""))
+        : lines.map((l) => (l.length && !l.startsWith("• ") ? `• ${l}` : l));
+      const nextText = nextLines.join("\n");
+      return { ...el, text: nextText, originalText: nextText, textAlign: list ? el.textAlign : "left" };
+    });
+    patchRect((el) => ({ ...el, customData: { ...(el.customData ?? {}), list: !list } }));
+  };
+
+  const setLink = () => {
+    const current = link ?? "";
+    const value = window.prompt("URL do link (deixe vazio para remover):", current);
+    if (value === null) return;
+    patchRect((el) => ({ ...el, link: value.trim() || null }));
+  };
+
+  const runAI = () => {
+    toast.info("Aprimorar com IA em breve nesta nota.");
+  };
+
+  const currentPreset = STICKY_SIZE_PRESETS.find((p) => p.value === fontSize);
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[92px] z-30">
+      {openPop === "color" && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-0 flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg px-2 py-1.5">
+          {STICKY_COLORS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              className={"h-6 w-6 rounded-md border transition-transform hover:scale-110 " + (bg === c ? "ring-2 ring-primary border-primary" : "border-white/20")}
+              style={{ background: c }}
+              title={c}
+            />
+          ))}
+          <input
+            type="color"
+            defaultValue={bg}
+            onChange={(e) => patchRect((el) => ({ ...el, backgroundColor: e.target.value }))}
+            className="h-6 w-6 rounded cursor-pointer bg-transparent border-0 p-0"
+          />
+        </div>
+      )}
+
+      {openPop === "font" && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-12 flex flex-col bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg py-1 min-w-[140px]">
+          {STICKY_FONT_FAMILIES.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFontFamily(f.id)}
+              className={"text-left px-3 py-1.5 text-xs hover:bg-white/10 transition-colors " + (fontFamily === f.id ? "text-primary font-medium" : "text-neutral-200")}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {openPop === "size" && (
+        <div className="pointer-events-auto absolute bottom-full mb-2 left-24 flex flex-col bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg py-1 min-w-[170px]">
+          {STICKY_SIZE_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => { setFontSize(p.value); setOpenPop(null); }}
+              className={"text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-white/10 transition-colors " + (currentPreset?.id === p.id ? "text-primary font-medium" : "text-neutral-200")}
+            >
+              <span className="w-3">{currentPreset?.id === p.id ? "✓" : ""}</span>
+              {p.label}
+            </button>
+          ))}
+          <div className="px-2 pt-1 pb-1.5 border-t border-white/10 mt-1">
+            <input
+              type="number"
+              min={8}
+              max={200}
+              value={fontSize}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (!Number.isNaN(v)) setFontSize(v);
+              }}
+              className="w-full h-7 text-[11px] text-center tabular-nums bg-primary/20 text-primary border border-primary/50 rounded outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="pointer-events-auto flex items-center gap-0.5 bg-neutral-900 text-neutral-100 border border-neutral-800 rounded-full shadow-xl px-1.5 py-1 text-xs">
+        <button
+          onClick={() => setOpenPop((v) => (v === "color" ? null : "color"))}
+          className="h-8 pl-1 pr-1.5 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors"
+          title="Cor da nota"
+        >
+          <span className="h-5 w-5 rounded-full border border-white/30" style={{ background: bg }} />
+          <ChevronDown size={11} className="opacity-70" />
+        </button>
+
+        <div className="w-px h-5 bg-white/15 mx-0.5" />
+
+        <button
+          onClick={() => setOpenPop((v) => (v === "font" ? null : "font"))}
+          className="h-8 px-2 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors"
+          title="Fonte"
+        >
+          <span className="text-[13px] leading-none">A</span>
+          <span className="text-[10px] opacity-70 -ml-0.5">a</span>
+          <ChevronDown size={11} className="opacity-70" />
+        </button>
+
+        <button
+          onClick={() => setOpenPop((v) => (v === "size" ? null : "size"))}
+          className="h-8 px-2.5 rounded-full flex items-center gap-1 hover:bg-white/10 transition-colors text-[11px]"
+          title="Tamanho"
+        >
+          {currentPreset?.label ?? `${fontSize}px`}
+          <ChevronDown size={11} className="opacity-70" />
+        </button>
+
+        <div className="w-px h-5 bg-white/15 mx-0.5" />
+
+        <button
+          onClick={toggleBold}
+          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (bold ? "bg-white/15 text-white" : "text-neutral-300")}
+          title="Negrito"
+        >
+          <Bold size={14} />
+        </button>
+
+        <button
+          onClick={toggleStrike}
+          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (strike ? "bg-white/15 text-white" : "text-neutral-300")}
+          title="Tachado"
+        >
+          <Strikethrough size={14} />
+        </button>
+
+        <button
+          onClick={setLink}
+          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (link ? "bg-white/15 text-white" : "text-neutral-300")}
+          title={link ? `Link: ${link}` : "Adicionar link"}
+        >
+          <Link2 size={14} />
+        </button>
+
+        <button
+          onClick={toggleList}
+          className={"h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors " + (list ? "bg-white/15 text-white" : "text-neutral-300")}
+          title="Lista"
+        >
+          <List size={14} />
+        </button>
+
+        <div className="w-px h-5 bg-white/15 mx-0.5" />
+
+        <button
+          onClick={runAI}
+          className="h-8 w-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:brightness-110 transition-all"
+          title="Aprimorar com IA"
+        >
+          <Sparkles size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 
 
 // ============ NOTES ============
