@@ -764,6 +764,7 @@ function MindMapsTab() {
         api.setActiveTool?.({ type: "freedraw" });
         swappedToLine = false;
       }
+      restoreSticky();
       if (!wasDrawing || !wasCtrl) return;
 
       setTimeout(async () => {
