@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
+import { enrichStudyPlan } from "@/lib/study-plan.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 
 import {
@@ -27,6 +28,14 @@ import {
   ArrowRight,
   Undo2,
   Check,
+  Video,
+  Network,
+  Layers,
+  ScrollText,
+  ClipboardList,
+  Wrench,
+  Wand2,
+  Loader2,
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
@@ -36,15 +45,16 @@ import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
 import {
   WEEKDAYS,
   useStudyPlan,
+  applyAiEnrichment,
   type StudyPlanConfig,
   type Focus,
+  type Variation,
   type StudyTask,
   type TaskType,
   type TopicCatalogEntry,
   type TopicMastery,
   resolvedStatus,
   weekDates,
-  dateLabel,
   areaLabel,
   typeLabel,
   rescheduleOverdue,
@@ -112,6 +122,48 @@ const TYPE_STYLES: Record<
       "bg-rose-500/10 text-rose-700 dark:text-rose-300 ring-1 ring-inset ring-rose-500/20",
     ring: "ring-rose-500/30",
     icon: FileText,
+  },
+  mapa_mental: {
+    dot: "bg-fuchsia-500",
+    chip:
+      "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/20",
+    ring: "ring-fuchsia-500/30",
+    icon: Network,
+  },
+  flashcards: {
+    dot: "bg-cyan-500",
+    chip:
+      "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 ring-1 ring-inset ring-cyan-500/20",
+    ring: "ring-cyan-500/30",
+    icon: Layers,
+  },
+  resumo: {
+    dot: "bg-indigo-500",
+    chip:
+      "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-500/20",
+    ring: "ring-indigo-500/30",
+    icon: ScrollText,
+  },
+  prova_antiga: {
+    dot: "bg-orange-500",
+    chip:
+      "bg-orange-500/10 text-orange-700 dark:text-orange-300 ring-1 ring-inset ring-orange-500/25",
+    ring: "ring-orange-500/30",
+    icon: ClipboardList,
+  },
+  videoaula: {
+    dot: "bg-blue-500",
+    chip:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-500/20",
+    ring: "ring-blue-500/30",
+    icon: Video,
+  },
+  projeto: {
+    dot: "bg-teal-500",
+    chip:
+      "bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-1 ring-inset ring-teal-500/20",
+    ring: "ring-teal-500/30",
+    icon: Wrench,
   },
 };
 
@@ -315,6 +367,7 @@ function PlanForm({
   const [hardAreas, setHardAreas] = useState<Area[]>(initial?.hardAreas ?? []);
   const [targetScore, setTargetScore] = useState<number>(initial?.targetScore ?? 700);
   const [focus, setFocus] = useState<Focus>(initial?.focus ?? "balanced");
+  const [variation, setVariation] = useState<Variation>(initial?.variation ?? "media");
   const [subjects, setSubjects] = useState<string[]>(initial?.subjects ?? []);
 
   function toggleDay(d: number) {
@@ -345,6 +398,7 @@ function PlanForm({
           targetScore,
           focus,
           subjects,
+          variation,
         });
       }}
       className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
@@ -564,6 +618,40 @@ function PlanForm({
         </div>
       </Field>
 
+      <Field label="Variação semanal (o quanto o cronograma muda de uma semana para a outra)">
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: "baixa", label: "Baixa", desc: "Rotina previsível" },
+              { id: "media", label: "Média", desc: "Equilíbrio recomendado" },
+              { id: "alta", label: "Alta", desc: "Novos formatos toda semana" },
+            ] as { id: Variation; label: string; desc: string }[]
+          ).map((opt) => {
+            const active = variation === opt.id;
+            return (
+              <button
+                type="button"
+                key={opt.id}
+                onClick={() => setVariation(opt.id)}
+                aria-pressed={active}
+                className={
+                  "min-h-11 px-4 rounded-full text-sm font-semibold border transition-all text-left " +
+                  (active
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "border-border bg-background hover:bg-accent hover:border-foreground/30")
+                }
+              >
+                {opt.label}
+                <span className={"ml-2 text-[10px] font-normal " + (active ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                  {opt.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
+
       <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-border">
         <button
           type="submit"
@@ -614,6 +702,47 @@ function PlanView({
 }) {
   const today = new Date();
   const [weekStart, setWeekStart] = useState(0);
+  const enrichFn = useServerFn(enrichStudyPlan);
+  const enrichMutation = useMutation({
+    mutationFn: async () => {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 14);
+      const horizonIso = horizon.toISOString().slice(0, 10);
+      const window = plan.tasks
+        .filter((t) => t.date >= todayIso && t.date <= horizonIso)
+        .slice(0, 40);
+      if (!window.length) throw new Error("Sem tarefas nos próximos 14 dias para enriquecer.");
+      const weakTopics = mastery
+        .filter((m) => m.last_score < 0.6)
+        .sort((a, b) => a.last_score - b.last_score)
+        .slice(0, 10)
+        .map((m) => ({ title: m.topic_slug, area: m.area, score: m.last_score }));
+      return enrichFn({
+        data: {
+          focus: plan.config.focus,
+          hoursPerDay: plan.config.hoursPerDay,
+          targetScore: plan.config.targetScore,
+          hardAreas: plan.config.hardAreas,
+          weakTopics,
+          tasks: window.map((t) => ({
+            id: t.id,
+            date: t.date,
+            title: t.title,
+            area: t.area,
+            type: t.type,
+            minutes: t.minutes,
+            topicTitle: t.topicSlug,
+          })),
+        },
+      });
+    },
+    onSuccess: (res) => {
+      applyAiEnrichment(res.updates);
+      toast.success(`IA reescreveu ${res.updates.length} tarefa${res.updates.length === 1 ? "" : "s"}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const dates = useMemo(() => {
     const base = new Date(today);
@@ -733,6 +862,18 @@ function PlanView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => enrichMutation.mutate()}
+              disabled={enrichMutation.isPending}
+              className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 transition disabled:opacity-60"
+            >
+              {enrichMutation.isPending ? (
+                <Loader2 size={14} aria-hidden className="animate-spin" />
+              ) : (
+                <Wand2 size={14} aria-hidden />
+              )}
+              {enrichMutation.isPending ? "Enriquecendo…" : "Enriquecer com IA"}
+            </button>
             <button
               onClick={onEdit}
               className="inline-flex items-center gap-2 min-h-10 px-4 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-accent transition"
@@ -940,11 +1081,24 @@ function TaskCard({
         {areaLabel(task.area)}
       </p>
 
+      {task.note && (
+        <p className="mt-2 text-[11px] leading-snug text-foreground/70 border-l-2 border-primary/40 pl-2">
+          {task.note}
+        </p>
+      )}
+
+      {task.aiEnriched && (
+        <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-primary">
+          <Wand2 size={10} aria-hidden /> Enriquecido por IA
+        </span>
+      )}
+
       {late && !done && (
         <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
           <AlertCircle size={11} aria-hidden /> Atrasada
         </p>
       )}
+
 
       <div className="mt-3 flex flex-col gap-1.5">
         {done ? (
@@ -1003,12 +1157,16 @@ function ctaFor(
   switch (t.type) {
     case "questoes":
       return { to: "/questoes", label: "Praticar" };
+    case "prova_antiga":
+      return { to: "/simulados", label: "Abrir provas" };
     case "simulado":
       return { to: "/simulados", label: "Iniciar" };
     case "redacao":
       return { to: "/redacao", label: "Escrever" };
     case "revisao":
       return { to: "/revisar", label: "Revisar" };
+    case "flashcards":
+      return { to: "/revisar", label: "Estudar cards" };
     default:
       return null;
   }
@@ -1045,7 +1203,8 @@ function TaskCta({ task }: { task: StudyTask }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (task.type === "teoria") {
+  const lessonTypes: StudyTask["type"][] = ["teoria", "videoaula", "mapa_mental", "resumo", "projeto"];
+  if (lessonTypes.includes(task.type)) {
     const canResolve = !!(task.topicSlug || task.topicArea);
     if (!canResolve) {
       return (

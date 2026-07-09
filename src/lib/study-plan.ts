@@ -1,4 +1,7 @@
 // Frontend-only study plan generator + persistence.
+// Motor rico: sementeado (RNG), múltiplos templates por dia da semana,
+// tipos de tarefa variados (mapa mental, flashcards, resumo, prova antiga…)
+// e integração com revisão espaçada (topic_mastery).
 import { useCallback, useEffect, useState } from "react";
 import type { Area } from "./storage";
 import { AREAS } from "./storage";
@@ -7,9 +10,21 @@ import { SUBJECTS, type Subject } from "./subjects";
 
 const KEY = "exame:study-plan:v1";
 
-export type TaskType = "teoria" | "questoes" | "revisao" | "simulado" | "redacao";
+export type TaskType =
+  | "teoria"
+  | "questoes"
+  | "revisao"
+  | "simulado"
+  | "redacao"
+  | "mapa_mental"
+  | "flashcards"
+  | "resumo"
+  | "prova_antiga"
+  | "videoaula"
+  | "projeto";
 export type TaskStatus = "pendente" | "concluida" | "atrasada";
 export type Focus = Area | "redacao" | "balanced";
+export type Variation = "baixa" | "media" | "alta";
 
 export interface StudyPlanConfig {
   examDate: string; // ISO date
@@ -18,7 +33,8 @@ export interface StudyPlanConfig {
   hardAreas: Area[];
   targetScore: number; // 0-1000
   focus: Focus;
-  subjects?: string[]; // opcional: IDs de matérias específicas a priorizar
+  subjects?: string[];
+  variation?: Variation; // opcional, default "media"
 }
 
 export interface StudyTask {
@@ -29,17 +45,12 @@ export interface StudyTask {
   type: TaskType;
   minutes: number;
   status: TaskStatus;
-  note?: string;
-  // Integração com "Estudar": para teoria, apontamos para um tópico
-  // específico (slug de study_topics) ou pelo menos a área, para o
-  // CTA "Estudar" resolver e abrir /aula/$topicId.
+  note?: string; // dica curta (usada pela camada de IA)
+  aiEnriched?: boolean; // flag: título/note vieram da IA
   topicSlug?: string;
   topicArea?: Area;
 }
 
-// Catálogo de tópicos vindo do banco (`study_topics`), usado pelo gerador
-// para rotacionar as tarefas de teoria em tópicos concretos (ex: "Funções",
-// "Geometria Plana") em vez de só nomes de área.
 export interface TopicCatalogEntry {
   slug: string;
   area: Area;
@@ -48,7 +59,6 @@ export interface TopicCatalogEntry {
   sort_order: number;
 }
 
-// Desempenho por tópico (Abordagem 3) — alimentado por `topic_mastery`.
 export interface TopicMastery {
   topic_slug: string;
   area: Area;
@@ -59,14 +69,10 @@ export interface TopicMastery {
   mastered: boolean;
 }
 
-
-
-
-
-
 export interface StudyPlan {
   id: string;
   createdAt: number;
+  seed?: number;
   config: StudyPlanConfig;
   tasks: StudyTask[];
 }
@@ -77,6 +83,12 @@ const TYPE_LABEL: Record<TaskType, string> = {
   revisao: "Revisão",
   simulado: "Simulado",
   redacao: "Redação",
+  mapa_mental: "Mapa mental",
+  flashcards: "Flashcards",
+  resumo: "Resumo",
+  prova_antiga: "Prova antiga",
+  videoaula: "Videoaula",
+  projeto: "Projeto aplicado",
 };
 
 const AREA_LABEL: Record<Area | "redacao" | "geral", string> = {
@@ -89,7 +101,7 @@ const AREA_LABEL: Record<Area | "redacao" | "geral", string> = {
 };
 
 export function typeLabel(t: TaskType): string {
-  return TYPE_LABEL[t];
+  return TYPE_LABEL[t] ?? t;
 }
 export function areaLabel(a: StudyTask["area"]): string {
   return AREA_LABEL[a];
@@ -110,11 +122,41 @@ function rid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-// Build a weighted rotation of areas (hard + focus areas first).
-// Mastery increases weight for areas whose average score is low (< 0.6).
+// -------- RNG semeada (LCG determinística) --------
+function makeRng(seed: number): () => number {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    // LCG (Numerical Recipes)
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+function shuffle<T>(arr: T[], rng: () => number): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickOne<T>(arr: T[], rng: () => number): T {
+  return arr[Math.floor(rng() * arr.length)];
+}
+function hashConfig(cfg: StudyPlanConfig): number {
+  const s = JSON.stringify(cfg);
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// -------- Filas de área/tópico --------
 function buildAreaQueue(
   cfg: StudyPlanConfig,
-  mastery?: TopicMastery[],
+  mastery: TopicMastery[] | undefined,
+  rng: () => number,
 ): Area[] {
   const all = AREAS.map((a) => a.id);
   const weight: Record<Area, number> = {
@@ -138,23 +180,22 @@ function buildAreaQueue(
       const scores = byArea[a];
       if (!scores.length) return;
       const avg = scores.reduce((s, x) => s + x, 0) / scores.length;
-      if (avg < 0.6) weight[a] += 2; // reforço
-      else if (avg >= 0.85) weight[a] = Math.max(1, weight[a] - 1); // já domina
+      if (avg < 0.6) weight[a] += 2;
+      else if (avg >= 0.85) weight[a] = Math.max(1, weight[a] - 1);
     });
   }
   const queue: Area[] = [];
   all.forEach((a) => {
     for (let i = 0; i < weight[a]; i++) queue.push(a);
   });
-  return queue;
+  return shuffle(queue, rng);
 }
-
 
 interface Slot {
   type: TaskType;
   area: StudyTask["area"];
   minutes: number;
-  title: (label: string) => string;
+  title: string;
   topicArea?: Area;
   topicSlug?: string;
 }
@@ -170,16 +211,13 @@ type Pick = {
 
 function buildTopicQueuesByArea(
   catalog: TopicCatalogEntry[] | undefined,
-  mastery?: TopicMastery[],
+  mastery: TopicMastery[] | undefined,
+  rng: () => number,
 ): Record<Area, TopicCatalogEntry[]> {
   const out: Record<Area, TopicCatalogEntry[]> = {
-    linguagens: [],
-    humanas: [],
-    natureza: [],
-    matematica: [],
+    linguagens: [], humanas: [], natureza: [], matematica: [],
   };
   if (!catalog) return out;
-  // Skip tópicos dominados cujo next_review_at ainda é no futuro.
   const now = Date.now();
   const skip = new Set<string>();
   if (mastery) {
@@ -194,23 +232,19 @@ function buildTopicQueuesByArea(
     if (skip.has(t.slug)) continue;
     out[t.area].push(t);
   }
-  (Object.keys(out) as Area[]).forEach((a) =>
-    out[a].sort((x, y) => x.sort_order - y.sort_order),
-  );
-  // Se todos os tópicos de uma área foram pulados, cai no catálogo cheio
-  // dessa área (o aluno ainda precisa estudar algo lá).
   (Object.keys(out) as Area[]).forEach((a) => {
     if (out[a].length === 0) {
-      const fallback = catalog
-        .filter((t) => t.area === a)
-        .sort((x, y) => x.sort_order - y.sort_order);
-      out[a] = fallback;
+      out[a] = catalog.filter((t) => t.area === a);
     }
+    out[a] = shuffle(out[a], rng);
   });
   return out;
 }
 
-function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
+function buildSubjectQueue(
+  cfg: StudyPlanConfig,
+  rng: () => number,
+): Subject[] | null {
   if (!cfg.subjects?.length) return null;
   const chosen = SUBJECTS.filter(
     (s) => cfg.subjects!.includes(s.id) && s.area !== "redacao",
@@ -221,20 +255,18 @@ function buildSubjectQueue(cfg: StudyPlanConfig): Subject[] | null {
     const w = cfg.hardAreas.includes(s.area as Area) ? 3 : 1;
     for (let i = 0; i < w; i++) queue.push(s);
   });
-  return queue;
+  return shuffle(queue, rng);
 }
 
 function makePicker(
   cfg: StudyPlanConfig,
   catalog: TopicCatalogEntry[] | undefined,
   mastery: TopicMastery[] | undefined,
+  rng: () => number,
 ): () => Pick {
-  const topicsByArea = buildTopicQueuesByArea(catalog, mastery);
+  const topicsByArea = buildTopicQueuesByArea(catalog, mastery, rng);
   const topicIdx: Record<Area, number> = {
-    linguagens: 0,
-    humanas: 0,
-    natureza: 0,
-    matematica: 0,
+    linguagens: 0, humanas: 0, natureza: 0, matematica: 0,
   };
 
   function nextTopicFor(area: Area): TopicCatalogEntry | undefined {
@@ -245,7 +277,7 @@ function makePicker(
     return t;
   }
 
-  const subjectQueue = buildSubjectQueue(cfg);
+  const subjectQueue = buildSubjectQueue(cfg, rng);
   if (subjectQueue) {
     let i = 0;
     return () => {
@@ -263,7 +295,7 @@ function makePicker(
       };
     };
   }
-  const areaQueue = buildAreaQueue(cfg, mastery);
+  const areaQueue = buildAreaQueue(cfg, mastery, rng);
   let i = 0;
   return () => {
     const a = areaQueue[i % areaQueue.length];
@@ -279,162 +311,257 @@ function makePicker(
   };
 }
 
+// -------- Templates variados por dia --------
 
-function dayTemplate(
-  weekday: number,
-  pick: () => Pick,
-  focus: Focus,
-): Slot[] {
-  const wantsRedacao = focus === "redacao";
-
-  // Base templates (sum ~120min); they get scaled to hoursPerDay later.
-  switch (weekday) {
-    case 6: // Sat — simulado
-      return [
-        {
-          type: "simulado",
-          area: "geral",
-          minutes: 90,
-          title: () => "Simulado rápido (10 questões)",
-        },
-        {
-          type: "revisao",
-          area: "geral",
-          minutes: 30,
-          title: () => "Revisar erros do simulado",
-        },
-      ];
-    case 0: // Sun — redação + revisão
-      return [
-        {
-          type: "redacao",
-          area: "redacao",
-          minutes: 70,
-          title: () => "Redação completa cronometrada",
-        },
-        {
-          type: "revisao",
-          area: "geral",
-          minutes: 50,
-          title: () => "Revisão da semana",
-        },
-      ];
-    default: {
-      const p1 = pick();
-      const p2 = pick();
-      const teoriaTitle = p1.topicTitle
-        ? `Teoria: ${p1.topicTitle}`
-        : `Teoria de ${p1.label}`;
-      const slots: Slot[] = [
-        {
-          type: "teoria",
-          area: p1.area,
-          minutes: 50,
-          title: () => teoriaTitle,
-          topicArea: p1.topicArea,
-          topicSlug: p1.topicSlug,
-        },
-        {
-          type: "questoes",
-          area: p2.area,
-          minutes: 50,
-          title: () => `10 questões de ${p2.label}`,
-        },
-      ];
-      slots.push(
-        wantsRedacao && weekday % 2 === 0
-          ? {
-              type: "redacao",
-              area: "redacao",
-              minutes: 30,
-              title: () => "Treino de parágrafo dissertativo",
-            }
-          : {
-              type: "revisao",
-              area: "geral",
-              minutes: 30,
-              title: () => "Revisão espaçada (flashcards/erros)",
-            },
-      );
-      return slots;
-    }
-  }
+// Helpers para gerar títulos com base em Pick
+function topicOr(p: Pick, fallback: (label: string) => string): string {
+  return p.topicTitle ? `${fallback("").split(" de ")[0]}: ${p.topicTitle}` : fallback(p.label);
+}
+function slotFrom(
+  p: Pick,
+  type: TaskType,
+  minutes: number,
+  title: string,
+): Slot {
+  const carryTopic = type === "teoria" || type === "videoaula" ||
+    type === "mapa_mental" || type === "resumo" || type === "revisao" ||
+    type === "flashcards" || type === "projeto";
+  return {
+    type,
+    area: p.area,
+    minutes,
+    title,
+    topicArea: carryTopic ? p.topicArea : undefined,
+    topicSlug: carryTopic ? p.topicSlug : undefined,
+  };
 }
 
+type WeekdayTemplate = (pick: () => Pick, rng: () => number) => Slot[];
+
+// Dias úteis: bateria de variantes
+const WEEKDAY_TEMPLATES: WeekdayTemplate[] = [
+  // 1) Teoria + Questões + Revisão espaçada
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      slotFrom(p1, "teoria", 50, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`),
+      slotFrom(p2, "questoes", 50, `10 questões de ${p2.label}`),
+      { type: "revisao", area: "geral", minutes: 30, title: "Revisão espaçada (flashcards/erros)" },
+    ];
+  },
+  // 2) Videoaula + Resumo + Questões comentadas
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      slotFrom(p1, "videoaula", 40, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`),
+      slotFrom(p1, "resumo", 30, p1.topicTitle ? `Resumo em tópicos: ${p1.topicTitle}` : `Resumo de ${p1.label}`),
+      slotFrom(p2, "questoes", 50, `Questões comentadas de ${p2.label}`),
+    ];
+  },
+  // 3) Mapa mental + Flashcards + Questões
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      slotFrom(p1, "mapa_mental", 40, p1.topicTitle ? `Mapa mental: ${p1.topicTitle}` : `Mapa mental de ${p1.label}`),
+      slotFrom(p1, "flashcards", 30, p1.topicTitle ? `Flashcards: ${p1.topicTitle}` : `Flashcards de ${p1.label}`),
+      slotFrom(p2, "questoes", 50, `8 questões de ${p2.label}`),
+    ];
+  },
+  // 4) Prova antiga curta + Análise de erros
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      { type: "prova_antiga", area: p1.area, minutes: 50, title: `Prova antiga: 5 questões de ${p1.label}` },
+      { type: "revisao", area: p1.area, minutes: 30, title: `Analisar erros de ${p1.label}` },
+      slotFrom(p2, "teoria", 40, p2.topicTitle ? `Teoria: ${p2.topicTitle}` : `Teoria de ${p2.label}`),
+    ];
+  },
+  // 5) Teoria profunda + Projeto/aplicação
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      slotFrom(p1, "teoria", 60, p1.topicTitle ? `Teoria aprofundada: ${p1.topicTitle}` : `Teoria aprofundada de ${p1.label}`),
+      slotFrom(p1, "projeto", 40, p1.topicTitle ? `Aplicação prática: ${p1.topicTitle}` : `Aplicação prática de ${p1.label}`),
+      slotFrom(p2, "questoes", 20, `5 questões rápidas de ${p2.label}`),
+    ];
+  },
+  // 6) Videoaula + Flashcards + Mini-simulado por área
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      slotFrom(p1, "videoaula", 30, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`),
+      slotFrom(p1, "flashcards", 20, `Flashcards de ${p1.label}`),
+      { type: "simulado", area: p2.area, minutes: 70, title: `Mini-simulado (10 q) de ${p2.label}` },
+    ];
+  },
+];
+
+// Sábado: rotaciona simulado x maratona x mini-simulado
+const SATURDAY_TEMPLATES: WeekdayTemplate[] = [
+  () => [
+    { type: "simulado", area: "geral", minutes: 90, title: "Simulado rápido (10 questões)" },
+    { type: "revisao", area: "geral", minutes: 30, title: "Revisar erros do simulado" },
+  ],
+  (pick) => {
+    const p = pick();
+    return [
+      { type: "simulado", area: p.area, minutes: 80, title: `Mini-simulado de ${p.label} (15 questões)` },
+      { type: "revisao", area: p.area, minutes: 40, title: `Revisão comentada — ${p.label}` },
+    ];
+  },
+  (pick) => {
+    const p1 = pick(), p2 = pick();
+    return [
+      { type: "questoes", area: p1.area, minutes: 60, title: `Maratona de questões — ${p1.label} (cronometrada)` },
+      { type: "questoes", area: p2.area, minutes: 40, title: `Rodada extra de ${p2.label}` },
+      { type: "revisao", area: "geral", minutes: 20, title: "Registrar dúvidas para revisar" },
+    ];
+  },
+  () => [
+    { type: "prova_antiga", area: "geral", minutes: 90, title: "Prova ENEM antiga: 1 caderno" },
+    { type: "revisao", area: "geral", minutes: 30, title: "Corrigir e anotar erros" },
+  ],
+];
+
+// Domingo: rotaciona redação completa x plano+parágrafo x correção x repertório
+const SUNDAY_TEMPLATES: WeekdayTemplate[] = [
+  () => [
+    { type: "redacao", area: "redacao", minutes: 70, title: "Redação completa cronometrada" },
+    { type: "revisao", area: "geral", minutes: 50, title: "Revisão da semana" },
+  ],
+  () => [
+    { type: "redacao", area: "redacao", minutes: 40, title: "Plano de redação + parágrafo introdutório" },
+    { type: "redacao", area: "redacao", minutes: 40, title: "Escrever 2 argumentos" },
+    { type: "revisao", area: "geral", minutes: 20, title: "Revisão leve" },
+  ],
+  () => [
+    { type: "redacao", area: "redacao", minutes: 50, title: "Correção guiada de redação anterior" },
+    { type: "redacao", area: "redacao", minutes: 40, title: "Reescrever parágrafo mais fraco" },
+    { type: "revisao", area: "geral", minutes: 20, title: "Consolidar conectivos e repertórios" },
+  ],
+  () => [
+    { type: "redacao", area: "redacao", minutes: 60, title: "Leitura de repertório + fichamento (2 fontes)" },
+    { type: "redacao", area: "redacao", minutes: 40, title: "Rascunho de introdução com repertório novo" },
+  ],
+];
+
+function pickDayTemplate(
+  weekday: number,
+  focus: Focus,
+  rng: () => number,
+  weekdayCursor: number,
+): WeekdayTemplate {
+  if (weekday === 6) {
+    // rotação semanal + jitter
+    const idx = (weekdayCursor + Math.floor(rng() * SATURDAY_TEMPLATES.length)) %
+      SATURDAY_TEMPLATES.length;
+    return SATURDAY_TEMPLATES[idx];
+  }
+  if (weekday === 0) {
+    const idx = (weekdayCursor + Math.floor(rng() * SUNDAY_TEMPLATES.length)) %
+      SUNDAY_TEMPLATES.length;
+    return SUNDAY_TEMPLATES[idx];
+  }
+  // Dias úteis: se foco é redação e é dia par, injeta template com redação
+  if (focus === "redacao" && weekday % 2 === 0) {
+    return (pick) => {
+      const p1 = pick(), p2 = pick();
+      return [
+        slotFrom(p1, "teoria", 40, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`),
+        slotFrom(p2, "questoes", 40, `Questões de ${p2.label}`),
+        { type: "redacao", area: "redacao", minutes: 40, title: "Treino de parágrafo dissertativo" },
+      ];
+    };
+  }
+  return pickOne(WEEKDAY_TEMPLATES, rng);
+}
+
+// -------- Geração --------
 
 export function generatePlan(
   cfg: StudyPlanConfig,
   catalog?: TopicCatalogEntry[],
   mastery?: TopicMastery[],
+  seed?: number,
 ): StudyPlan {
+  const actualSeed = seed ?? ((Date.now() ^ hashConfig(cfg)) >>> 0);
+  const rng = makeRng(actualSeed);
+
   const tasks: StudyTask[] = [];
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date(cfg.examDate);
   end.setHours(0, 0, 0, 0);
 
-  const pick = makePicker(cfg, catalog, mastery);
-
-  const themes = [...ESSAY_THEMES];
+  const pick = makePicker(cfg, catalog, mastery, rng);
+  const themes = shuffle(ESSAY_THEMES.slice(), rng);
   let themeIdx = 0;
-
   const targetMinPerDay = Math.max(30, Math.round(cfg.hoursPerDay * 60));
 
-  // Revisões devidas: para cada mastery cujo next_review_at <= hoje,
-  // criamos uma tarefa `revisao` com topicSlug apontando pra aula.
-  // Distribuímos ao longo dos primeiros dias úteis do plano.
-  const dueReviews: TopicMastery[] = [];
-  if (mastery && catalog) {
+  // Revisões devidas (SRS): agenda mini-ciclo para score < 0.4
+  const catalogBySlug = new Map((catalog ?? []).map((t) => [t.slug, t]));
+  const dueReviews: Array<{ mastery: TopicMastery; kind: "srs" | "ciclo" }> = [];
+  if (mastery) {
     const now = Date.now();
-    const catalogBySlug = new Map(catalog.map((t) => [t.slug, t]));
     for (const m of mastery) {
       if (new Date(m.next_review_at).getTime() > now) continue;
       if (!catalogBySlug.has(m.topic_slug)) continue;
-      dueReviews.push(m);
+      dueReviews.push({ mastery: m, kind: m.last_score < 0.4 ? "ciclo" : "srs" });
     }
-    // Reforço primeiro (score baixo antes de score alto)
-    dueReviews.sort((a, b) => a.last_score - b.last_score);
+    dueReviews.sort((a, b) => a.mastery.last_score - b.mastery.last_score);
   }
-  const reviewCatalog = new Map(
-    (catalog ?? []).map((t) => [t.slug, t] as const),
-  );
   let reviewIdx = 0;
+
+  let weekdayCursor = Math.floor(rng() * 7);
+  let lastKey: string | null = null;
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay();
     if (!cfg.weekdays.includes(wd)) continue;
-    const slots = dayTemplate(wd, pick, cfg.focus);
+
+    const template = pickDayTemplate(wd, cfg.focus, rng, weekdayCursor);
+    weekdayCursor += 1;
+
+    const slots = template(pick, rng);
     const base = slots.reduce((s, x) => s + x.minutes, 0);
     const scale = targetMinPerDay / base;
     const dateStr = isoDate(d);
-    slots.forEach((s) => {
-      let title = s.title("");
+
+    for (const s of slots) {
+      let title = s.title;
       let topicSlug = s.topicSlug;
       let topicArea = s.topicArea;
       let area: StudyTask["area"] = s.area;
       let type = s.type;
 
-      // Se houver revisão devida e o slot atual é "revisao geral",
-      // troca por uma revisão focada num tópico.
+      // Injetar revisão SRS onde couber
       if (s.type === "revisao" && reviewIdx < dueReviews.length) {
         const due = dueReviews[reviewIdx++];
-        const t = reviewCatalog.get(due.topic_slug);
+        const t = catalogBySlug.get(due.mastery.topic_slug);
         if (t) {
-          title = `Revisão: ${t.title}`;
+          const pct = Math.round(due.mastery.last_score * 100);
+          title = due.kind === "ciclo"
+            ? `Recuperação: ${t.title} (última nota ${pct}%)`
+            : `Revisão: ${t.title}`;
           topicSlug = t.slug;
           topicArea = t.area;
           area = t.area;
-          type = "revisao";
         }
-      } else if (s.type === "redacao" && s.area === "redacao" && !title.includes(":")) {
+      } else if (s.type === "redacao" && s.area === "redacao") {
         const t = themes[themeIdx % themes.length];
         themeIdx += 1;
-        title = `Redação: ${t.titulo}`;
-      } else if (s.type === "redacao") {
-        const t = themes[themeIdx % themes.length];
-        themeIdx += 1;
-        title = `Redação: ${t.titulo}`;
+        title = `${title} — Tema: ${t.titulo}`;
       }
+
+      // Anti-monotonia: se o mesmo (tipo|título) apareceu ontem, rotaciona picker
+      const key = `${type}|${title}`;
+      if (key === lastKey) {
+        // varia a área
+        const p = pick();
+        area = p.area;
+      }
+      lastKey = key;
+
       tasks.push({
         id: rid(),
         date: dateStr,
@@ -446,26 +573,49 @@ export function generatePlan(
         topicSlug,
         topicArea,
       });
-    });
+    }
   }
 
   return {
     id: rid(),
     createdAt: Date.now(),
+    seed: actualSeed,
     config: cfg,
     tasks,
   };
 }
 
-/**
- * Reagenda tarefas atrasadas: move as pendentes com data no passado para
- * os próximos dias válidos (weekdays) do plano, respeitando o limite de
- * minutos por dia. Retorna um novo StudyPlan.
- */
+// -------- Merge de progresso ao regerar --------
+
+function progressKey(t: StudyTask): string {
+  return `${t.type}|${t.topicSlug ?? t.area}|${t.title.toLowerCase().slice(0, 40)}`;
+}
+
+function mergePriorProgress(next: StudyPlan, prior: StudyPlan | null): StudyPlan {
+  if (!prior) return next;
+  const doneMap = new Map<string, StudyTask>();
+  for (const t of prior.tasks) {
+    if (t.status === "concluida") doneMap.set(progressKey(t), t);
+  }
+  if (doneMap.size === 0) return next;
+  const seen = new Set<string>();
+  const tasks = next.tasks.map((t) => {
+    const k = progressKey(t);
+    if (seen.has(k)) return t;
+    if (doneMap.has(k)) {
+      seen.add(k);
+      return { ...t, status: "concluida" as const };
+    }
+    return t;
+  });
+  return { ...next, tasks };
+}
+
+// -------- Reagendamento --------
+
 export function rescheduleOverdue(plan: StudyPlan): StudyPlan {
   const today = todayIso();
   const targetMin = Math.max(30, Math.round(plan.config.hoursPerDay * 60));
-  // Minutos já ocupados por dia (contando pendentes + concluídas no futuro).
   const perDay = new Map<string, number>();
   for (const t of plan.tasks) {
     if (t.date < today) continue;
@@ -499,14 +649,12 @@ export function rescheduleOverdue(plan: StudyPlan): StudyPlan {
   return next;
 }
 
-/** Conta quantas tarefas estão atrasadas (pendentes com data < hoje). */
 export function countOverdue(plan: StudyPlan): number {
   const today = todayIso();
   return plan.tasks.filter((t) => t.status === "pendente" && t.date < today).length;
 }
 
-
-// ---- persistence + hook ----
+// -------- Persistência --------
 
 function read(): StudyPlan | null {
   if (typeof window === "undefined") return null;
@@ -531,9 +679,6 @@ export function resolvedStatus(t: StudyTask): TaskStatus {
   return "pendente";
 }
 
-// Standalone helper (não precisa do hook) — usado por outras telas
-// (aula, prática) para marcar a tarefa vinculada como concluída assim
-// que o aluno termina a atividade que veio do cronograma.
 export function markPlanTaskDone(id: string) {
   const cur = read();
   if (!cur) return;
@@ -544,6 +689,29 @@ export function markPlanTaskDone(id: string) {
     tasks: cur.tasks.map((t) =>
       t.id === id ? { ...t, status: "concluida" as const } : t,
     ),
+  };
+  write(next);
+}
+
+/** Aplica atualizações de título/nota vindas da camada de IA. */
+export function applyAiEnrichment(
+  updates: Array<{ id: string; title?: string; note?: string }>,
+) {
+  const cur = read();
+  if (!cur) return;
+  const map = new Map(updates.map((u) => [u.id, u]));
+  const next: StudyPlan = {
+    ...cur,
+    tasks: cur.tasks.map((t) => {
+      const u = map.get(t.id);
+      if (!u) return t;
+      return {
+        ...t,
+        title: u.title?.trim() ? u.title.trim() : t.title,
+        note: u.note?.trim() ? u.note.trim() : t.note,
+        aiEnriched: true,
+      };
+    }),
   };
   write(next);
 }
@@ -568,15 +736,15 @@ export function useStudyPlan() {
       catalog?: TopicCatalogEntry[],
       mastery?: TopicMastery[],
     ) => {
-      const p = generatePlan(cfg, catalog, mastery);
-      write(p);
-      setPlan(p);
-      return p;
+      const prior = read();
+      const generated = generatePlan(cfg, catalog, mastery);
+      const merged = mergePriorProgress(generated, prior);
+      write(merged);
+      setPlan(merged);
+      return merged;
     },
     [],
   );
-
-
 
   const clearPlan = useCallback(() => {
     write(null);
@@ -618,7 +786,6 @@ export function useStudyPlan() {
   return { plan, savePlan, clearPlan, updateTask, toggleDone };
 }
 
-// Pick today's most important task: first non-concluída of today, else first atrasada.
 export function topTaskFor(plan: StudyPlan | null): StudyTask | null {
   if (!plan) return null;
   const today = todayIso();
@@ -633,15 +800,20 @@ export function topTaskFor(plan: StudyPlan | null): StudyTask | null {
 }
 
 function priority(t: StudyTask): number {
-  // simulado > redação > questões > teoria > revisão
   const order: Record<TaskType, number> = {
-    simulado: 5,
-    redacao: 4,
-    questoes: 3,
-    teoria: 2,
+    simulado: 6,
+    prova_antiga: 5,
+    redacao: 5,
+    questoes: 4,
+    projeto: 3,
+    videoaula: 3,
+    teoria: 3,
+    mapa_mental: 2,
+    resumo: 2,
+    flashcards: 2,
     revisao: 1,
   };
-  return order[t.type];
+  return order[t.type] ?? 1;
 }
 
 export function tasksForDate(plan: StudyPlan, date: string): StudyTask[] {
@@ -651,7 +823,6 @@ export function tasksForDate(plan: StudyPlan, date: string): StudyTask[] {
 export function weekDates(from: Date = new Date()): string[] {
   const start = new Date(from);
   start.setHours(0, 0, 0, 0);
-  // Start on Monday
   const day = start.getDay();
   const diff = (day + 6) % 7;
   start.setDate(start.getDate() - diff);
