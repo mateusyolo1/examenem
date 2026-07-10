@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AREAS, useProgress, type Area } from "@/lib/storage";
 import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
@@ -167,6 +168,23 @@ const TYPE_STYLES: Record<
     icon: Wrench,
   },
 };
+
+const PLANO_HINTS: HintDef[] = [
+  {
+    key: "plano.cronograma.v1",
+    targetSelector: '[data-hint="plano.cronograma"]',
+    title: "Cronograma inteligente de hoje",
+    description:
+      "Abre o cronograma do dia com vídeos, treino sob pressão, flashcards, simulado e lousa — tudo adaptado ao seu nível.",
+  },
+  {
+    key: "plano.variacao.v1",
+    targetSelector: '[data-hint="plano.variacao"]',
+    title: "Variação semanal",
+    description:
+      "Escolha o quanto o cronograma muda de uma semana para outra: Baixa (rotina previsível), Média (equilíbrio) ou Alta (novos formatos toda semana).",
+  },
+];
 
 function Plano() {
   const { plan, savePlan, clearPlan, toggleDone } = useStudyPlan();
@@ -300,6 +318,7 @@ function Shell({
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <Link
           to="/cronograma"
+          data-hint="plano.cronograma"
           className="mb-8 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
         >
           <div>
@@ -343,6 +362,7 @@ function Shell({
         {children}
       </main>
       <Footer />
+      <HintCoach hints={PLANO_HINTS} />
     </div>
   );
 }
@@ -648,7 +668,7 @@ function PlanForm({
       </Field>
 
       <Field label="Variação semanal (o quanto o cronograma muda de uma semana para a outra)">
-        <div className="flex flex-wrap gap-2">
+        <div data-hint="plano.variacao" className="flex flex-wrap gap-2">
           {(
             [
               { id: "baixa", label: "Baixa", desc: "Rotina previsível" },

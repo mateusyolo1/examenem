@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
 import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
@@ -32,6 +33,16 @@ type Mode =
   | "erro";
 
 const HISTORY_KEY = "exame:tutor:history:v2";
+
+const TUTOR_HINTS: HintDef[] = [
+  {
+    key: "tutor.lousa.v1",
+    targetSelector: '[data-hint="tutor.lousa"]',
+    title: "Lousa Interativa",
+    description:
+      "Abre a Lousa: pratique lendo, ouvindo, escrevendo e ensinando. Quadro branco ou negro com fontes de giz e lápis.",
+  },
+];
 
 export const Route = createFileRoute("/_authenticated/tutor")({
   head: () => ({
@@ -275,6 +286,7 @@ function Tutor() {
 
         <Link
           to="/lousa"
+          data-hint="tutor.lousa"
           className="mb-6 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
         >
           <div>
@@ -470,6 +482,7 @@ function Tutor() {
         </div>
       </main>
       <Footer />
+      <HintCoach hints={TUTOR_HINTS} />
     </div>
   );
 }
