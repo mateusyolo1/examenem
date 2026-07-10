@@ -914,10 +914,10 @@ function LandingPage() {
               </div>
               <ul className="space-y-2.5 text-sm text-muted-foreground">
                 <li><a href="#faq" className="hover:text-foreground transition-colors">Central de ajuda</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contato</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Política de privacidade</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Termos de uso</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Cookies</a></li>
+                <li><Link to="/precos" className="hover:text-foreground transition-colors">Preços</Link></li>
+                <li><Link to="/privacidade" className="hover:text-foreground transition-colors">Política de privacidade</Link></li>
+                <li><Link to="/termos" className="hover:text-foreground transition-colors">Termos de uso</Link></li>
+                <li><Link to="/reembolso" className="hover:text-foreground transition-colors">Política de reembolso</Link></li>
               </ul>
             </div>
           </div>
