@@ -81,11 +81,13 @@ export function Nav() {
   const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
     const active = isActive(l.to);
     const Icon = l.icon;
+    const tourId = l.to === "/" ? "nav-dashboard" : `nav${l.to.replace(/\//g, "-")}`;
     return (
       <Link
         key={l.to}
         to={l.to}
         aria-current={active ? "page" : undefined}
+        data-tour={tourId}
         className={
           "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors min-h-10 " +
           (active
