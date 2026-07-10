@@ -78,6 +78,11 @@ export function Nav() {
     setSheetOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    document.body.classList.add("has-sidebar");
+    return () => document.body.classList.remove("has-sidebar");
+  }, []);
+
   const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
     const active = isActive(l.to);
     const Icon = l.icon;
