@@ -36,6 +36,8 @@ export type Variation = "baixa" | "media" | "alta";
 
 export interface StudyPlanConfig {
   examDate: string; // ISO date
+  examId?: string;
+  examName?: string;
   hoursPerDay: number; // e.g. 2
   weekdays: number[]; // 0=Sun..6=Sat
   hardAreas: Area[];

@@ -1,5 +1,6 @@
 // Local-only progress storage. No backend, no login.
 import { useEffect, useState, useCallback } from "react";
+import { DEFAULT_EXAM_ID, defaultExamDate, getExamOption, isLegacyDefaultExamDate } from "./exams";
 
 const KEY = "exame:progress:v1";
 
@@ -42,10 +43,14 @@ export interface Progress {
   essays: EssayRecord[];
   dailyGoal: number;
   examDate: string; // ISO
+  examId?: string;
+  examName?: string;
   studentName?: string;
   targetScore?: number; // 0-1000
   dailyMinutes?: number; // available study minutes/day
 }
+
+const DEFAULT_EXAM = getExamOption(DEFAULT_EXAM_ID);
 
 const DEFAULT: Progress = {
   answers: {},
@@ -55,15 +60,24 @@ const DEFAULT: Progress = {
   essays: [],
   dailyGoal: 18,
   examDate: defaultExamDate(),
+  examId: DEFAULT_EXAM.id,
+  examName: DEFAULT_EXAM.label,
   studentName: "",
   targetScore: 700,
   dailyMinutes: 120,
 };
 
-function defaultExamDate(): string {
-  const now = new Date();
-  const y = now.getMonth() > 10 ? now.getFullYear() + 1 : now.getFullYear();
-  return new Date(y, 10, 9).toISOString(); // November 9
+function normalizeProgress(parsed: Partial<Progress>): Progress {
+  const next = { ...DEFAULT, ...parsed };
+  if (!parsed.examId) {
+    next.examId = DEFAULT_EXAM.id;
+    next.examName = DEFAULT_EXAM.label;
+    if (isLegacyDefaultExamDate(parsed.examDate)) next.examDate = DEFAULT.examDate;
+  } else {
+    const exam = getExamOption(parsed.examId);
+    next.examName = parsed.examName || exam.label;
+  }
+  return next;
 }
 
 function read(): Progress {
@@ -71,7 +85,7 @@ function read(): Progress {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
-    return { ...DEFAULT, ...JSON.parse(raw) };
+    return normalizeProgress(JSON.parse(raw));
   } catch {
     return DEFAULT;
   }
@@ -174,7 +188,7 @@ export function importProgress(json: string): { ok: true } | { ok: false; error:
     if (!prog || typeof prog !== "object" || !("answers" in prog)) {
       return { ok: false, error: "Arquivo inválido." };
     }
-    write({ ...DEFAULT, ...prog });
+    write(normalizeProgress(prog));
     if (parsed && typeof parsed === "object" && "studyPlan" in parsed) {
       localStorage.setItem(
         "exame:study-plan:v1",

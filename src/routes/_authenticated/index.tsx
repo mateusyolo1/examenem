@@ -15,6 +15,7 @@ import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
 import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
 import { HintCoach, type HintDef } from "@/components/HintCoach";
+import { getExamOption } from "@/lib/exams";
 
 const DASHBOARD_HINTS: HintDef[] = [
   {
@@ -83,6 +84,7 @@ function Dashboard() {
   );
 
   const dias = daysUntilExam(progress.examDate);
+  const examLabel = progress.examName || getExamOption(progress.examId).label;
   const hoje = answersToday(progress);
   const meta = progress.dailyGoal || 18;
   const pctMeta = Math.min(100, Math.round((hoje / meta) * 100));
@@ -178,7 +180,7 @@ function Dashboard() {
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Faltam <span className="text-foreground font-bold">{dias}</span> dias para o
-                ENEM. Cada questão conta.
+                {examLabel}. Cada questão conta.
               </p>
             </div>
             <div className="flex gap-2">

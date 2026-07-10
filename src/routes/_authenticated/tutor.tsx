@@ -9,6 +9,7 @@ import { TutorToolCard } from "@/components/TutorToolCard";
 import { askTutor, type TutorToolResult } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
+import { getExamOption } from "@/lib/exams";
 import {
   useActiveLearning,
   evaluateAdvance,
@@ -146,10 +147,12 @@ function Tutor() {
 
   const studentContext = useMemo(() => {
     const lines: string[] = [];
+    const examLabel = progress.examName || getExamOption(progress.examId).label;
     lines.push(`Meta diária: ${progress.dailyGoal} questões`);
     lines.push(`Respondidas hoje: ${answersToday(progress)}`);
     lines.push(`Sequência de estudos: ${progress.streakDays} dia(s)`);
-    lines.push(`Dias até o ENEM: ${daysUntilExam(progress.examDate)}`);
+    lines.push(`Prova alvo: ${examLabel}`);
+    lines.push(`Dias até a prova: ${daysUntilExam(progress.examDate)}`);
     lines.push(`Tempo disponível informado: ${timeAvail}`);
 
     const stats = AREAS.map((a) => {

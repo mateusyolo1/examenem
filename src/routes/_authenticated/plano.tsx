@@ -61,6 +61,7 @@ import {
   countOverdue,
 } from "@/lib/study-plan";
 import { StageTasksSection } from "@/components/StageTasksSection";
+import { DEFAULT_EXAM_ID, EXAM_OPTIONS, examDateToIso, getExamOption } from "@/lib/exams";
 
 export const Route = createFileRoute("/_authenticated/plano")({
   head: () => ({
@@ -290,6 +291,7 @@ function Shell({
         year: "numeric",
       })
     : null;
+  const examName = plan ? plan.config.examName || getExamOption(plan.config.examId).label : null;
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gradient-to-b from-muted/30 via-background to-background text-foreground">
@@ -325,7 +327,7 @@ function Shell({
             <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-foreground/80">
                 <CalendarDays size={14} aria-hidden className="text-primary" />
-                Prova em <strong className="font-semibold">{examLabel}</strong>
+                {examName} em <strong className="font-semibold">{examLabel}</strong>
               </span>
               {daysToExam !== null && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border text-foreground/80">
@@ -360,6 +362,7 @@ function PlanForm({
       ? isoDateInput(new Date(initial.examDate))
       : isoDateInput(new Date(defaultExamDate)),
   );
+  const [examId, setExamId] = useState<string>(initial?.examId ?? DEFAULT_EXAM_ID);
   const [hoursPerDay, setHoursPerDay] = useState<number>(initial?.hoursPerDay ?? 2);
   const [weekdays, setWeekdays] = useState<number[]>(
     initial?.weekdays ?? [1, 2, 3, 4, 5, 6],
@@ -391,7 +394,9 @@ function PlanForm({
         e.preventDefault();
         if (!canSubmit) return;
         onSubmit({
-          examDate: new Date(examDate + "T00:00:00").toISOString(),
+          examDate: examDateToIso(examDate),
+          examId,
+          examName: getExamOption(examId).label,
           hoursPerDay,
           weekdays,
           hardAreas,
@@ -417,6 +422,27 @@ function PlanForm({
         </p>
       </div>
       <div className="p-6 sm:p-8 space-y-8">
+      <Field label="Prova que você vai estudar">
+        <select
+          value={examId}
+          onChange={(e) => {
+            const next = getExamOption(e.target.value);
+            setExamId(next.id);
+            if (next.id !== "custom") setExamDate(next.date);
+          }}
+          className="w-full md:w-80 min-h-11 px-3 rounded-lg border border-border bg-background text-sm"
+        >
+          {EXAM_OPTIONS.map((exam) => (
+            <option key={exam.id} value={exam.id}>
+              {exam.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          {getExamOption(examId).note}
+        </p>
+      </Field>
+
       <Field label="Data da prova">
         <input
           type="date"
