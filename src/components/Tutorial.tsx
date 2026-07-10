@@ -3,13 +3,8 @@ import { Link } from "@tanstack/react-router";
 import {
   Home,
   Calendar,
-  Youtube,
   ListChecks,
-  RotateCw,
-  FileText,
-  FileCheck,
   PenLine,
-  Bot,
   Trophy,
   Sparkles,
   ArrowRight,
