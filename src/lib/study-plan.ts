@@ -699,6 +699,28 @@ export function markPlanTaskDone(id: string) {
     ),
   };
   write(next);
+  // sincroniza no servidor (fire-and-forget)
+  markStudyTaskDoneFn({ data: { taskId: id } }).catch(() => {});
+}
+
+// Marca todas as tarefas de hoje que referenciam um tópico como concluídas.
+export function markPlanTaskDoneByTopic(topicSlug: string) {
+  const cur = read();
+  if (!cur) return;
+  const today = todayIso();
+  const matching = cur.tasks.filter(
+    (t) => t.topicSlug === topicSlug && t.date === today && t.status !== "concluida",
+  );
+  if (!matching.length) return;
+  const matchIds = new Set(matching.map((t) => t.id));
+  const next: StudyPlan = {
+    ...cur,
+    tasks: cur.tasks.map((t) =>
+      matchIds.has(t.id) ? { ...t, status: "concluida" as const } : t,
+    ),
+  };
+  write(next);
+  markStudyTaskDoneFn({ data: { topicSlug, date: today } }).catch(() => {});
 }
 
 /** Aplica atualizações de título/nota vindas da camada de IA. */
