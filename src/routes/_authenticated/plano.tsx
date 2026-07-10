@@ -318,6 +318,7 @@ function Shell({
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <Link
           to="/cronograma"
+          data-hint="plano.cronograma"
           className="mb-8 group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 flex items-center justify-between hover:border-primary transition-colors"
         >
           <div>
