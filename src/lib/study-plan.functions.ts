@@ -211,6 +211,7 @@ const taskInput = z.object({
 
 const enrichInput = z.object({
   focus: z.string().optional(),
+  examName: z.string().optional(),
   hoursPerDay: z.number().optional(),
   targetScore: z.number().optional(),
   hardAreas: z.array(z.string()).optional(),
@@ -262,7 +263,7 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       : "(sem dados de desempenho ainda)";
 
     const prompt =
-      `Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM. ` +
+      `Você é um(a) professor(a) particular brasileiro(a), especialista em ${data.examName ?? "ENEM"}. ` +
       `Reescreva os títulos das tarefas do cronograma abaixo para ficarem específicos, ` +
       `motivadores e didáticos (em português brasileiro), e escreva uma "note" curta ` +
       `(uma frase, até 200 caracteres) explicando o objetivo prático de cada tarefa. ` +
@@ -273,6 +274,7 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       `- Não invente matérias que não existam no ENEM.\n` +
       `- Cada título deve ser diferente dos demais (evite repetição).\n\n` +
       `Perfil do(a) aluno(a):\n` +
+      `- Prova alvo: ${data.examName ?? "ENEM"}\n` +
       `- Foco: ${data.focus ?? "equilibrado"}\n` +
       `- Horas por dia: ${data.hoursPerDay ?? "?"}\n` +
       `- Meta de nota: ${data.targetScore ?? "?"}\n` +

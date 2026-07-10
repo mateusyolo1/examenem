@@ -11,6 +11,7 @@ import {
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
 import { Nav } from "@/components/Nav";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DEFAULT_EXAM_ID, EXAM_OPTIONS, examDateToIso, getExamOption } from "@/lib/exams";
 import {
   Download,
   RotateCcw,
@@ -47,6 +48,7 @@ function PerfilPage() {
   const [goal, setGoal] = useState(progress.dailyGoal);
   const [target, setTarget] = useState(progress.targetScore ?? 700);
   const [minutes, setMinutes] = useState(progress.dailyMinutes ?? 120);
+  const [examId, setExamId] = useState(progress.examId ?? DEFAULT_EXAM_ID);
   const [exam, setExam] = useState(progress.examDate.slice(0, 10));
   const [saved, setSaved] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -57,8 +59,16 @@ function PerfilPage() {
     setGoal(progress.dailyGoal);
     setTarget(progress.targetScore ?? 700);
     setMinutes(progress.dailyMinutes ?? 120);
+    setExamId(progress.examId ?? DEFAULT_EXAM_ID);
     setExam(progress.examDate.slice(0, 10));
-  }, [progress.studentName, progress.dailyGoal, progress.targetScore, progress.dailyMinutes, progress.examDate]);
+  }, [
+    progress.studentName,
+    progress.dailyGoal,
+    progress.targetScore,
+    progress.dailyMinutes,
+    progress.examId,
+    progress.examDate,
+  ]);
 
   const stats = useMemo(() => {
     const answers = Object.values(progress.answers);
@@ -114,13 +124,16 @@ function PerfilPage() {
   }, [progress.simulados]);
 
   function handleSave() {
+    const selectedExam = getExamOption(examId);
     update((p) => ({
       ...p,
       studentName: name.trim(),
       dailyGoal: Math.max(1, Math.min(200, Math.floor(goal))),
       targetScore: Math.max(0, Math.min(1000, Math.floor(target))),
       dailyMinutes: Math.max(15, Math.min(720, Math.floor(minutes))),
-      examDate: new Date(exam).toISOString(),
+      examId,
+      examName: selectedExam.label,
+      examDate: examDateToIso(exam),
     }));
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
@@ -142,6 +155,7 @@ function PerfilPage() {
 
 
   const examDays = daysUntilExam(progress.examDate);
+  const examLabel = progress.examName || getExamOption(progress.examId).label;
   const displayName = progress.studentName?.trim() || "Aluno";
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -161,7 +175,7 @@ function PerfilPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{displayName}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Meta: <span className="font-semibold text-foreground">{progress.targetScore ?? 700}</span>{" "}
-            · Prova em{" "}
+            · {examLabel} em{" "}
             <span className="font-semibold text-foreground">{examDays}</span> dias
           </p>
         </div>
@@ -293,6 +307,27 @@ function PerfilPage() {
               onChange={(e) => setMinutes(Number(e.target.value))}
               className="input"
             />
+          </Field>
+          <Field label="Prova" htmlFor="f-exam-id">
+            <select
+              id="f-exam-id"
+              value={examId}
+              onChange={(e) => {
+                const next = getExamOption(e.target.value);
+                setExamId(next.id);
+                if (next.id !== "custom") setExam(next.date);
+              }}
+              className="input"
+            >
+              {EXAM_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1.5 block text-xs text-muted-foreground">
+              {getExamOption(examId).note}
+            </span>
           </Field>
           <Field label="Data da prova" htmlFor="f-exam">
             <input

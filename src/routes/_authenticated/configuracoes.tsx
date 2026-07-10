@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { COLOR_SCHEMES, useColorScheme } from "@/lib/color-scheme";
+import { DEFAULT_EXAM_ID, EXAM_OPTIONS, examDateToIso, getExamOption } from "@/lib/exams";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
@@ -56,14 +57,23 @@ function ConfiguracoesPage() {
   const [target, setTarget] = useState(progress.targetScore ?? 700);
   const [daily, setDaily] = useState(progress.dailyMinutes ?? 120);
   const [dailyGoal, setDailyGoal] = useState(progress.dailyGoal ?? 18);
+  const [examId, setExamId] = useState(progress.examId ?? DEFAULT_EXAM_ID);
   const [examDate, setExamDate] = useState(
     progress.examDate ? progress.examDate.slice(0, 10) : "",
   );
 
   const days = useMemo(
-    () => (progress.examDate ? daysUntilExam(progress.examDate) : null),
-    [progress.examDate],
+    () => (examDate ? daysUntilExam(examDateToIso(examDate)) : null),
+    [examDate],
   );
+
+  useEffect(() => {
+    setTarget(progress.targetScore ?? 700);
+    setDaily(progress.dailyMinutes ?? 120);
+    setDailyGoal(progress.dailyGoal ?? 18);
+    setExamId(progress.examId ?? DEFAULT_EXAM_ID);
+    setExamDate(progress.examDate ? progress.examDate.slice(0, 10) : "");
+  }, [progress.targetScore, progress.dailyMinutes, progress.dailyGoal, progress.examId, progress.examDate]);
 
   function flash(t: Toast) {
     setToast(t);
@@ -71,12 +81,15 @@ function ConfiguracoesPage() {
   }
 
   function handleSave() {
+    const selectedExam = getExamOption(examId);
     update((prev) => ({
       ...prev,
       targetScore: Math.max(0, Math.min(1000, Number(target) || 0)),
       dailyMinutes: Math.max(15, Math.min(720, Number(daily) || 60)),
       dailyGoal: Math.max(1, Math.min(200, Number(dailyGoal) || 1)),
-      examDate: examDate ? new Date(examDate).toISOString() : prev.examDate,
+      examId,
+      examName: selectedExam.label,
+      examDate: examDate ? examDateToIso(examDate) : prev.examDate,
     }));
     flash({ kind: "ok", msg: "Configurações salvas." });
   }
@@ -220,6 +233,28 @@ function ConfiguracoesPage() {
         {/* Goals */}
         <Section title="Metas e prova">
           <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Prova" icon={Calendar} htmlFor="cfg-exam">
+              <select
+                id="cfg-exam"
+                value={examId}
+                onChange={(e) => {
+                  const next = getExamOption(e.target.value);
+                  setExamId(next.id);
+                  if (next.id !== "custom") setExamDate(next.date);
+                }}
+                className="w-full min-h-11 bg-background border border-border rounded-md px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {EXAM_OPTIONS.map((exam) => (
+                  <option key={exam.id} value={exam.id}>
+                    {exam.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {getExamOption(examId).note}
+              </p>
+            </Field>
+
             <Field label="Data da prova" icon={Calendar} htmlFor="cfg-date">
               <input
                 id="cfg-date"
