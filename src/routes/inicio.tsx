@@ -41,33 +41,20 @@ export const Route = createFileRoute("/inicio")({
 });
 
 function LandingPage() {
-  const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      if (data.session) {
-        navigate({ to: "/", replace: true });
-      } else {
-        setChecking(false);
-      }
+      setSignedIn(!!data.session);
     });
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, []);
 
-  if (checking) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-sm text-muted-foreground font-mono uppercase tracking-widest">
-          Carregando…
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
