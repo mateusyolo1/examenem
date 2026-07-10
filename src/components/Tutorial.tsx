@@ -52,7 +52,6 @@ const STEPS: Step[] = [
     icon: Home,
     route: "/",
     target: { desktop: '[data-tour="nav-dashboard"]', mobile: '[data-tour="nav-dashboard"]' },
-    icon: Home,
     title: "Dashboard",
     description:
       "Sua base de operações. Aqui aparecem seu progresso, próximo passo recomendado e as tarefas do dia.",
