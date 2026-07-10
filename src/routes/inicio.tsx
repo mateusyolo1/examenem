@@ -525,26 +525,48 @@ function LandingPage() {
             </a>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            {cases.map((c) => (
-              <article key={c.name} className="p-6 bg-background border border-border rounded-2xl flex flex-col">
-                <div className="flex items-baseline gap-2 mb-6">
-                  <div className="text-4xl font-extrabold tracking-tighter text-primary">{c.score}</div>
-                  <div className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-                    {c.metric}
-                  </div>
+          <div className="grid lg:grid-cols-[1fr_2fr] gap-4">
+            <div className="relative rounded-2xl overflow-hidden border border-border min-h-[320px] lg:min-h-0">
+              <img
+                src={studentImage}
+                alt="Estudante aprovada em universidade pública"
+                loading="lazy"
+                width={1024}
+                height={1024}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-background">
+                <div className="text-[11px] font-mono uppercase tracking-widest text-background/70 mb-2">
+                  Aprovada · Turma 2025
                 </div>
-                <blockquote className="text-foreground leading-relaxed flex-1">
-                  "{c.quote}"
-                </blockquote>
-                <footer className="mt-6 pt-4 border-t border-border">
-                  <div className="font-bold text-sm tracking-tight">{c.name}</div>
-                  <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
-                    {c.course}
+                <div className="text-2xl font-extrabold tracking-tighter leading-tight">
+                  "Cheguei na prova sabendo exatamente qual seria minha nota."
+                </div>
+                <div className="text-sm text-background/80 mt-2">Beatriz L. · Medicina · UFRJ</div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {cases.map((c) => (
+                <article key={c.name} className="p-6 bg-background border border-border rounded-2xl flex flex-col">
+                  <div className="flex items-baseline gap-2 mb-6">
+                    <div className="text-4xl font-extrabold tracking-tighter text-primary">{c.score}</div>
+                    <div className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+                      {c.metric}
+                    </div>
                   </div>
-                </footer>
-              </article>
-            ))}
+                  <blockquote className="text-foreground leading-relaxed flex-1">
+                    "{c.quote}"
+                  </blockquote>
+                  <footer className="mt-6 pt-4 border-t border-border">
+                    <div className="font-bold text-sm tracking-tight">{c.name}</div>
+                    <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
+                      {c.course}
+                    </div>
+                  </footer>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>
