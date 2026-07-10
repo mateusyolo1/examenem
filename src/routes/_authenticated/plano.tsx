@@ -668,7 +668,7 @@ function PlanForm({
       </Field>
 
       <Field label="Variação semanal (o quanto o cronograma muda de uma semana para a outra)">
-        <div className="flex flex-wrap gap-2">
+        <div data-hint="plano.variacao" className="flex flex-wrap gap-2">
           {(
             [
               { id: "baixa", label: "Baixa", desc: "Rotina previsível" },
