@@ -573,8 +573,8 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       const {
         scoreLexicon, fetchTranscriptSample, verifyRelevanceBatch,
         loadChannelReputation, pickPedagogicalJourney,
-        type FilterCandidate,
       } = await import("./youtube-filter");
+      type FilterCandidate = import("./youtube-filter").FilterCandidate;
 
       const area = (topic.area ?? "linguagens") as
         "linguagens" | "humanas" | "natureza" | "matematica";
