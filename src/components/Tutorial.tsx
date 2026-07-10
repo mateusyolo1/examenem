@@ -367,13 +367,15 @@ export function Tutorial({ open, onOpenChange }: TutorialProps) {
         />
       )}
 
-      {/* Tooltip card */}
+      {/* Tooltip card — only after target is resolved to avoid center-flash */}
       <div
-        className="absolute bg-card border border-border rounded-xl shadow-2xl p-5 pointer-events-auto animate-reveal"
+        className="absolute bg-card border border-border rounded-xl shadow-2xl p-5 pointer-events-auto transition-opacity duration-150"
         style={{
           top: Math.max(12, tooltip.top),
           left: Math.max(12, tooltip.left),
           width: TOOLTIP_W,
+          opacity: ready ? 1 : 0,
+          visibility: ready ? "visible" : "hidden",
         }}
       >
         <button
