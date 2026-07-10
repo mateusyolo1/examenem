@@ -276,9 +276,17 @@ function LandingPage() {
               </div>
               <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-0.5 text-primary">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={13} fill="currentColor" strokeWidth={0} />
-                  ))}
+                  {[...Array(5)].map((_, i) => {
+                    const fill = Math.max(0, Math.min(1, 4.6 - i));
+                    return (
+                      <span key={i} className="relative inline-block" style={{ width: 13, height: 13 }}>
+                        <Star size={13} className="absolute inset-0 text-muted-foreground/40" fill="currentColor" strokeWidth={0} />
+                        <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                          <Star size={13} fill="currentColor" strokeWidth={0} />
+                        </span>
+                      </span>
+                    );
+                  })}
                 </div>
                 <span className="font-mono">4.6/5 · +2.000 estudantes</span>
               </div>
