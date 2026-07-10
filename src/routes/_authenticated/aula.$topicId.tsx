@@ -948,6 +948,37 @@ function WatchingView({
   );
 }
 
+function ReportVideoButton({ videoId }: { videoId: string }) {
+  const params = Route.useParams();
+  const router = useRouter();
+  const reportFn = useServerFn(reportIrrelevantVideo);
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      title="Este vídeo não é do tópico"
+      aria-label="Reportar vídeo fora do tópico"
+      disabled={busy}
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (!confirm("Este vídeo não é do tópico? Ele será removido e o canal perderá reputação nesta matéria.")) return;
+        setBusy(true);
+        try {
+          await reportFn({ data: { topicId: params.topicId, videoId } });
+          toast.success("Obrigado! Vídeo removido do tópico.");
+          router.invalidate();
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Falha ao reportar");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="shrink-0 p-2 rounded border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors disabled:opacity-40"
+    >
+      <ThumbsDown size={12} />
+    </button>
+  );
+}
+
 interface QuizPayload {
   questions: {
     id: string;
