@@ -856,6 +856,57 @@ export const clearSuggestedVideos = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// Report irrelevant video: usuário marca vídeo como fora do tópico.
+// Remove do tópico e incrementa "miss" na reputação do canal para a matéria.
+// ============================================================
+export const reportIrrelevantVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({
+      topicId: z.string().uuid(),
+      videoId: z.string().uuid(),
+    }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { recordChannelSignal } = await import("./youtube-filter");
+
+    // Descobre canal + matéria antes de apagar
+    const [{ data: video }, { data: topic }] = await Promise.all([
+      supabase
+        .from("study_videos")
+        .select("id, channel_name, youtube_id")
+        .eq("id", data.videoId)
+        .maybeSingle(),
+      supabase
+        .from("study_topics")
+        .select("id, subject, area")
+        .eq("id", data.topicId)
+        .maybeSingle(),
+    ]);
+
+    if (video?.channel_name) {
+      const subjectKey = (topic?.subject ?? topic?.area ?? "geral").toLowerCase();
+      await recordChannelSignal(supabaseAdmin, video.channel_name, subjectKey, "miss");
+    }
+
+    // Remove do tópico e invalida cache para a próxima busca não trazer ele
+    await supabaseAdmin
+      .from("study_videos")
+      .delete()
+      .eq("id", data.videoId)
+      .eq("topic_id", data.topicId);
+
+    await supabaseAdmin
+      .from("ai_response_cache")
+      .delete()
+      .like("cache_key", `video-verify:${data.topicId}%`);
+
+    return { ok: true };
+  });
+
+// ============================================================
 // Lesson Mode: playlist + quiz generated from real transcripts
 // ============================================================
 const lessonInput = z.object({ topicId: z.string().uuid() });
