@@ -682,8 +682,11 @@ function LandingPage() {
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-bl from-primary/20 to-transparent rounded-2xl blur-2xl" aria-hidden />
             <img
-              src={heroImage}
-              alt="Equipe Exame trabalhando na plataforma"
+              src={aboutImage}
+              alt="Estudantes brasileiros estudando juntos em biblioteca universitária"
+              loading="lazy"
+              width={1024}
+              height={1024}
               className="relative rounded-2xl border border-border shadow-xl w-full h-auto object-cover aspect-[5/4]"
             />
           </div>
