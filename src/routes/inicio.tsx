@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowRight,
@@ -41,33 +41,20 @@ export const Route = createFileRoute("/inicio")({
 });
 
 function LandingPage() {
-  const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      if (data.session) {
-        navigate({ to: "/", replace: true });
-      } else {
-        setChecking(false);
-      }
+      setSignedIn(!!data.session);
     });
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, []);
 
-  if (checking) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="text-sm text-muted-foreground font-mono uppercase tracking-widest">
-          Carregando…
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -89,19 +76,31 @@ function LandingPage() {
             </a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/auth"
-              className="hidden sm:inline-flex items-center px-3 py-2 text-sm font-medium text-foreground hover:bg-accent rounded-md transition-colors"
-            >
-              Entrar
-            </Link>
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
-            >
-              Criar conta
-              <ArrowRight size={14} />
-            </Link>
+            {signedIn ? (
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
+              >
+                Ir para o app
+                <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/auth"
+                  className="hidden sm:inline-flex items-center px-3 py-2 text-sm font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
+                >
+                  Criar conta
+                  <ArrowRight size={14} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
