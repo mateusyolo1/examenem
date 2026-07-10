@@ -1,8 +1,16 @@
-// Frontend-only study plan generator + persistence.
-// Motor rico: sementeado (RNG), múltiplos templates por dia da semana,
-// tipos de tarefa variados (mapa mental, flashcards, resumo, prova antiga…)
-// e integração com revisão espaçada (topic_mastery).
-import { useCallback, useEffect, useState } from "react";
+// Study plan generator + persistence.
+// Fonte da verdade: tabela `user_study_plan` no Supabase (server fns em
+// `study-plan.functions.ts`). `localStorage` serve apenas como cache leve
+// para hidratação inicial rápida enquanto o servidor responde.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  saveStudyPlan as saveStudyPlanFn,
+  loadStudyPlan as loadStudyPlanFn,
+  clearStudyPlan as clearStudyPlanFn,
+  markStudyTaskDone as markStudyTaskDoneFn,
+} from "./study-plan.functions";
 import type { Area } from "./storage";
 import { AREAS } from "./storage";
 import { ESSAY_THEMES } from "./essay-themes";
