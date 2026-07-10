@@ -81,11 +81,13 @@ export function Nav() {
   const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
     const active = isActive(l.to);
     const Icon = l.icon;
+    const tourId = l.to === "/" ? "nav-dashboard" : `nav${l.to.replace(/\//g, "-")}`;
     return (
       <Link
         key={l.to}
         to={l.to}
         aria-current={active ? "page" : undefined}
+        data-tour={tourId}
         className={
           "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors min-h-10 " +
           (active
@@ -176,13 +178,13 @@ export function Nav() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
-          <div>
+          <div data-tour="nav-primary">
             <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Estudo
             </div>
             <div className="space-y-0.5">{PRIMARY.map((l) => renderLink(l))}</div>
           </div>
-          <div>
+          <div data-tour="nav-secondary">
             <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Mais
             </div>
@@ -225,6 +227,7 @@ export function Nav() {
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-label="Mais opções"
+              data-tour="nav-more-mobile"
               className={
                 "w-full flex flex-col items-center justify-center gap-0.5 min-h-14 py-2 text-[10px] font-medium transition-colors " +
                 (moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground")

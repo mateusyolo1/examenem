@@ -656,6 +656,7 @@ function PlanForm({
         <button
           type="submit"
           disabled={!canSubmit}
+          data-tour="plano-gerar"
           className="inline-flex items-center justify-center gap-2 min-h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Sparkles size={16} aria-hidden />
