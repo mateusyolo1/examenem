@@ -110,6 +110,9 @@ export function DonateButton() {
               </Button>
             ))}
           </div>
+          <p className="text-[11px] leading-snug text-muted-foreground opacity-65 text-center">
+            A doação é apenas um apoio ao projeto — ela não libera nem amplia o uso da IA.
+          </p>
         </DialogContent>
       </Dialog>
 
