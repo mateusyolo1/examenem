@@ -404,6 +404,7 @@ export interface EssayFeedback {
 }
 
 export const correctEssay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => essayInput.parse(data))
   .handler(async ({ data }) => {
     const { generateText } = await import("ai");
