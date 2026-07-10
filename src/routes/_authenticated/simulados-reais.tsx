@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import {
@@ -16,7 +18,12 @@ import {
 import { toast } from "sonner";
 import { RefreshCw, Play, Clock, Trophy } from "lucide-react";
 
+const simuladosSearchSchema = z.object({
+  area: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/_authenticated/simulados-reais")({
+  validateSearch: zodValidator(simuladosSearchSchema),
   head: () => ({
     meta: [
       { title: "Simulados Reais do ENEM — Exame ENEM" },
