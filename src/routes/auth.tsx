@@ -5,6 +5,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Exame ENEM" },
@@ -17,38 +20,50 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function safeNext(next: string | undefined): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/";
+  return next;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     let mounted = true;
+    const target = safeNext(next);
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       if (data.session) {
-        navigate({ to: "/", replace: true });
+        window.location.replace(target);
       } else {
         setChecking(false);
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
-        navigate({ to: "/", replace: true });
+        window.location.replace(target);
       }
     });
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, next]);
 
   const signIn = async () => {
     setLoading(true);
     try {
       const { lovable } = await import("@/integrations/lovable");
+      const target = safeNext(next);
+      const redirectUri =
+        target === "/"
+          ? window.location.origin
+          : `${window.location.origin}/auth?next=${encodeURIComponent(target)}`;
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectUri,
       });
       if (result.error) {
         toast.error("Não foi possível entrar", {

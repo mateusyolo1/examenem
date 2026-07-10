@@ -32,6 +32,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedCronogramaLousaActivityIdRouteImport } from './routes/_authenticated/cronograma.lousa.$activityId'
 import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_authenticated/aula.$topicId.pratica'
 
@@ -155,6 +156,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedCronogramaLousaActivityIdRoute =
   AuthenticatedCronogramaLousaActivityIdRouteImport.update({
     id: '/lousa/$activityId',
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/simulados-reais': typeof AuthenticatedSimuladosReaisRoute
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
@@ -215,6 +222,7 @@ export interface FileRoutesByTo {
   '/temas': typeof AuthenticatedTemasRoute
   '/tutor': typeof AuthenticatedTutorRoute
   '/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/_authenticated/temas': typeof AuthenticatedTemasRoute
   '/_authenticated/tutor': typeof AuthenticatedTutorRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/_authenticated/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/simulados-reais'
     | '/temas'
     | '/tutor'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/aula/$topicId'
     | '/aula/$topicId/pratica'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/temas'
     | '/tutor'
     | '/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/aula/$topicId'
     | '/aula/$topicId/pratica'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/_authenticated/temas'
     | '/_authenticated/tutor'
     | '/_authenticated/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/aula/$topicId'
     | '/_authenticated/aula/$topicId/pratica'
@@ -336,6 +348,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
@@ -502,6 +515,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/cronograma/lousa/$activityId': {
       id: '/_authenticated/cronograma/lousa/$activityId'
       path: '/lousa/$activityId'
@@ -598,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
