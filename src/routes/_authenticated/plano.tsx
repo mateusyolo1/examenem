@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { AREAS, useProgress, type Area } from "@/lib/storage";
 import { SUBJECTS, SUBJECT_AREAS } from "@/lib/subjects";
