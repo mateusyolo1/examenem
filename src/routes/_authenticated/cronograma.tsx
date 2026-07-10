@@ -79,6 +79,14 @@ function Cronograma() {
     enabled: !!initData,
   });
 
+  const todayAgendaFn = useServerFn(getTodayAgendaTasks);
+  const { data: todayAgenda } = useQuery({
+    queryKey: ["today-agenda"],
+    queryFn: () => todayAgendaFn(),
+    enabled: !!plan,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     const t = setInterval(() => refetch(), 60_000);
     return () => clearInterval(t);
