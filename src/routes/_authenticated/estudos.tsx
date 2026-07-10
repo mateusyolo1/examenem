@@ -220,7 +220,7 @@ function EstudosPage() {
             }
             className="w-full"
           >
-            <TabsList className="flex flex-wrap w-full h-auto justify-start gap-1 mb-4">
+            <TabsList data-hint="estudos.tabs" className="flex flex-wrap w-full h-auto justify-start gap-1 mb-4">
               <TabsTrigger value="videos" className="gap-1.5"><Youtube size={14} /> Vídeos</TabsTrigger>
               <TabsTrigger value="mapas" className="gap-1.5"><Brain size={14} /> Mapas mentais</TabsTrigger>
               <TabsTrigger value="notas" className="gap-1.5"><StickyNote size={14} /> Notas</TabsTrigger>
@@ -234,7 +234,8 @@ function EstudosPage() {
                 <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
                   Assuntos
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div data-hint="estudos.subjects" className="grid grid-cols-2 md:grid-cols-4 gap-2">
+
                   {roots.map((area) => {
                     const children = byParent[area.id] ?? [];
                     const expanded = expandedAreas.has(area.id);
