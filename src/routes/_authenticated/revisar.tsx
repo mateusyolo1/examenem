@@ -24,7 +24,7 @@ import { subjectIdForQuestion } from "@/lib/subjects";
 import { recordReviewAnswer as recordLearningReview } from "@/lib/learning-progress";
 
 const revisarSearchSchema = z.object({
-  topics: fallback(z.string().optional(), undefined),
+  topics: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_authenticated/revisar")({
