@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -42,6 +43,11 @@ import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_a
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -259,6 +267,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/inicio'
     | '/mcp'
+    | '/privacidade'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/inicio'
     | '/mcp'
+    | '/privacidade'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/inicio'
     | '/mcp'
+    | '/privacidade'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -384,6 +396,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   InicioRoute: typeof InicioRoute
   McpRoute: typeof McpRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -677,6 +697,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   InicioRoute: InicioRoute,
   McpRoute: McpRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
