@@ -32,6 +32,7 @@ const searchSchema = z.object({
   year: fallback(z.coerce.number().optional(), undefined),
   status: fallback(z.enum(STATUS_VALUES), "todos").default("todos"),
   q: fallback(z.string(), "").default(""),
+  topics: fallback(z.string().optional(), undefined),
 });
 
 export const Route = createFileRoute("/_authenticated/questoes")({

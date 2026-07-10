@@ -2,6 +2,203 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+// ============ Persistência do Plano de Estudos no servidor ============
+// Fonte da verdade: tabela `user_study_plan` (colunas `config` e `cronograma` JSONB).
+// O cliente usa React Query em cima destas server fns; `localStorage` só serve
+// como cache leve de hidratação inicial.
+
+const persistTaskSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  title: z.string(),
+  area: z.string(),
+  type: z.string(),
+  minutes: z.number(),
+  status: z.enum(["pendente", "concluida", "atrasada"]),
+  note: z.string().optional(),
+  aiEnriched: z.boolean().optional(),
+  topicSlug: z.string().optional(),
+  topicArea: z.string().optional(),
+});
+
+const persistPlanSchema = z.object({
+  id: z.string(),
+  createdAt: z.number(),
+  seed: z.number().optional(),
+  config: z.record(z.string(), z.unknown()),
+  tasks: z.array(persistTaskSchema).max(500),
+});
+
+export const saveStudyPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => persistPlanSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_study_plan")
+      .upsert(
+        {
+          user_id: userId,
+          config: data.config as never,
+          cronograma: data as never,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+    if (error) throw new Error(`Falha ao salvar plano: ${error.message}`);
+    return { ok: true };
+  });
+
+export const loadStudyPlan = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("user_study_plan")
+      .select("cronograma, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw new Error(`Falha ao carregar plano: ${error.message}`);
+    return { plan: (data?.cronograma as unknown) ?? null };
+  });
+
+export const clearStudyPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_study_plan")
+      .delete()
+      .eq("user_id", userId);
+    if (error) throw new Error(`Falha ao apagar plano: ${error.message}`);
+    return { ok: true };
+  });
+
+// Marca uma StudyTask como concluída (ou desmarca) dentro do JSONB.
+export const markStudyTaskDone = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        taskId: z.string().optional(),
+        topicSlug: z.string().optional(),
+        date: z.string().optional(),
+        toggle: z.boolean().optional(),
+      })
+      .refine((v) => v.taskId || v.topicSlug, {
+        message: "Informe taskId ou topicSlug",
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await supabase
+      .from("user_study_plan")
+      .select("cronograma")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row?.cronograma) return { ok: false, updated: 0 };
+    const plan = row.cronograma as {
+      tasks: Array<{
+        id: string;
+        date: string;
+        status: string;
+        topicSlug?: string;
+      }>;
+    };
+    let updated = 0;
+    const nextTasks = plan.tasks.map((t) => {
+      const match = data.taskId
+        ? t.id === data.taskId
+        : t.topicSlug === data.topicSlug &&
+          (!data.date || t.date === data.date);
+      if (!match) return t;
+      const wantDone = data.toggle ? t.status !== "concluida" : true;
+      if (t.status === (wantDone ? "concluida" : "pendente")) return t;
+      updated += 1;
+      return { ...t, status: wantDone ? "concluida" : "pendente" };
+    });
+    if (updated === 0) return { ok: true, updated };
+    const nextPlan = { ...plan, tasks: nextTasks };
+    const { error: upErr } = await supabase
+      .from("user_study_plan")
+      .update({ cronograma: nextPlan as never, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    if (upErr) throw new Error(upErr.message);
+    return { ok: true, updated };
+  });
+
+// Retorna as tarefas de hoje agrupadas por tipo, para o Cronograma consumir.
+export const getTodayAgendaTasks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await supabase
+      .from("user_study_plan")
+      .select("cronograma")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const plan = row?.cronograma as
+      | {
+          tasks: Array<{
+            id: string;
+            date: string;
+            title: string;
+            area: string;
+            type: string;
+            minutes: number;
+            status: string;
+            topicSlug?: string;
+            topicArea?: string;
+            note?: string;
+          }>;
+        }
+      | null
+      | undefined;
+    const today = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    })();
+    const todays = (plan?.tasks ?? []).filter((t) => t.date === today);
+    const byType: Record<string, typeof todays> = {};
+    for (const t of todays) {
+      (byType[t.type] ??= []).push(t);
+    }
+    // Video-like types unified: videoaula + teoria (ambos são "estudar o assunto do dia")
+    const videos = [...(byType.videoaula ?? []), ...(byType.teoria ?? [])].filter(
+      (t) => t.topicSlug,
+    );
+    const focusTopicsFor = (types: string[]): string[] => {
+      const s = new Set<string>();
+      types.forEach((k) =>
+        (byType[k] ?? []).forEach((t) => t.topicSlug && s.add(t.topicSlug)),
+      );
+      return Array.from(s);
+    };
+    return {
+      hasPlan: !!plan,
+      date: today,
+      all: todays,
+      byType,
+      videos,
+      focusTopics: {
+        questoes: focusTopicsFor(["questoes", "prova_antiga"]),
+        flashcards: focusTopicsFor(["flashcards", "revisao"]),
+        lousa: focusTopicsFor(["teoria", "videoaula", "questoes"]),
+      },
+      simuladoArea:
+        (byType.simulado ?? []).find((t) => t.area && t.area !== "geral")?.area ??
+        null,
+    };
+  });
+
+// ============ Fim persistência ============
+
 const taskInput = z.object({
   id: z.string(),
   date: z.string(),

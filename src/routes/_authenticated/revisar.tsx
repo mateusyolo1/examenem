@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { AREAS, recordAnswer } from "@/lib/storage";
@@ -21,7 +23,12 @@ import {
 import { subjectIdForQuestion } from "@/lib/subjects";
 import { recordReviewAnswer as recordLearningReview } from "@/lib/learning-progress";
 
+const revisarSearchSchema = z.object({
+  topics: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/_authenticated/revisar")({
+  validateSearch: zodValidator(revisarSearchSchema),
   head: () => ({
     meta: [
       { title: "Revisar erros — Exame ENEM" },

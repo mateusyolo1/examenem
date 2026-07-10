@@ -1,8 +1,16 @@
-// Frontend-only study plan generator + persistence.
-// Motor rico: sementeado (RNG), múltiplos templates por dia da semana,
-// tipos de tarefa variados (mapa mental, flashcards, resumo, prova antiga…)
-// e integração com revisão espaçada (topic_mastery).
-import { useCallback, useEffect, useState } from "react";
+// Study plan generator + persistence.
+// Fonte da verdade: tabela `user_study_plan` no Supabase (server fns em
+// `study-plan.functions.ts`). `localStorage` serve apenas como cache leve
+// para hidratação inicial rápida enquanto o servidor responde.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  saveStudyPlan as saveStudyPlanFn,
+  loadStudyPlan as loadStudyPlanFn,
+  clearStudyPlan as clearStudyPlanFn,
+  markStudyTaskDone as markStudyTaskDoneFn,
+} from "./study-plan.functions";
 import type { Area } from "./storage";
 import { AREAS } from "./storage";
 import { ESSAY_THEMES } from "./essay-themes";
@@ -691,6 +699,28 @@ export function markPlanTaskDone(id: string) {
     ),
   };
   write(next);
+  // sincroniza no servidor (fire-and-forget)
+  markStudyTaskDoneFn({ data: { taskId: id } }).catch(() => {});
+}
+
+// Marca todas as tarefas de hoje que referenciam um tópico como concluídas.
+export function markPlanTaskDoneByTopic(topicSlug: string) {
+  const cur = read();
+  if (!cur) return;
+  const today = todayIso();
+  const matching = cur.tasks.filter(
+    (t) => t.topicSlug === topicSlug && t.date === today && t.status !== "concluida",
+  );
+  if (!matching.length) return;
+  const matchIds = new Set(matching.map((t) => t.id));
+  const next: StudyPlan = {
+    ...cur,
+    tasks: cur.tasks.map((t) =>
+      matchIds.has(t.id) ? { ...t, status: "concluida" as const } : t,
+    ),
+  };
+  write(next);
+  markStudyTaskDoneFn({ data: { topicSlug, date: today } }).catch(() => {});
 }
 
 /** Aplica atualizações de título/nota vindas da camada de IA. */
@@ -717,18 +747,55 @@ export function applyAiEnrichment(
 }
 
 export function useStudyPlan() {
-  const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(() => read());
+  const qc = useQueryClient();
+  const saveFn = useServerFn(saveStudyPlanFn);
+  const loadFn = useServerFn(loadStudyPlanFn);
+  const clearFn = useServerFn(clearStudyPlanFn);
+  const markDoneFn = useServerFn(markStudyTaskDoneFn);
+  const hydratedRef = useRef(false);
 
+  // Hidrata do servidor na montagem. Se houver plano local e nenhum no servidor,
+  // faz uma migração única (upload) e depois limpa o cache local.
   useEffect(() => {
-    setPlan(read());
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await loadFn();
+        const server = (res?.plan ?? null) as StudyPlan | null;
+        if (cancelled) return;
+        if (server) {
+          write(server);
+          setPlan(server);
+          return;
+        }
+        const local = read();
+        if (local) {
+          try {
+            await saveFn({ data: local });
+          } catch {
+            /* mantém local se falhar; nova tentativa na próxima montagem */
+          }
+        }
+      } catch {
+        /* offline: mantém o cache local */
+      }
+    })();
     const h = () => setPlan(read());
     window.addEventListener("exame:study-plan", h);
     window.addEventListener("storage", h);
     return () => {
+      cancelled = true;
       window.removeEventListener("exame:study-plan", h);
       window.removeEventListener("storage", h);
     };
-  }, []);
+  }, [loadFn, saveFn]);
+
+  const invalidateServerViews = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["today-agenda"] });
+  }, [qc]);
 
   const savePlan = useCallback(
     (
@@ -741,15 +808,18 @@ export function useStudyPlan() {
       const merged = mergePriorProgress(generated, prior);
       write(merged);
       setPlan(merged);
+      // dispara persistência no servidor (fire-and-forget com toast em caso de falha)
+      saveFn({ data: merged }).then(invalidateServerViews).catch(() => {});
       return merged;
     },
-    [],
+    [saveFn, invalidateServerViews],
   );
 
   const clearPlan = useCallback(() => {
     write(null);
     setPlan(null);
-  }, []);
+    clearFn().then(invalidateServerViews).catch(() => {});
+  }, [clearFn, invalidateServerViews]);
 
   const updateTask = useCallback(
     (id: string, patch: Partial<StudyTask>) => {
@@ -761,8 +831,9 @@ export function useStudyPlan() {
       };
       write(next);
       setPlan(next);
+      saveFn({ data: next }).then(invalidateServerViews).catch(() => {});
     },
-    [],
+    [saveFn, invalidateServerViews],
   );
 
   const toggleDone = useCallback(
@@ -779,8 +850,12 @@ export function useStudyPlan() {
       };
       write(next);
       setPlan(next);
+      // usa mark server-side (transacional em cima do JSONB)
+      markDoneFn({ data: { taskId: id, toggle: true } })
+        .then(invalidateServerViews)
+        .catch(() => {});
     },
-    [],
+    [markDoneFn, invalidateServerViews],
   );
 
   return { plan, savePlan, clearPlan, updateTask, toggleDone };
