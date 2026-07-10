@@ -21,6 +21,7 @@ import {
   Youtube,
   Lightbulb,
   Trophy,
+  CalendarDays,
   Settings as SettingsIcon,
   MoreHorizontal,
 } from "lucide-react";
