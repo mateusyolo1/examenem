@@ -567,80 +567,132 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       const clean = unique.filter((v) => !isClickbait(v));
       if (clean.length >= 6) unique = clean;
 
-      // 3) SELEÇÃO DIVERSA — pegamos no MÁXIMO 1 vídeo por canal e tentamos
-      // cobrir estilos didáticos diferentes antes de repetir.
-      const STYLE_ORDER: VideoStyle[] = forceRefresh
-        ? shuffleInPlace(["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"])
-        : ["macete", "aula_completa", "exercicio", "resumo", "mapa_mental", "aplicacao"];
+      // ============================================================
+      // FILTRO POTENTE — Camadas 2→6 (léxico, transcrição, IA, reputação, jornada)
+      // ============================================================
+      const {
+        scoreLexicon, fetchTranscriptSample, verifyRelevanceBatch,
+        loadChannelReputation, pickPedagogicalJourney,
+        type FilterCandidate,
+      } = await import("./youtube-filter");
 
-      // Ordena candidatos dentro de cada estilo por "qualidade" heurística:
-      // views (log) + bônus se a duração cair na faixa 6-25 min (ideal p/ estudo).
-      const scoreOf = (v: AiVideoSuggestion) => {
-        const views = Math.log10((v.view_count ?? 0) + 10);
-        const d = v.duration_seconds ?? 0;
-        const durationBonus = d >= 360 && d <= 1500 ? 1.5 : d < 240 || d > 2400 ? -0.5 : 0;
-        return views + durationBonus;
+      const area = (topic.area ?? "linguagens") as
+        "linguagens" | "humanas" | "natureza" | "matematica";
+      const subjectKey = (topic.subject ?? topic.area ?? "geral").toLowerCase();
+
+      // Camada 2 — léxico bidirecional (sem transcrição ainda)
+      let scored: FilterCandidate[] = unique.map((v) => ({
+        ...v,
+        lexicon_score: scoreLexicon({ ...v }, area),
+      }));
+      // Descarta apenas quem é MUITO negativo — não zera nichos
+      const lexKept = scored.filter((c) => (c.lexicon_score ?? 0) > -3);
+      if (lexKept.length >= 6) scored = lexKept;
+
+      // Reduz o batch antes da transcrição para economizar
+      scored.sort((a, b) => (b.lexicon_score ?? 0) - (a.lexicon_score ?? 0));
+      scored = scored.slice(0, 18);
+
+      // Camada 3 — amostragem de transcrição (paralelo, ignora falhas)
+      const withTranscripts = await Promise.all(
+        scored.map(async (c) => ({
+          ...c,
+          transcript_sample: await fetchTranscriptSample(c.youtube_id),
+        })),
+      );
+      // Rescoreia léxico agora que temos texto real
+      for (const c of withTranscripts) {
+        c.lexicon_score = scoreLexicon(c, area);
+      }
+
+      // Camada 4 — IA verificadora em batch (Gemini)
+      const verifyCacheKey = `video-verify:${topic.id}:${withTranscripts
+        .map((c) => c.youtube_id).sort().join(",").slice(0, 200)}`;
+      let verifyMap: Awaited<ReturnType<typeof verifyRelevanceBatch>> | null = null;
+      const { data: verifyCached } = await supabase
+        .from("ai_response_cache")
+        .select("response")
+        .eq("cache_key", verifyCacheKey)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (verifyCached) {
+        try {
+          const raw = (verifyCached.response as unknown as {
+            items: Array<{ id: string; [k: string]: unknown }>;
+          }).items;
+          verifyMap = new Map(raw.map((it) => [it.id, it as never]));
+        } catch { verifyMap = null; }
+      }
+      if (!verifyMap) {
+        verifyMap = await verifyRelevanceBatch(withTranscripts, {
+          topicTitle: topic.title,
+          area,
+          subject: topic.subject,
+        });
+        if (verifyMap.size > 0) {
+          await supabaseAdmin.from("ai_response_cache").upsert(
+            {
+              cache_key: verifyCacheKey,
+              prompt_type: "video-verify",
+              response: JSON.parse(JSON.stringify({
+                items: Array.from(verifyMap.values()),
+              })),
+            },
+            { onConflict: "cache_key" },
+          );
+        }
+      }
+
+      // Aplica veredito da IA
+      let verified: FilterCandidate[] = withTranscripts.map((c) => {
+        const v = verifyMap!.get(c.youtube_id);
+        if (!v) return c; // sem veredito: mantém, mas sem confidence
+        return {
+          ...c,
+          relevant: v.relevant,
+          confidence: v.confidence,
+          subject_detected: v.subject_detected,
+          pedagogical_intent: v.pedagogical_intent,
+          reason: v.reason,
+        };
+      });
+      // Corta: relevant=false, confidence baixa, ou matéria detectada muito
+      // diferente da área do tópico (pega o caso Curió-em-Linguagens).
+      const areaWords: Record<typeof area, string[]> = {
+        linguagens: ["linguagens", "portugues", "literatura", "gramatica", "redacao", "ingles", "espanhol", "arte"],
+        humanas: ["humanas", "historia", "geografia", "filosofia", "sociologia"],
+        natureza: ["natureza", "biologia", "quimica", "fisica"],
+        matematica: ["matematica"],
       };
-      const byStyle = new Map<VideoStyle, AiVideoSuggestion[]>();
-      for (const v of unique) {
-        const s = (v.style ?? classifyStyle(v.title, v.channel_name)) as VideoStyle;
-        const arr = byStyle.get(s) ?? [];
-        arr.push(v);
-        byStyle.set(s, arr);
-      }
-      for (const arr of byStyle.values()) arr.sort((a, b) => scoreOf(b) - scoreOf(a));
+      const areaKeywords = areaWords[area];
+      const isCompatible = (detected: string | undefined) => {
+        if (!detected) return true;
+        const d = detected.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return areaKeywords.some((k) => d.includes(k));
+      };
+      const afterAi = verified.filter((c) => {
+        if (c.relevant === false) return false;
+        if (typeof c.confidence === "number" && c.confidence < 0.55) return false;
+        if (!isCompatible(c.subject_detected)) return false;
+        return true;
+      });
+      if (afterAi.length >= 4) verified = afterAi;
 
-      const seenChannels = new Set<string>();
-      const norm = (c: string) => c.toLowerCase().trim();
-      const picked: AiVideoSuggestion[] = [];
-      let running = 0;
+      // Camada 5 — reputação de canal (decay temporal)
+      const channelList = Array.from(new Set(verified.map((c) => c.channel_name)));
+      const repMap = await loadChannelReputation(supabase, channelList, subjectKey);
+      for (const c of verified) {
+        c.channel_reputation = repMap.get(c.channel_name.toLowerCase().trim()) ?? 0;
+      }
+
+      // Camada 6 — jornada pedagógica (substitui a seleção anterior)
       const TARGET = 6;
+      const picked = pickPedagogicalJourney(verified, TARGET, maxSeconds);
 
-      // Passada 1: no máximo 1 por estilo e 1 por canal.
-      for (const style of STYLE_ORDER) {
-        if (picked.length >= TARGET) break;
-        const bucket = byStyle.get(style) ?? [];
-        for (const v of bucket) {
-          const d = v.duration_seconds ?? 0;
-          if (d > maxSeconds) continue;
-          if (running + d > maxSeconds) continue;
-          const ch = norm(v.channel_name);
-          if (ch && seenChannels.has(ch)) continue;
-          picked.push(v);
-          if (ch) seenChannels.add(ch);
-          running += d;
-          break;
-        }
-      }
-
-      // Passada 2: completa até TARGET permitindo repetir estilo mas ainda
-      // sem repetir canal.
-      if (picked.length < TARGET) {
-        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
-        for (const v of flat) {
-          if (picked.length >= TARGET) break;
-          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
-          const d = v.duration_seconds ?? 0;
-          if (d > maxSeconds) continue;
-          if (running + d > maxSeconds) continue;
-          const ch = norm(v.channel_name);
-          if (ch && seenChannels.has(ch)) continue;
-          picked.push(v);
-          if (ch) seenChannels.add(ch);
-          running += d;
-        }
-      }
-
-      // Passada 3 (fallback): se ainda faltar, ignora restrição de canal.
-      if (picked.length < 3) {
-        const flat = [...unique].sort((a, b) => scoreOf(b) - scoreOf(a));
-        for (const v of flat) {
-          if (picked.length >= TARGET) break;
-          if (picked.some((p) => p.youtube_id === v.youtube_id)) continue;
-          const d = v.duration_seconds ?? 0;
-          if (d > maxSeconds) continue;
-          picked.push(v);
-          running += d;
+      // Registra hits em background para os aprovados (só os que a IA verificou)
+      for (const p of picked) {
+        if (p.relevant === true) {
+          void recordChannelSignal(supabaseAdmin, p.channel_name, subjectKey, "hit");
         }
       }
 
