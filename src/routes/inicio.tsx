@@ -62,6 +62,18 @@ export const Route = createFileRoute("/inicio")({
 function LandingPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [examOpen, setExamOpen] = useState(false);
+  const [selectedExam, setSelectedExam] = useState("ENEM");
+
+  const exams: { id: string; label: string; date: string }[] = [
+    { id: "ENEM", label: "ENEM 2026", date: "8 e 15 de novembro" },
+    { id: "FUVEST", label: "FUVEST 2027", date: "1ª fase · 23 de novembro" },
+    { id: "UNICAMP", label: "UNICAMP 2027", date: "1ª fase · 8 de novembro" },
+    { id: "UERJ", label: "UERJ 2027", date: "1º exame · 20 de setembro" },
+    { id: "UnB", label: "PAS UnB 2026", date: "1ª etapa · 29 de novembro" },
+    { id: "ITA", label: "ITA 2027", date: "Provas · 26 a 29 de outubro" },
+  ];
+  const currentExam = exams.find((e) => e.id === selectedExam) ?? exams[0];
 
   useEffect(() => {
     let mounted = true;
