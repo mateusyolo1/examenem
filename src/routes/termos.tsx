@@ -226,7 +226,7 @@ export function LegalShell({
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-8">
           {title}
         </h1>
-        <div className="prose prose-neutral dark:prose-invert max-w-none prose-headings:mt-8 prose-headings:mb-3 prose-headings:font-bold prose-h2:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-li:text-muted-foreground prose-a:text-primary prose-a:underline">
+        <div className="max-w-none text-[15px] leading-relaxed text-muted-foreground space-y-4 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h2]:mt-10 [&_h2]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_a]:text-primary [&_a]:underline [&_strong]:text-foreground">
           {children}
         </div>
       </article>
