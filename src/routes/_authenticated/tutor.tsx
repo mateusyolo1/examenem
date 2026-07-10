@@ -34,6 +34,16 @@ type Mode =
 
 const HISTORY_KEY = "exame:tutor:history:v2";
 
+const TUTOR_HINTS: HintDef[] = [
+  {
+    key: "tutor.lousa.v1",
+    targetSelector: '[data-hint="tutor.lousa"]',
+    title: "Lousa Interativa",
+    description:
+      "Abre a Lousa: pratique lendo, ouvindo, escrevendo e ensinando. Quadro branco ou negro com fontes de giz e lápis.",
+  },
+];
+
 export const Route = createFileRoute("/_authenticated/tutor")({
   head: () => ({
     meta: [
