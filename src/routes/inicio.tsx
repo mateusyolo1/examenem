@@ -280,7 +280,7 @@ function LandingPage() {
                     <Star key={i} size={13} fill="currentColor" strokeWidth={0} />
                   ))}
                 </div>
-                <span className="font-mono">5/5 · +2.000 estudantes</span>
+                <span className="font-mono">4.6/5 · +2.000 estudantes</span>
               </div>
             </div>
 
@@ -449,7 +449,7 @@ function LandingPage() {
                 { icon: Award, title: "Matriz oficial do ENEM", desc: "Cobertura das 120 habilidades das 4 áreas do conhecimento." },
                 { icon: Shield, title: "Correção TRI real", desc: "Simulados corrigidos com o mesmo modelo estatístico do INEP." },
                 { icon: Users, title: "+2.000 estudantes", desc: "Uma comunidade de vestibulandos ativa em todo o Brasil." },
-                { icon: Star, title: "5/5 em avaliação", desc: "Média de satisfação em pesquisas mensais com nossos alunos." },
+                { icon: Star, title: "4.6/5 em avaliação", desc: "Média de satisfação em pesquisas mensais com nossos alunos." },
               ].map((p) => (
                 <div key={p.title} className="p-5 bg-background border border-border rounded-xl">
                   <p.icon size={22} className="text-primary mb-3" />
@@ -688,7 +688,7 @@ function LandingPage() {
                 </div>
               </div>
               <div>
-                <div className="text-3xl font-extrabold tracking-tighter">5/5</div>
+                <div className="text-3xl font-extrabold tracking-tighter">4.6/5</div>
                 <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground mt-1">
                   Nota de satisfação
                 </div>
