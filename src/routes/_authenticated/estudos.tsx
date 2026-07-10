@@ -361,9 +361,11 @@ function EstudosPage() {
         </div>
       </main>
       <Footer />
+      <HintCoach hints={ESTUDOS_HINTS} />
     </div>
   );
 }
+
 
 
 function MiniWeekCalendar() {
