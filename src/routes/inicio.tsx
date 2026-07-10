@@ -32,6 +32,9 @@ import heroImage from "@/assets/landing-hero.jpg";
 import aboutImage from "@/assets/landing-about.jpg";
 import methodImage from "@/assets/landing-method.jpg";
 import studentImage from "@/assets/landing-student.jpg";
+import avatarAna from "@/assets/avatar-ana.jpg";
+import avatarLucas from "@/assets/avatar-lucas.jpg";
+import avatarJulia from "@/assets/avatar-julia.jpg";
 
 export const Route = createFileRoute("/inicio")({
   ssr: false,
@@ -176,6 +179,7 @@ function LandingPage() {
       course: "Medicina · UFMG",
       score: "820",
       metric: "Nota redação",
+      avatar: avatarAna,
       quote:
         "Segui o cronograma à risca por 6 meses. A correção de redação por IA me deu o feedback que eu nunca tive em cursinho tradicional.",
     },
@@ -184,6 +188,7 @@ function LandingPage() {
       course: "Direito · USP",
       score: "940",
       metric: "Redação",
+      avatar: avatarLucas,
       quote:
         "O que mudou o jogo foi o simulado com TRI. Eu chegava na prova real sabendo exatamente qual era a minha nota provável.",
     },
@@ -192,6 +197,7 @@ function LandingPage() {
       course: "Engenharia · UNICAMP",
       score: "780",
       metric: "Média geral",
+      avatar: avatarJulia,
       quote:
         "Estudei 4 meses focada no que realmente caía. O tutor 24h tirou dúvida às 2h da manhã na véspera da prova.",
     },
@@ -558,10 +564,20 @@ function LandingPage() {
                   <blockquote className="text-foreground leading-relaxed flex-1">
                     "{c.quote}"
                   </blockquote>
-                  <footer className="mt-6 pt-4 border-t border-border">
-                    <div className="font-bold text-sm tracking-tight">{c.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
-                      {c.course}
+                  <footer className="mt-6 pt-4 border-t border-border flex items-center gap-3">
+                    <img
+                      src={c.avatar}
+                      alt={c.name}
+                      loading="lazy"
+                      width={44}
+                      height={44}
+                      className="w-11 h-11 rounded-full object-cover border border-border shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-sm tracking-tight">{c.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
+                        {c.course}
+                      </div>
                     </div>
                   </footer>
                 </article>
