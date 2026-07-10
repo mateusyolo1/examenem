@@ -725,18 +725,55 @@ export function applyAiEnrichment(
 }
 
 export function useStudyPlan() {
-  const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(() => read());
+  const qc = useQueryClient();
+  const saveFn = useServerFn(saveStudyPlanFn);
+  const loadFn = useServerFn(loadStudyPlanFn);
+  const clearFn = useServerFn(clearStudyPlanFn);
+  const markDoneFn = useServerFn(markStudyTaskDoneFn);
+  const hydratedRef = useRef(false);
 
+  // Hidrata do servidor na montagem. Se houver plano local e nenhum no servidor,
+  // faz uma migração única (upload) e depois limpa o cache local.
   useEffect(() => {
-    setPlan(read());
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await loadFn();
+        const server = (res?.plan ?? null) as StudyPlan | null;
+        if (cancelled) return;
+        if (server) {
+          write(server, { local: true, broadcast: true });
+          setPlan(server);
+          return;
+        }
+        const local = read();
+        if (local) {
+          try {
+            await saveFn({ data: local });
+          } catch {
+            /* mantém local se falhar; nova tentativa na próxima montagem */
+          }
+        }
+      } catch {
+        /* offline: mantém o cache local */
+      }
+    })();
     const h = () => setPlan(read());
     window.addEventListener("exame:study-plan", h);
     window.addEventListener("storage", h);
     return () => {
+      cancelled = true;
       window.removeEventListener("exame:study-plan", h);
       window.removeEventListener("storage", h);
     };
-  }, []);
+  }, [loadFn, saveFn]);
+
+  const invalidateServerViews = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ["today-agenda"] });
+  }, [qc]);
 
   const savePlan = useCallback(
     (
@@ -747,17 +784,20 @@ export function useStudyPlan() {
       const prior = read();
       const generated = generatePlan(cfg, catalog, mastery);
       const merged = mergePriorProgress(generated, prior);
-      write(merged);
+      write(merged, { local: true, broadcast: true });
       setPlan(merged);
+      // dispara persistência no servidor (fire-and-forget com toast em caso de falha)
+      saveFn({ data: merged }).then(invalidateServerViews).catch(() => {});
       return merged;
     },
-    [],
+    [saveFn, invalidateServerViews],
   );
 
   const clearPlan = useCallback(() => {
-    write(null);
+    write(null, { local: true, broadcast: true });
     setPlan(null);
-  }, []);
+    clearFn().then(invalidateServerViews).catch(() => {});
+  }, [clearFn, invalidateServerViews]);
 
   const updateTask = useCallback(
     (id: string, patch: Partial<StudyTask>) => {
@@ -767,10 +807,11 @@ export function useStudyPlan() {
         ...cur,
         tasks: cur.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
       };
-      write(next);
+      write(next, { local: true, broadcast: true });
       setPlan(next);
+      saveFn({ data: next }).then(invalidateServerViews).catch(() => {});
     },
-    [],
+    [saveFn, invalidateServerViews],
   );
 
   const toggleDone = useCallback(
@@ -785,10 +826,14 @@ export function useStudyPlan() {
             : t,
         ),
       };
-      write(next);
+      write(next, { local: true, broadcast: true });
       setPlan(next);
+      // usa mark server-side (transacional em cima do JSONB)
+      markDoneFn({ data: { taskId: id, toggle: true } })
+        .then(invalidateServerViews)
+        .catch(() => {});
     },
-    [],
+    [markDoneFn, invalidateServerViews],
   );
 
   return { plan, savePlan, clearPlan, updateTask, toggleDone };
