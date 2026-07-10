@@ -903,6 +903,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
             <Link
               to="/aula/$topicId"
               params={{ topicId: topic.id }}
+              data-hint="estudos.iniciar-aula"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
             >
               <GraduationCap size={14} />
@@ -914,6 +915,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
               <button
                 onClick={() => suggestMutation.mutate(true)}
                 disabled={busy}
+                data-hint="estudos.trocar-sugestoes"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
                 title="Buscar vídeos diferentes"
               >
@@ -923,6 +925,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
               <button
                 onClick={() => setClearConfirmOpen(true)}
                 disabled={clearMutation.isPending}
+                data-hint="estudos.limpar-lista"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
               >
                 <Trash2 size={14} />
@@ -935,12 +938,14 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
             <button
               onClick={() => suggestMutation.mutate(false)}
               disabled={busy}
+              data-hint="estudos.sugerir-ia"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors disabled:opacity-50"
             >
               <Sparkles size={14} />
               {busy ? "Buscando…" : "Sugerir com IA"}
             </button>
           )}
+
         </div>
 
       </div>
