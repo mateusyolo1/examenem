@@ -76,19 +76,31 @@ function LandingPage() {
             </a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              to="/auth"
-              className="hidden sm:inline-flex items-center px-3 py-2 text-sm font-medium text-foreground hover:bg-accent rounded-md transition-colors"
-            >
-              Entrar
-            </Link>
-            <Link
-              to="/auth"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
-            >
-              Criar conta
-              <ArrowRight size={14} />
-            </Link>
+            {signedIn ? (
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
+              >
+                Ir para o app
+                <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/auth"
+                  className="hidden sm:inline-flex items-center px-3 py-2 text-sm font-medium text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-foreground text-background rounded-md hover:opacity-90 transition-opacity"
+                >
+                  Criar conta
+                  <ArrowRight size={14} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
