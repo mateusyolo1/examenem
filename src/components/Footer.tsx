@@ -1,4 +1,5 @@
 import { DonateButton } from "./DonateButton";
+import { TutorialTrigger } from "./Tutorial";
 
 export function Footer() {
   return (
@@ -12,9 +13,11 @@ export function Footer() {
         <div className="flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest">
           <span className="text-muted-foreground">Sem cadastro</span>
           <span className="text-muted-foreground">100% offline-first</span>
+          <TutorialTrigger />
           <DonateButton />
         </div>
       </div>
     </footer>
   );
 }
+
