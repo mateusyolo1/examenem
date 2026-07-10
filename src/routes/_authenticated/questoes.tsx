@@ -29,10 +29,10 @@ const searchSchema = z.object({
   materia: fallback(z.string(), "todas").default("todas"),
   topico: fallback(z.string(), "todos").default("todos"),
   dif: fallback(z.enum(DIFF_VALUES), "todas").default("todas"),
-  year: fallback(z.coerce.number().optional(), undefined),
+  year: z.coerce.number().optional().catch(undefined),
   status: fallback(z.enum(STATUS_VALUES), "todos").default("todos"),
   q: fallback(z.string(), "").default(""),
-  topics: fallback(z.string().optional(), undefined),
+  topics: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_authenticated/questoes")({
