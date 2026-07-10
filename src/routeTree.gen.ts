@@ -33,6 +33,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedCronogramaLousaActivityIdRouteImport } from './routes/_authenticated/cronograma.lousa.$activityId'
 import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_authenticated/aula.$topicId.pratica'
 
@@ -161,6 +162,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedCronogramaLousaActivityIdRoute =
   AuthenticatedCronogramaLousaActivityIdRouteImport.update({
     id: '/lousa/$activityId',
@@ -200,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -227,6 +235,7 @@ export interface FileRoutesByTo {
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -256,6 +265,7 @@ export interface FileRoutesById {
   '/_authenticated/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
   '/_authenticated/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/_authenticated/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/aula/$topicId'
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/aula/$topicId'
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/_authenticated'
@@ -340,6 +352,7 @@ export interface FileRouteTypes {
     | '/_authenticated/aula/$topicId'
     | '/_authenticated/aula/$topicId/pratica'
     | '/_authenticated/cronograma/lousa/$activityId'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -350,6 +363,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -522,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/cronograma/lousa/$activityId': {
       id: '/_authenticated/cronograma/lousa/$activityId'
       path: '/lousa/$activityId'
@@ -620,6 +641,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

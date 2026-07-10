@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAiAccess } from "@/lib/ai-access.middleware";
 import { z } from "zod";
 
 const input = z.object({
@@ -24,7 +24,7 @@ export interface EssayPlan {
 }
 
 export const generateEssayPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAiAccess])
   .inputValidator((data: unknown) => input.parse(data))
   .handler(async ({ data }) => {
     const { generateText } = await import("ai");
