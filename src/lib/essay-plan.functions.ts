@@ -25,7 +25,7 @@ export interface EssayPlan {
 }
 
 export const generateEssayPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAiAccess])
   .inputValidator((data: unknown) => input.parse(data))
   .handler(async ({ data }) => {
     const { generateText } = await import("ai");

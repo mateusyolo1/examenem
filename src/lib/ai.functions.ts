@@ -152,7 +152,7 @@ export type TutorToolResult =
     };
 
 export const askTutor = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAiAccess])
   .inputValidator((data: unknown) => tutorInput.parse(data))
   .handler(async ({ data, context }) => {
     const { generateText, tool, stepCountIs } = await import("ai");
@@ -405,7 +405,7 @@ export interface EssayFeedback {
 }
 
 export const correctEssay = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAiAccess])
   .inputValidator((data: unknown) => essayInput.parse(data))
   .handler(async ({ data }) => {
     const { generateText } = await import("ai");
