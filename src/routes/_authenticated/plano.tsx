@@ -227,6 +227,7 @@ function Plano() {
         <PlanForm
           initial={plan?.config}
           defaultExamDate={progress.examDate}
+          defaultExamId={progress.examId}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
             savePlan(
@@ -349,11 +350,13 @@ function Shell({
 function PlanForm({
   initial,
   defaultExamDate,
+  defaultExamId,
   onSubmit,
   onCancel,
 }: {
   initial?: StudyPlanConfig;
   defaultExamDate: string;
+  defaultExamId?: string;
   onSubmit: (cfg: StudyPlanConfig) => void;
   onCancel?: () => void;
 }) {
@@ -362,7 +365,7 @@ function PlanForm({
       ? isoDateInput(new Date(initial.examDate))
       : isoDateInput(new Date(defaultExamDate)),
   );
-  const [examId, setExamId] = useState<string>(initial?.examId ?? DEFAULT_EXAM_ID);
+  const [examId, setExamId] = useState<string>(initial?.examId ?? defaultExamId ?? DEFAULT_EXAM_ID);
   const [hoursPerDay, setHoursPerDay] = useState<number>(initial?.hoursPerDay ?? 2);
   const [weekdays, setWeekdays] = useState<number[]>(
     initial?.weekdays ?? [1, 2, 3, 4, 5, 6],
@@ -748,6 +751,7 @@ function PlanView({
       return enrichFn({
         data: {
           focus: plan.config.focus,
+          examName: plan.config.examName || getExamOption(plan.config.examId).label,
           hoursPerDay: plan.config.hoursPerDay,
           targetScore: plan.config.targetScore,
           hardAreas: plan.config.hardAreas,
