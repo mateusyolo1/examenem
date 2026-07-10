@@ -455,9 +455,11 @@ function Cronograma() {
         )}
       </main>
       <Footer />
+      <HintCoach hints={CRONOGRAMA_HINTS} />
     </div>
   );
 }
+
 
 function QuickPressureForm({
   onSubmit,
