@@ -318,7 +318,7 @@ interface AiVideoSuggestion {
   // filter metadata (from youtube-filter pipeline)
   relevance_confidence?: number;
   relevance_reason?: string;
-  pedagogical_intent?: string;
+  pedagogical_intent?: "introducao" | "teoria" | "exercicios" | "aplicacao" | "revisao";
   subject_detected?: string;
   lexicon_score?: number;
   confidence?: number;
