@@ -14,6 +14,18 @@ import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
 import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
 import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
+
+const DASHBOARD_HINTS: HintDef[] = [
+  {
+    key: "dashboard.recommend.v1",
+    targetSelector: '[data-hint="dashboard.recommend"]',
+    title: "Recomendação do dia",
+    description:
+      "Este é o botão da sua próxima ação recomendada. Ele te leva direto para treinar a área que mais precisa de atenção agora.",
+  },
+];
+
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
