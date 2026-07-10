@@ -169,12 +169,14 @@ function Cronograma() {
             </div>
             <Link
               to="/plano"
+              data-hint="cronograma.agenda"
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
             >
               <CalendarDays size={18} />
               Ir para a Agenda
               <ArrowRight size={16} />
             </Link>
+
           </section>
         ) : isLoading || !data ? (
           <div className="flex items-center gap-2 text-muted-foreground">
