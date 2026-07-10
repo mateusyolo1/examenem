@@ -142,7 +142,8 @@ export function HintCoach({ hints }: HintCoachProps) {
   }, [hints, seen]);
 
   const current = pending[0] ?? null;
-  const rect = useTargetRect(current?.targetSelector ?? null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const frameReady = useTargetTracker(current?.targetSelector ?? null, frameRef);
   const total = pending.length;
 
   if (!mounted || !tutorialDone || !current) return null;
@@ -161,19 +162,14 @@ export function HintCoach({ hints }: HintCoachProps) {
       aria-live="polite"
       className="pointer-events-none fixed inset-0 z-[1000]"
     >
-      {rect ? (
-        <div
-          className="hint-scan-frame absolute"
-          style={{
-            top: rect.top - 6,
-            left: rect.left - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
-          }}
-        >
-          <span className="hint-scan-line" />
-        </div>
-      ) : null}
+      <div
+        ref={frameRef}
+        className="hint-scan-frame fixed top-0 left-0 will-change-transform"
+        style={{ opacity: frameReady ? 1 : 0 }}
+      >
+        <span className="hint-scan-line" />
+      </div>
+
 
       <div className="pointer-events-auto absolute top-4 right-4 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="flex items-start justify-between gap-2 mb-2">
