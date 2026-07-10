@@ -472,6 +472,7 @@ function Tutor() {
         </div>
       </main>
       <Footer />
+      <HintCoach hints={TUTOR_HINTS} />
     </div>
   );
 }
