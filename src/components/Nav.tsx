@@ -178,13 +178,13 @@ export function Nav() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
-          <div>
+          <div data-tour="nav-primary">
             <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Estudo
             </div>
             <div className="space-y-0.5">{PRIMARY.map((l) => renderLink(l))}</div>
           </div>
-          <div>
+          <div data-tour="nav-secondary">
             <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Mais
             </div>
