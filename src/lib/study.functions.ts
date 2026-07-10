@@ -572,7 +572,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       // ============================================================
       const {
         scoreLexicon, fetchTranscriptSample, verifyRelevanceBatch,
-        loadChannelReputation, pickPedagogicalJourney,
+        loadChannelReputation, pickPedagogicalJourney, recordChannelSignal,
       } = await import("./youtube-filter");
       type FilterCandidate = import("./youtube-filter").FilterCandidate;
 
