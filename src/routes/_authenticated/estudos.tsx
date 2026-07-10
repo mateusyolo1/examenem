@@ -29,6 +29,53 @@ import { Youtube, ChevronRight, ExternalLink, Search, Plus, Trash2, X, Sparkles,
 import { toast } from "sonner";
 import { useProgress } from "@/lib/storage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
+
+const ESTUDOS_HINTS: HintDef[] = [
+  {
+    key: "estudos.tabs.v1",
+    targetSelector: '[data-hint="estudos.tabs"]',
+    title: "Formatos de estudo",
+    description:
+      "Alterne entre Vídeos, Mapas mentais, Notas, Flashcards e Resumos. Cada aba mostra o conteúdo do assunto escolhido naquele formato.",
+  },
+  {
+    key: "estudos.subjects.v1",
+    targetSelector: '[data-hint="estudos.subjects"]',
+    title: "Escolha a área",
+    description:
+      "Selecione Linguagens, Humanas, Natureza ou Matemática para ver os assuntos e abrir o conteúdo daquele tema.",
+  },
+  {
+    key: "estudos.iniciar-aula.v1",
+    targetSelector: '[data-hint="estudos.iniciar-aula"]',
+    title: "Iniciar aula",
+    description:
+      "Monta uma aula guiada com os vídeos sugeridos, na ordem certa, para você estudar sem perder tempo escolhendo.",
+  },
+  {
+    key: "estudos.trocar-sugestoes.v1",
+    targetSelector: '[data-hint="estudos.trocar-sugestoes"]',
+    title: "Trocar sugestões",
+    description:
+      "Busca outros vídeos para este assunto quando os atuais não te agradaram — mantém sua lista sempre fresca.",
+  },
+  {
+    key: "estudos.limpar-lista.v1",
+    targetSelector: '[data-hint="estudos.limpar-lista"]',
+    title: "Limpar lista",
+    description:
+      "Remove todas as sugestões atuais. Os vídeos limpos não voltam a ser recomendados para este assunto.",
+  },
+  {
+    key: "estudos.sugerir-ia.v1",
+    targetSelector: '[data-hint="estudos.sugerir-ia"]',
+    title: "Sugerir com IA",
+    description:
+      "Gera recomendações de vídeo pensadas pra esse assunto. Use quando a lista estiver vazia para começar do zero.",
+  },
+];
+
 
 const StudyHubPanels = import.meta.env.SSR
   ? null
