@@ -134,12 +134,33 @@ export function HintCoach({ hints }: HintCoachProps) {
     },
   });
 
-  // Pending queue: not-yet-seen hints, in order.
+  // Track which hint targets are currently present in the DOM. Only surface
+  // hints whose target actually exists on the current screen — the rest wait
+  // until the user navigates or opens the UI that renders them.
+  const [availableKeys, setAvailableKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!mounted || !tutorialDone) return;
+    const check = () => {
+      const next = new Set<string>();
+      for (const h of hints) {
+        if (document.querySelector(h.targetSelector)) next.add(h.key);
+      }
+      setAvailableKeys((prev) => {
+        if (prev.size === next.size && [...prev].every((k) => next.has(k))) return prev;
+        return next;
+      });
+    };
+    check();
+    const id = window.setInterval(check, 500);
+    return () => window.clearInterval(id);
+  }, [hints, mounted, tutorialDone]);
+
+  // Pending queue: not-yet-seen hints whose target is currently on-screen.
   const pending = useMemo(() => {
     if (!seen) return [];
     const set = new Set(seen);
-    return hints.filter((h) => !set.has(h.key));
-  }, [hints, seen]);
+    return hints.filter((h) => !set.has(h.key) && availableKeys.has(h.key));
+  }, [hints, seen, availableKeys]);
 
   const current = pending[0] ?? null;
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -153,8 +174,19 @@ export function HintCoach({ hints }: HintCoachProps) {
   };
 
   const handleSkipAll = () => {
-    // Mark all pending as seen so they don't come back.
-    pending.forEach((h) => mark.mutate(h.key));
+    // Mark every configured hint as seen (not just currently-visible pending ones)
+    // so nothing comes back later on another screen. Update cache optimistically
+    // so the UI hides immediately even if the network call is slow.
+    const allKeys = hints.map((h) => h.key);
+    qc.setQueryData<string[]>(["hints", "seen"], (prev) =>
+      Array.from(new Set([...(prev ?? []), ...allKeys])),
+    );
+    const seenSet = new Set(seen ?? []);
+    for (const key of allKeys) {
+      if (!seenSet.has(key)) {
+        markFn({ data: { key } }).catch(() => {});
+      }
+    }
   };
 
   return createPortal(
