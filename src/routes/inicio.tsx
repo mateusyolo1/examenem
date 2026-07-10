@@ -528,12 +528,12 @@ function LandingPage() {
 
           <div className="grid lg:grid-cols-[280px_1fr] gap-6 lg:gap-12">
             {/* Tabs list */}
-            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible -mx-4 px-4 lg:mx-0 lg:px-0 pb-2 lg:pb-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-col gap-2">
               {tabs.map((t, i) => (
                 <button
                   key={t.key}
                   onClick={() => setActiveTab(i)}
-                  className={`text-left px-4 py-4 rounded-xl border transition-all shrink-0 lg:shrink w-[220px] lg:w-full ${
+                  className={`text-left px-4 py-4 rounded-xl border transition-all w-full ${
                     activeTab === i
                       ? "bg-foreground text-background border-foreground"
                       : "bg-card border-border text-foreground hover:border-foreground/40"
