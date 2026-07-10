@@ -462,9 +462,11 @@ function Dashboard() {
       </main>
 
       <Footer />
+      <HintCoach hints={DASHBOARD_HINTS} />
     </div>
   );
 }
+
 
 function Stat({
   label,
