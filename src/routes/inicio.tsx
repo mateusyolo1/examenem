@@ -29,6 +29,9 @@ import {
   Zap,
 } from "lucide-react";
 import heroImage from "@/assets/landing-hero.jpg";
+import aboutImage from "@/assets/landing-about.jpg";
+import methodImage from "@/assets/landing-method.jpg";
+import studentImage from "@/assets/landing-student.jpg";
 
 export const Route = createFileRoute("/inicio")({
   ssr: false,
