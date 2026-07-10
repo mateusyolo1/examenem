@@ -342,6 +342,11 @@ function Cronograma() {
                             <div className="flex gap-2">
                               <Link
                                 to="/questoes"
+                                search={
+                                  todayAgenda?.focusTopics.questoes.length
+                                    ? { topics: todayAgenda.focusTopics.questoes.join(",") }
+                                    : undefined
+                                }
                                 className="px-4 py-2 rounded-lg border border-border text-xs font-bold uppercase tracking-widest hover:border-foreground transition-all inline-flex items-center gap-2"
                               >
                                 Iniciar treino
@@ -352,6 +357,48 @@ function Cronograma() {
                                 }
                                 total={currentPressure.questions}
                               />
+                            </div>
+                          ) : a.kind === "flashcards" ? (
+                            <div className="flex gap-2">
+                              <Link
+                                to="/revisar"
+                                search={
+                                  todayAgenda?.focusTopics.flashcards.length
+                                    ? { topics: todayAgenda.focusTopics.flashcards.join(",") }
+                                    : undefined
+                                }
+                                className="px-4 py-2 rounded-lg border border-border text-xs font-bold uppercase tracking-widest hover:border-foreground transition-all"
+                              >
+                                Iniciar
+                              </Link>
+                              <button
+                                onClick={() => markDoneMut.mutate(a.id)}
+                                disabled={markDoneMut.isPending}
+                                className="px-4 py-2 rounded-lg bg-foreground text-background text-xs font-bold uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-50"
+                              >
+                                Marcar feito
+                              </button>
+                            </div>
+                          ) : a.kind === "simulado" ? (
+                            <div className="flex gap-2">
+                              <Link
+                                to="/simulados-reais"
+                                search={
+                                  todayAgenda?.simuladoArea
+                                    ? { area: todayAgenda.simuladoArea }
+                                    : undefined
+                                }
+                                className="px-4 py-2 rounded-lg border border-border text-xs font-bold uppercase tracking-widest hover:border-foreground transition-all"
+                              >
+                                Iniciar
+                              </Link>
+                              <button
+                                onClick={() => markDoneMut.mutate(a.id)}
+                                disabled={markDoneMut.isPending}
+                                className="px-4 py-2 rounded-lg bg-foreground text-background text-xs font-bold uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-50"
+                              >
+                                Marcar feito
+                              </button>
                             </div>
                           ) : (
                             <div className="flex gap-2">
@@ -370,6 +417,12 @@ function Cronograma() {
                               >
                                 Marcar feito
                               </button>
+                            </div>
+                          )}
+
+                          {a.kind === "videos" && !done && !locked && (
+                            <div className="w-full">
+                              <TodayVideosList />
                             </div>
                           )}
                         </div>
