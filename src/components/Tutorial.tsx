@@ -185,7 +185,8 @@ export function Tutorial({ open, onOpenChange }: TutorialProps) {
     if (!open) return;
     const token = ++cancelRef.current;
     setReady(false);
-    setRect(null);
+    // Keep previous rect visible while we resolve the next target — avoids
+    // a flash where the tooltip centers before jumping to the new element.
 
     let cancelled = false;
     const run = async () => {
@@ -194,7 +195,10 @@ export function Tutorial({ open, onOpenChange }: TutorialProps) {
       }
       const selector = resolveSelector(current.target, isMobile);
       if (!selector) {
-        if (token === cancelRef.current && !cancelled) setReady(true);
+        if (token === cancelRef.current && !cancelled) {
+          setRect(null);
+          setReady(true);
+        }
         return;
       }
       const el = await waitForElement(selector);
@@ -202,10 +206,12 @@ export function Tutorial({ open, onOpenChange }: TutorialProps) {
       if (el) {
         el.scrollIntoView({ block: "center", behavior: "smooth" });
         // small delay to let scroll settle
-        await new Promise((r) => setTimeout(r, 250));
+        await new Promise((r) => setTimeout(r, 280));
         if (cancelled || token !== cancelRef.current) return;
         const r = el.getBoundingClientRect();
         setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      } else {
+        setRect(null);
       }
       setReady(true);
     };
