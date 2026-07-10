@@ -170,6 +170,17 @@
   animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.25); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.15); }
+}
+
+@utility animate-heartbeat {
+  animation: heartbeat 1.2s ease-in-out infinite;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
