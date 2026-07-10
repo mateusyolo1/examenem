@@ -425,6 +425,20 @@ function LandingPage() {
               </p>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2 relative rounded-xl overflow-hidden border border-border aspect-[16/7]">
+                <img
+                  src={methodImage}
+                  alt="Mesa de estudos organizada com laptop, caderno e materiais"
+                  loading="lazy"
+                  width={1024}
+                  height={1024}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/70 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-foreground">
+                  <Shield size={14} className="text-primary" /> Método validado pela matriz do INEP
+                </div>
+              </div>
               {[
                 { icon: Award, title: "Matriz oficial do ENEM", desc: "Cobertura das 120 habilidades das 4 áreas do conhecimento." },
                 { icon: Shield, title: "Correção TRI real", desc: "Simulados corrigidos com o mesmo modelo estatístico do INEP." },
