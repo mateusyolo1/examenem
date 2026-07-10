@@ -12,6 +12,7 @@ import {
   PenLine,
   Play,
   Sparkles,
+  ThumbsDown,
   X,
 } from "lucide-react";
 
@@ -42,6 +43,7 @@ import {
   markVideoWatched,
   recordTopicMastery,
   suggestVideosForTopic,
+  reportIrrelevantVideo,
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
@@ -903,43 +905,77 @@ function WatchingView({
             const unlocked = i === 0 || watched.has(i - 1) || watched.has(i);
             return (
               <li key={v.id}>
-                <button
-                  onClick={() => unlocked && onSelect(i)}
-                  disabled={!unlocked}
-                  className={
-                    "w-full text-left flex items-center gap-3 px-3 py-2 rounded border transition-colors " +
-                    (i === current
-                      ? "border-primary bg-primary/5"
-                      : unlocked
-                        ? "border-border hover:bg-accent"
-                        : "border-border opacity-50 cursor-not-allowed")
-                  }
-                >
-                  <span
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => unlocked && onSelect(i)}
+                    disabled={!unlocked}
                     className={
-                      "shrink-0 w-6 h-6 rounded-full grid place-items-center text-[10px] font-mono " +
-                      (watched.has(i)
-                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                        : "bg-muted text-muted-foreground")
+                      "flex-1 text-left flex items-center gap-3 px-3 py-2 rounded border transition-colors " +
+                      (i === current
+                        ? "border-primary bg-primary/5"
+                        : unlocked
+                          ? "border-border hover:bg-accent"
+                          : "border-border opacity-50 cursor-not-allowed")
                     }
                   >
-                    {watched.has(i) ? (
-                      <Check size={12} />
-                    ) : unlocked ? (
-                      i + 1
-                    ) : (
-                      <Lock size={10} />
-                    )}
-                  </span>
-                  <span className="text-sm truncate">{v.title ?? `Vídeo ${i + 1}`}</span>
-                  {i === current && <Play size={12} className="ml-auto shrink-0" />}
-                </button>
+                    <span
+                      className={
+                        "shrink-0 w-6 h-6 rounded-full grid place-items-center text-[10px] font-mono " +
+                        (watched.has(i)
+                          ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                          : "bg-muted text-muted-foreground")
+                      }
+                    >
+                      {watched.has(i) ? (
+                        <Check size={12} />
+                      ) : unlocked ? (
+                        i + 1
+                      ) : (
+                        <Lock size={10} />
+                      )}
+                    </span>
+                    <span className="text-sm truncate">{v.title ?? `Vídeo ${i + 1}`}</span>
+                    {i === current && <Play size={12} className="ml-auto shrink-0" />}
+                  </button>
+                  <ReportVideoButton videoId={v.id} />
+                </div>
               </li>
             );
           })}
         </ol>
       </div>
     </div>
+  );
+}
+
+function ReportVideoButton({ videoId }: { videoId: string }) {
+  const params = Route.useParams();
+  const router = useRouter();
+  const reportFn = useServerFn(reportIrrelevantVideo);
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      title="Este vídeo não é do tópico"
+      aria-label="Reportar vídeo fora do tópico"
+      disabled={busy}
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (!confirm("Este vídeo não é do tópico? Ele será removido e o canal perderá reputação nesta matéria.")) return;
+        setBusy(true);
+        try {
+          await reportFn({ data: { topicId: params.topicId, videoId } });
+          toast.success("Obrigado! Vídeo removido do tópico.");
+          router.invalidate();
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Falha ao reportar");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="shrink-0 p-2 rounded border border-border text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors disabled:opacity-40"
+    >
+      <ThumbsDown size={12} />
+    </button>
   );
 }
 

@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_subject_signal: {
+        Row: {
+          channel_name: string
+          created_at: string
+          hits: number
+          id: string
+          last_hit_at: string | null
+          last_miss_at: string | null
+          misses: number
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          channel_name: string
+          created_at?: string
+          hits?: number
+          id?: string
+          last_hit_at?: string | null
+          last_miss_at?: string | null
+          misses?: number
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          channel_name?: string
+          created_at?: string
+          hits?: number
+          id?: string
+          last_hit_at?: string | null
+          last_miss_at?: string | null
+          misses?: number
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enem_exams: {
         Row: {
           created_at: string
@@ -704,8 +740,13 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
+          lexicon_score: number | null
+          pedagogical_intent: string | null
+          relevance_confidence: number | null
+          relevance_reason: string | null
           sort_order: number
           source: string
+          subject_detected: string | null
           suggested_at: string | null
           thumbnail_url: string | null
           title: string
@@ -719,8 +760,13 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          lexicon_score?: number | null
+          pedagogical_intent?: string | null
+          relevance_confidence?: number | null
+          relevance_reason?: string | null
           sort_order?: number
           source?: string
+          subject_detected?: string | null
           suggested_at?: string | null
           thumbnail_url?: string | null
           title: string
@@ -734,8 +780,13 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          lexicon_score?: number | null
+          pedagogical_intent?: string | null
+          relevance_confidence?: number | null
+          relevance_reason?: string | null
           sort_order?: number
           source?: string
+          subject_detected?: string | null
           suggested_at?: string | null
           thumbnail_url?: string | null
           title?: string
