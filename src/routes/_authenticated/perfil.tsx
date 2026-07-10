@@ -61,7 +61,14 @@ function PerfilPage() {
     setMinutes(progress.dailyMinutes ?? 120);
     setExamId(progress.examId ?? DEFAULT_EXAM_ID);
     setExam(progress.examDate.slice(0, 10));
-  }, [progress.studentName, progress.dailyGoal, progress.targetScore, progress.dailyMinutes, progress.examDate]);
+  }, [
+    progress.studentName,
+    progress.dailyGoal,
+    progress.targetScore,
+    progress.dailyMinutes,
+    progress.examId,
+    progress.examDate,
+  ]);
 
   const stats = useMemo(() => {
     const answers = Object.values(progress.answers);
