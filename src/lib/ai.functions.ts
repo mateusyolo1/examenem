@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAiAccess } from "@/lib/ai-access.middleware";
 import { z } from "zod";
 
 const tutorInput = z.object({
