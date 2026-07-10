@@ -835,29 +835,33 @@ export const clearSuggestionHistory = createServerFn({ method: "POST" })
   });
 
 // ============================================================
-// Clear AI-suggested videos for a topic (also clears cache)
+// Clear AI-suggested videos for a topic (per-user only).
+// SECURITY: previously deleted shared study_videos + ai_response_cache
+// rows via supabaseAdmin, which let any authenticated user wipe content
+// visible to everyone. Now this only clears the CURRENT user's
+// suggestion history so their next fetch re-ranks fresh suggestions,
+// without touching shared data.
 // ============================================================
 export const clearSuggestedVideos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ topicId: z.string().uuid() }).parse(data))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: delErr } = await supabaseAdmin
-      .from("study_videos")
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("user_video_suggestion_history")
       .delete()
-      .eq("topic_id", data.topicId)
-      .eq("source", "ai");
-    if (delErr) throw new Error(delErr.message);
-    await supabaseAdmin
-      .from("ai_response_cache")
-      .delete()
-      .like("cache_key", `video-suggestions:${data.topicId}%`);
+      .eq("user_id", userId)
+      .eq("topic_id", data.topicId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 // ============================================================
-// Report irrelevant video: usuário marca vídeo como fora do tópico.
-// Remove do tópico e incrementa "miss" na reputação do canal para a matéria.
+// Report irrelevant video: user flags a video as off-topic.
+// SECURITY: previously deleted the shared study_videos row and cache
+// entries via supabaseAdmin, letting any authenticated user remove
+// curated content for everyone. Now this only records the channel
+// signal (aggregated across users) — shared rows are never deleted.
 // ============================================================
 export const reportIrrelevantVideo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -872,7 +876,6 @@ export const reportIrrelevantVideo = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { recordChannelSignal } = await import("./youtube-filter");
 
-    // Descobre canal + matéria antes de apagar
     const [{ data: video }, { data: topic }] = await Promise.all([
       supabase
         .from("study_videos")
@@ -891,20 +894,9 @@ export const reportIrrelevantVideo = createServerFn({ method: "POST" })
       await recordChannelSignal(supabaseAdmin, video.channel_name, subjectKey, "miss");
     }
 
-    // Remove do tópico e invalida cache para a próxima busca não trazer ele
-    await supabaseAdmin
-      .from("study_videos")
-      .delete()
-      .eq("id", data.videoId)
-      .eq("topic_id", data.topicId);
-
-    await supabaseAdmin
-      .from("ai_response_cache")
-      .delete()
-      .like("cache_key", `video-verify:${data.topicId}%`);
-
     return { ok: true };
   });
+
 
 // ============================================================
 // Lesson Mode: playlist + quiz generated from real transcripts
