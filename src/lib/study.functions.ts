@@ -765,6 +765,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         source: "ai" as const,
         sort_order: 100 + i,
         suggested_at: new Date().toISOString(),
+        relevance_confidence: s.confidence ?? null,
+        relevance_reason: s.reason ?? null,
+        pedagogical_intent: s.pedagogical_intent ?? null,
+        subject_detected: s.subject_detected ?? null,
+        lexicon_score: s.lexicon_score ?? null,
       }));
       await supabaseAdmin
         .from("study_videos")
