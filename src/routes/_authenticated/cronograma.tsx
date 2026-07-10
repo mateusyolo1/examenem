@@ -58,6 +58,7 @@ const ACT_META: Record<
 function Cronograma() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { plan } = useStudyPlan();
   const ensureFn = useServerFn(ensureTodayPlan);
   const getFn = useServerFn(getTodayPlan);
   const markDoneFn = useServerFn(markSimpleActivityDone);
