@@ -14,6 +14,18 @@ import { QUESTION_AREA_MAP, QUESTIONS } from "@/lib/questions-data";
 import { useReviews } from "@/lib/review";
 import { useStudyPlan, topTaskFor, typeLabel, areaLabel } from "@/lib/study-plan";
 import { ACHIEVEMENTS, computeXP, levelFor } from "@/lib/gamification";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
+
+const DASHBOARD_HINTS: HintDef[] = [
+  {
+    key: "dashboard.recommend.v1",
+    targetSelector: '[data-hint="dashboard.recommend"]',
+    title: "Recomendação do dia",
+    description:
+      "Este é o botão da sua próxima ação recomendada. Ele te leva direto para treinar a área que mais precisa de atenção agora.",
+  },
+];
+
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -337,10 +349,12 @@ function Dashboard() {
             <Link
               to="/questoes"
               search={{ area: reco.id as Area }}
+              data-hint="dashboard.recommend"
               className="bg-primary text-primary-foreground px-6 py-3 font-bold text-xs uppercase tracking-widest hover:bg-background hover:text-foreground transition-colors whitespace-nowrap"
             >
               Treinar {reco.short} →
             </Link>
+
           </div>
 
           <Action
@@ -448,9 +462,11 @@ function Dashboard() {
       </main>
 
       <Footer />
+      <HintCoach hints={DASHBOARD_HINTS} />
     </div>
   );
 }
+
 
 function Stat({
   label,

@@ -210,3 +210,50 @@
     border-radius: 4px;
   }
 }
+
+/* ============================================================
+ * HintCoach — scanning-outline overlay around a highlighted button
+ * ============================================================ */
+@keyframes hint-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px var(--color-primary),
+      0 0 0 6px color-mix(in oklab, var(--color-primary) 25%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--color-primary),
+      0 0 0 10px color-mix(in oklab, var(--color-primary) 10%, transparent);
+  }
+}
+
+@keyframes hint-scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.hint-scan-frame {
+  border-radius: 10px;
+  pointer-events: none;
+  animation: hint-pulse 1.6s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.hint-scan-line {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklab, var(--color-primary) 40%, transparent) 45%,
+    var(--color-primary) 50%,
+    color-mix(in oklab, var(--color-primary) 40%, transparent) 55%,
+    transparent 100%
+  );
+  animation: hint-scan 1.8s linear infinite;
+  mix-blend-mode: screen;
+}
+

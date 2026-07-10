@@ -924,6 +924,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_hints_seen: {
+        Row: {
+          hint_key: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          hint_key: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          hint_key?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           settings: Json
