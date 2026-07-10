@@ -362,6 +362,7 @@ function Shell({
         {children}
       </main>
       <Footer />
+      <HintCoach hints={PLANO_HINTS} />
     </div>
   );
 }
