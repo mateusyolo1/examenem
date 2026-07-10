@@ -12,6 +12,7 @@ import {
   PenLine,
   Play,
   Sparkles,
+  ThumbsDown,
   X,
 } from "lucide-react";
 
