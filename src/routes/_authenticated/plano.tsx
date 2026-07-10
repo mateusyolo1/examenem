@@ -169,6 +169,23 @@ const TYPE_STYLES: Record<
   },
 };
 
+const PLANO_HINTS: HintDef[] = [
+  {
+    key: "plano.cronograma.v1",
+    targetSelector: '[data-hint="plano.cronograma"]',
+    title: "Cronograma inteligente de hoje",
+    description:
+      "Abre o cronograma do dia com vídeos, treino sob pressão, flashcards, simulado e lousa — tudo adaptado ao seu nível.",
+  },
+  {
+    key: "plano.variacao.v1",
+    targetSelector: '[data-hint="plano.variacao"]',
+    title: "Variação semanal",
+    description:
+      "Escolha o quanto o cronograma muda de uma semana para outra: Baixa (rotina previsível), Média (equilíbrio) ou Alta (novos formatos toda semana).",
+  },
+];
+
 function Plano() {
   const { plan, savePlan, clearPlan, toggleDone } = useStudyPlan();
   const { progress } = useProgress();
