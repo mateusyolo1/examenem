@@ -31,6 +31,18 @@ import {
   PRESSURE_LEVELS,
   type ActivityKind,
 } from "@/lib/cronograma.functions";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
+
+const CRONOGRAMA_HINTS: HintDef[] = [
+  {
+    key: "cronograma.agenda.v1",
+    targetSelector: '[data-hint="cronograma.agenda"]',
+    title: "Monte sua Agenda primeiro",
+    description:
+      "O Cronograma só carrega tarefas depois que você configura o plano de estudos na Agenda. Este botão te leva lá para escolher foco, horas e metas.",
+  },
+];
+
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
   head: () => ({
