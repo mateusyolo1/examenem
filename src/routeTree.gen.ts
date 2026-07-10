@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as ReembolsoRouteImport } from './routes/reembolso'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as InicioRouteImport } from './routes/inicio'
@@ -43,6 +44,11 @@ import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_a
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReembolsoRoute = ReembolsoRouteImport.update({
+  id: '/reembolso',
+  path: '/reembolso',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/inicio': typeof InicioRoute
   '/mcp': typeof McpRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/reembolso': typeof ReembolsoRoute
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -302,6 +311,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/mcp'
     | '/privacidade'
+    | '/reembolso'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/mcp'
     | '/privacidade'
+    | '/reembolso'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/mcp'
     | '/privacidade'
+    | '/reembolso'
     | '/termos'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   InicioRoute: typeof InicioRoute
   McpRoute: typeof McpRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  ReembolsoRoute: typeof ReembolsoRoute
   TermosRoute: typeof TermosRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reembolso': {
+      id: '/reembolso'
+      path: '/reembolso'
+      fullPath: '/reembolso'
+      preLoaderRoute: typeof ReembolsoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -698,6 +718,7 @@ const rootRouteChildren: RootRouteChildren = {
   InicioRoute: InicioRoute,
   McpRoute: McpRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  ReembolsoRoute: ReembolsoRoute,
   TermosRoute: TermosRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
