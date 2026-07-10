@@ -123,7 +123,7 @@ export const markStudyTaskDone = createServerFn({ method: "POST" })
     const nextPlan = { ...plan, tasks: nextTasks };
     const { error: upErr } = await supabase
       .from("user_study_plan")
-      .update({ cronograma: nextPlan, updated_at: new Date().toISOString() })
+      .update({ cronograma: nextPlan as never, updated_at: new Date().toISOString() })
       .eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
     return { ok: true, updated };
