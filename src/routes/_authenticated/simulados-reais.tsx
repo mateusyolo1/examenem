@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { RefreshCw, Play, Clock, Trophy } from "lucide-react";
 
 const simuladosSearchSchema = z.object({
-  area: fallback(z.string().optional(), undefined),
+  area: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/_authenticated/simulados-reais")({
