@@ -81,26 +81,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Painel do Aluno — Exame ENEM" },
+      { title: "Exame ENEM" },
       {
         name: "description",
         content:
           "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro.",
       },
-      { property: "og:title", content: "Painel do Aluno — Exame ENEM" },
+      { property: "og:title", content: "Exame ENEM" },
       {
         property: "og:description",
         content:
-          "Banco de questões, simulados, redação e tutor IA. Progresso salvo no seu navegador, sem login.",
+          "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Painel do Aluno — Exame ENEM" },
-      { name: "description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
-      { property: "og:description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
-      { name: "twitter:description", content: "Painel de controle do estudante: streak, meta diária, acertos, progresso por área e próximas ações de estudo para o ENEM." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1351a9af-2d6d-454e-9eba-735622021cda" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1351a9af-2d6d-454e-9eba-735622021cda" },
+      { name: "twitter:title", content: "Exame ENEM" },
+      { name: "description", content: "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro." },
+      { property: "og:description", content: "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro." },
+      { name: "twitter:description", content: "App brutalista para estudar para o ENEM: banco de questões, simulados cronometrados, correção de redação por IA e tutor IA. Sem cadastro." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c2d05e61-2492-4787-b573-8c1c6d87f313" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/c2d05e61-2492-4787-b573-8c1c6d87f313" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
