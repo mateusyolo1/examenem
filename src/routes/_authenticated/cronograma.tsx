@@ -19,6 +19,8 @@ import {
 import { useStudyPlan } from "@/lib/study-plan";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { TodayVideosList } from "@/components/cronograma/TodayVideosList";
+import { getTodayAgendaTasks } from "@/lib/study-plan.functions";
 import {
   ensureTodayPlan,
   getTodayPlan,
