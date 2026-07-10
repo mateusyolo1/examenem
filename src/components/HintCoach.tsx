@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -35,61 +35,78 @@ function useTutorialDone(): boolean {
   return done;
 }
 
-function useTargetRect(selector: string | null): DOMRect | null {
-  const [rect, setRect] = useState<DOMRect | null>(null);
+function useTargetTracker(
+  selector: string | null,
+  frameRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!selector) {
-      setRect(null);
-      return;
-    }
+    setReady(false);
+    if (!selector) return;
+
     let cancelled = false;
     let el: Element | null = null;
     let ro: ResizeObserver | null = null;
+    let rafId = 0;
+    let pending = false;
 
-    const update = () => {
+    const apply = () => {
+      pending = false;
       if (!el || cancelled) return;
-      setRect(el.getBoundingClientRect());
+      const frame = frameRef.current;
+      if (!frame) return;
+      const r = el.getBoundingClientRect();
+      // Use transform + width/height for GPU-accelerated positioning.
+      frame.style.transform = `translate3d(${r.left - 6}px, ${r.top - 6}px, 0)`;
+      frame.style.width = `${r.width + 12}px`;
+      frame.style.height = `${r.height + 12}px`;
+      if (!ready) setReady(true);
+    };
+
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      rafId = requestAnimationFrame(apply);
     };
 
     const find = () => {
       const found = document.querySelector(selector);
       if (found) {
         el = found;
-        update();
-        ro = new ResizeObserver(update);
+        apply();
+        ro = new ResizeObserver(schedule);
         ro.observe(el);
-        window.addEventListener("scroll", update, true);
-        window.addEventListener("resize", update);
+        window.addEventListener("scroll", schedule, { passive: true, capture: true });
+        window.addEventListener("resize", schedule, { passive: true });
         return true;
       }
       return false;
     };
 
+    let pollId = 0;
     if (!find()) {
-      // Poll until it appears (max ~10s)
       let attempts = 0;
-      const id = window.setInterval(() => {
+      pollId = window.setInterval(() => {
         attempts++;
         if (find() || attempts > 40 || cancelled) {
-          window.clearInterval(id);
+          window.clearInterval(pollId);
         }
       }, 250);
-      return () => {
-        cancelled = true;
-        window.clearInterval(id);
-      };
     }
 
     return () => {
       cancelled = true;
+      if (pollId) window.clearInterval(pollId);
+      if (rafId) cancelAnimationFrame(rafId);
       if (ro) ro.disconnect();
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selector]);
 
-  return rect;
+  return ready;
 }
 
 export function HintCoach({ hints }: HintCoachProps) {
@@ -125,7 +142,8 @@ export function HintCoach({ hints }: HintCoachProps) {
   }, [hints, seen]);
 
   const current = pending[0] ?? null;
-  const rect = useTargetRect(current?.targetSelector ?? null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const frameReady = useTargetTracker(current?.targetSelector ?? null, frameRef);
   const total = pending.length;
 
   if (!mounted || !tutorialDone || !current) return null;
@@ -144,19 +162,14 @@ export function HintCoach({ hints }: HintCoachProps) {
       aria-live="polite"
       className="pointer-events-none fixed inset-0 z-[1000]"
     >
-      {rect ? (
-        <div
-          className="hint-scan-frame absolute"
-          style={{
-            top: rect.top - 6,
-            left: rect.left - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
-          }}
-        >
-          <span className="hint-scan-line" />
-        </div>
-      ) : null}
+      <div
+        ref={frameRef}
+        className="hint-scan-frame fixed top-0 left-0 will-change-transform"
+        style={{ opacity: frameReady ? 1 : 0 }}
+      >
+        <span className="hint-scan-line" />
+      </div>
+
 
       <div className="pointer-events-auto absolute top-4 right-4 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
         <div className="flex items-start justify-between gap-2 mb-2">
