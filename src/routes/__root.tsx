@@ -47,13 +47,24 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+      <div className="max-w-xl w-full text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        {error?.message ? (
+          <details className="mt-4 text-left border border-border rounded-md bg-muted/40">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              Detalhes técnicos
+            </summary>
+            <pre className="px-3 pb-3 pt-1 text-[11px] leading-relaxed text-foreground overflow-auto max-h-64 whitespace-pre-wrap break-all">
+              {error.message}
+              {error.stack ? "\n\n" + error.stack.split("\n").slice(0, 8).join("\n") : ""}
+            </pre>
+          </details>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -75,6 +86,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     </div>
   );
 }
+
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
