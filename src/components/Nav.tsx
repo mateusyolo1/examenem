@@ -227,6 +227,7 @@ export function Nav() {
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-label="Mais opções"
+              data-tour="nav-more-mobile"
               className={
                 "w-full flex flex-col items-center justify-center gap-0.5 min-h-14 py-2 text-[10px] font-medium transition-colors " +
                 (moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground")
