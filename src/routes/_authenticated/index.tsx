@@ -337,10 +337,12 @@ function Dashboard() {
             <Link
               to="/questoes"
               search={{ area: reco.id as Area }}
+              data-hint="dashboard.recommend"
               className="bg-primary text-primary-foreground px-6 py-3 font-bold text-xs uppercase tracking-widest hover:bg-background hover:text-foreground transition-colors whitespace-nowrap"
             >
               Treinar {reco.short} →
             </Link>
+
           </div>
 
           <Action
