@@ -35,61 +35,78 @@ function useTutorialDone(): boolean {
   return done;
 }
 
-function useTargetRect(selector: string | null): DOMRect | null {
-  const [rect, setRect] = useState<DOMRect | null>(null);
+function useTargetTracker(
+  selector: string | null,
+  frameRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!selector) {
-      setRect(null);
-      return;
-    }
+    setReady(false);
+    if (!selector) return;
+
     let cancelled = false;
     let el: Element | null = null;
     let ro: ResizeObserver | null = null;
+    let rafId = 0;
+    let pending = false;
 
-    const update = () => {
+    const apply = () => {
+      pending = false;
       if (!el || cancelled) return;
-      setRect(el.getBoundingClientRect());
+      const frame = frameRef.current;
+      if (!frame) return;
+      const r = el.getBoundingClientRect();
+      // Use transform + width/height for GPU-accelerated positioning.
+      frame.style.transform = `translate3d(${r.left - 6}px, ${r.top - 6}px, 0)`;
+      frame.style.width = `${r.width + 12}px`;
+      frame.style.height = `${r.height + 12}px`;
+      if (!ready) setReady(true);
+    };
+
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      rafId = requestAnimationFrame(apply);
     };
 
     const find = () => {
       const found = document.querySelector(selector);
       if (found) {
         el = found;
-        update();
-        ro = new ResizeObserver(update);
+        apply();
+        ro = new ResizeObserver(schedule);
         ro.observe(el);
-        window.addEventListener("scroll", update, true);
-        window.addEventListener("resize", update);
+        window.addEventListener("scroll", schedule, { passive: true, capture: true });
+        window.addEventListener("resize", schedule, { passive: true });
         return true;
       }
       return false;
     };
 
+    let pollId = 0;
     if (!find()) {
-      // Poll until it appears (max ~10s)
       let attempts = 0;
-      const id = window.setInterval(() => {
+      pollId = window.setInterval(() => {
         attempts++;
         if (find() || attempts > 40 || cancelled) {
-          window.clearInterval(id);
+          window.clearInterval(pollId);
         }
       }, 250);
-      return () => {
-        cancelled = true;
-        window.clearInterval(id);
-      };
     }
 
     return () => {
       cancelled = true;
+      if (pollId) window.clearInterval(pollId);
+      if (rafId) cancelAnimationFrame(rafId);
       if (ro) ro.disconnect();
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selector]);
 
-  return rect;
+  return ready;
 }
 
 export function HintCoach({ hints }: HintCoachProps) {
