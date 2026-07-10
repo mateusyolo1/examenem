@@ -14,7 +14,9 @@ import {
   Loader2,
   ArrowRight,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
+import { useStudyPlan } from "@/lib/study-plan";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import {
