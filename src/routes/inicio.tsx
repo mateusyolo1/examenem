@@ -216,9 +216,8 @@ function LandingPage() {
       {/* ============ NAVBAR ============ */}
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <Link to="/inicio" className="flex items-center gap-2 font-extrabold text-2xl tracking-tighter uppercase shrink-0">
-            <GraduationCap size={22} className="text-primary" />
-            Exame.
+          <Link to="/inicio" className="font-black text-2xl tracking-tighter uppercase shrink-0">
+            Exame<sup className="text-xs font-black">®</sup>
           </Link>
           <nav className="hidden lg:flex items-center gap-7 text-sm text-muted-foreground">
             <a href="#recursos" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
@@ -818,9 +817,8 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 mb-12">
             <div className="max-w-sm">
-              <div className="flex items-center gap-2 font-extrabold text-2xl tracking-tighter uppercase mb-4">
-                <GraduationCap size={22} className="text-primary" />
-                Exame.
+              <div className="font-black text-2xl tracking-tighter uppercase mb-4">
+                Exame<sup className="text-xs font-black">®</sup>
               </div>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 A Exame impulsiona a preparação sustentável para o ENEM de estudantes dedicados e
