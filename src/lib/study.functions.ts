@@ -315,6 +315,17 @@ interface AiVideoSuggestion {
   duration_seconds: number | null;
   view_count?: number | null;
   style?: VideoStyle;
+  // filter metadata (from youtube-filter pipeline)
+  relevance_confidence?: number;
+  relevance_reason?: string;
+  pedagogical_intent?: string;
+  subject_detected?: string;
+  lexicon_score?: number;
+  confidence?: number;
+  reason?: string;
+  transcript_sample?: string;
+  channel_reputation?: number;
+  relevant?: boolean;
 }
 
 // Estilos didáticos que queremos GARANTIR na lista final (diversidade).
