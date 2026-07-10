@@ -745,7 +745,7 @@ export function useStudyPlan() {
         const server = (res?.plan ?? null) as StudyPlan | null;
         if (cancelled) return;
         if (server) {
-          write(server, { local: true, broadcast: true });
+          write(server);
           setPlan(server);
           return;
         }
@@ -784,7 +784,7 @@ export function useStudyPlan() {
       const prior = read();
       const generated = generatePlan(cfg, catalog, mastery);
       const merged = mergePriorProgress(generated, prior);
-      write(merged, { local: true, broadcast: true });
+      write(merged);
       setPlan(merged);
       // dispara persistência no servidor (fire-and-forget com toast em caso de falha)
       saveFn({ data: merged }).then(invalidateServerViews).catch(() => {});
@@ -794,7 +794,7 @@ export function useStudyPlan() {
   );
 
   const clearPlan = useCallback(() => {
-    write(null, { local: true, broadcast: true });
+    write(null);
     setPlan(null);
     clearFn().then(invalidateServerViews).catch(() => {});
   }, [clearFn, invalidateServerViews]);
@@ -807,7 +807,7 @@ export function useStudyPlan() {
         ...cur,
         tasks: cur.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
       };
-      write(next, { local: true, broadcast: true });
+      write(next);
       setPlan(next);
       saveFn({ data: next }).then(invalidateServerViews).catch(() => {});
     },
@@ -826,7 +826,7 @@ export function useStudyPlan() {
             : t,
         ),
       };
-      write(next, { local: true, broadcast: true });
+      write(next);
       setPlan(next);
       // usa mark server-side (transacional em cima do JSONB)
       markDoneFn({ data: { taskId: id, toggle: true } })
