@@ -281,9 +281,42 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
           <div className="space-y-8">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-semibold uppercase tracking-widest">
-                <Sparkles size={12} />
-                ENEM 2026 · Matrículas abertas
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setExamOpen((v) => !v)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-semibold uppercase tracking-widest hover:bg-primary/15 transition-colors"
+                >
+                  <Sparkles size={12} />
+                  {currentExam.label} · {currentExam.date}
+                  <ChevronDown size={12} className={`transition-transform ${examOpen ? "rotate-180" : ""}`} />
+                </button>
+                {examOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setExamOpen(false)} />
+                    <div className="absolute left-0 top-full mt-2 z-40 min-w-[260px] bg-background border border-border rounded-xl shadow-lg overflow-hidden">
+                      <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground border-b border-border">
+                        Estudar para
+                      </div>
+                      {exams.map((e) => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedExam(e.id);
+                            setExamOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2.5 text-xs hover:bg-secondary transition-colors flex items-center justify-between gap-3 ${
+                            selectedExam === e.id ? "bg-secondary" : ""
+                          }`}
+                        >
+                          <span className="font-semibold uppercase tracking-wider">{e.label}</span>
+                          <span className="text-muted-foreground font-mono">{e.date}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-0.5 text-primary">
