@@ -29,6 +29,9 @@ import {
   Zap,
 } from "lucide-react";
 import heroImage from "@/assets/landing-hero.jpg";
+import aboutImage from "@/assets/landing-about.jpg";
+import methodImage from "@/assets/landing-method.jpg";
+import studentImage from "@/assets/landing-student.jpg";
 
 export const Route = createFileRoute("/inicio")({
   ssr: false,
@@ -422,6 +425,20 @@ function LandingPage() {
               </p>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2 relative rounded-xl overflow-hidden border border-border aspect-[16/7]">
+                <img
+                  src={methodImage}
+                  alt="Mesa de estudos organizada com laptop, caderno e materiais"
+                  loading="lazy"
+                  width={1024}
+                  height={1024}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/70 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-foreground">
+                  <Shield size={14} className="text-primary" /> Método validado pela matriz do INEP
+                </div>
+              </div>
               {[
                 { icon: Award, title: "Matriz oficial do ENEM", desc: "Cobertura das 120 habilidades das 4 áreas do conhecimento." },
                 { icon: Shield, title: "Correção TRI real", desc: "Simulados corrigidos com o mesmo modelo estatístico do INEP." },
@@ -508,26 +525,48 @@ function LandingPage() {
             </a>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            {cases.map((c) => (
-              <article key={c.name} className="p-6 bg-background border border-border rounded-2xl flex flex-col">
-                <div className="flex items-baseline gap-2 mb-6">
-                  <div className="text-4xl font-extrabold tracking-tighter text-primary">{c.score}</div>
-                  <div className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-                    {c.metric}
-                  </div>
+          <div className="grid lg:grid-cols-[1fr_2fr] gap-4">
+            <div className="relative rounded-2xl overflow-hidden border border-border min-h-[320px] lg:min-h-0">
+              <img
+                src={studentImage}
+                alt="Estudante aprovada em universidade pública"
+                loading="lazy"
+                width={1024}
+                height={1024}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-background">
+                <div className="text-[11px] font-mono uppercase tracking-widest text-background/70 mb-2">
+                  Aprovada · Turma 2025
                 </div>
-                <blockquote className="text-foreground leading-relaxed flex-1">
-                  "{c.quote}"
-                </blockquote>
-                <footer className="mt-6 pt-4 border-t border-border">
-                  <div className="font-bold text-sm tracking-tight">{c.name}</div>
-                  <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
-                    {c.course}
+                <div className="text-2xl font-extrabold tracking-tighter leading-tight">
+                  "Cheguei na prova sabendo exatamente qual seria minha nota."
+                </div>
+                <div className="text-sm text-background/80 mt-2">Beatriz L. · Medicina · UFRJ</div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {cases.map((c) => (
+                <article key={c.name} className="p-6 bg-background border border-border rounded-2xl flex flex-col">
+                  <div className="flex items-baseline gap-2 mb-6">
+                    <div className="text-4xl font-extrabold tracking-tighter text-primary">{c.score}</div>
+                    <div className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+                      {c.metric}
+                    </div>
                   </div>
-                </footer>
-              </article>
-            ))}
+                  <blockquote className="text-foreground leading-relaxed flex-1">
+                    "{c.quote}"
+                  </blockquote>
+                  <footer className="mt-6 pt-4 border-t border-border">
+                    <div className="font-bold text-sm tracking-tight">{c.name}</div>
+                    <div className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-0.5">
+                      {c.course}
+                    </div>
+                  </footer>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -643,8 +682,11 @@ function LandingPage() {
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-bl from-primary/20 to-transparent rounded-2xl blur-2xl" aria-hidden />
             <img
-              src={heroImage}
-              alt="Equipe Exame trabalhando na plataforma"
+              src={aboutImage}
+              alt="Estudantes brasileiros estudando juntos em biblioteca universitária"
+              loading="lazy"
+              width={1024}
+              height={1024}
               className="relative rounded-2xl border border-border shadow-xl w-full h-auto object-cover aspect-[5/4]"
             />
           </div>
