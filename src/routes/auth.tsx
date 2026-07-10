@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -121,6 +121,18 @@ function AuthPage() {
         <div className="text-center text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
           Sem cadastro por email · Somente Google
         </div>
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          <Link to="/inicio" className="hover:text-foreground">Sobre</Link>
+          <span className="opacity-30">·</span>
+          <Link to="/precos" className="hover:text-foreground">Preços</Link>
+          <span className="opacity-30">·</span>
+          <Link to="/termos" className="hover:text-foreground">Termos</Link>
+          <span className="opacity-30">·</span>
+          <Link to="/privacidade" className="hover:text-foreground">Privacidade</Link>
+          <span className="opacity-30">·</span>
+          <Link to="/reembolso" className="hover:text-foreground">Reembolso</Link>
+        </nav>
       </div>
     </main>
   );
