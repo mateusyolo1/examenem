@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
+import { HintCoach, type HintDef } from "@/components/HintCoach";
 import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
