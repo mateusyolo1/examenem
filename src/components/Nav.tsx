@@ -21,6 +21,7 @@ import {
   Youtube,
   Lightbulb,
   Trophy,
+  CalendarDays,
   Settings as SettingsIcon,
   MoreHorizontal,
 } from "lucide-react";
@@ -34,7 +35,6 @@ type NavItem = {
 
 const PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
-  { to: "/plano", label: "Plano de Estudos", shortLabel: "Plano", icon: Calendar },
   { to: "/cronograma", label: "Cronograma", shortLabel: "Hoje", icon: Calendar },
   { to: "/estudos", label: "Hub de Estudos", shortLabel: "Estudar", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
@@ -46,6 +46,7 @@ const PRIMARY: NavItem[] = [
 ];
 
 const SECONDARY: NavItem[] = [
+  { to: "/plano", label: "Agenda", icon: CalendarDays },
   { to: "/materias", label: "Matérias", icon: BookOpen },
   { to: "/temas", label: "Temas", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },

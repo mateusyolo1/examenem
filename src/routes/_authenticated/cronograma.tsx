@@ -14,7 +14,9 @@ import {
   Loader2,
   ArrowRight,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
+import { useStudyPlan } from "@/lib/study-plan";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import {
@@ -56,6 +58,7 @@ const ACT_META: Record<
 function Cronograma() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { plan } = useStudyPlan();
   const ensureFn = useServerFn(ensureTodayPlan);
   const getFn = useServerFn(getTodayPlan);
   const markDoneFn = useServerFn(markSimpleActivityDone);
@@ -141,7 +144,29 @@ function Cronograma() {
           </p>
         </header>
 
-        {isLoading || !data ? (
+        {!plan ? (
+          <section className="border-2 border-dashed border-border rounded-2xl bg-card px-6 py-14 md:py-20 text-center flex flex-col items-center gap-5">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/10 text-primary">
+              <Lock size={28} />
+            </div>
+            <div className="max-w-lg space-y-2">
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">
+                Você ainda não tem uma Agenda montada.
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                O Cronograma só destrava depois que você gera seu plano de estudos na Agenda. Escolha seu foco, suas horas e suas metas — o resto vem pronto.
+              </p>
+            </div>
+            <Link
+              to="/plano"
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 transition-opacity"
+            >
+              <CalendarDays size={18} />
+              Ir para a Agenda
+              <ArrowRight size={16} />
+            </Link>
+          </section>
+        ) : isLoading || !data ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="animate-spin" size={16} /> Carregando plano de hoje…
           </div>
