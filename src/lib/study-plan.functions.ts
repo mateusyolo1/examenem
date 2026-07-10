@@ -39,8 +39,8 @@ export const saveStudyPlan = createServerFn({ method: "POST" })
       .upsert(
         {
           user_id: userId,
-          config: data.config,
-          cronograma: data,
+          config: data.config as never,
+          cronograma: data as never,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" },
