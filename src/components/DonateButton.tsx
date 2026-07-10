@@ -86,7 +86,7 @@ export function DonateButton() {
         style={{ opacity: dimmed ? 0.2 : 1 }}
         className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-opacity duration-300 hover:text-foreground"
       >
-        <Heart className="h-3 w-3 animate-pulse fill-current text-rose-500" />
+        <Heart className="h-3 w-3 animate-heartbeat fill-current text-rose-500" />
         {withinThanks ? "Obrigado!" : "Donate"}
       </button>
 
