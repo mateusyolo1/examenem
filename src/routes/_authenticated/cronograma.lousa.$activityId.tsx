@@ -44,6 +44,8 @@ function LousaHomework() {
   const alreadyDone = data?.activity.status === "done";
   const alreadyFailed = data?.activity.status === "failed";
 
+  const [reviewSlugs, setReviewSlugs] = useState<string[]>([]);
+
   const submitMut = useMutation({
     mutationFn: () =>
       submitFn({
@@ -64,6 +66,7 @@ function LousaHomework() {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
       } else {
         toast.error(`Reprovou: ${r.correctCount}/${r.total} (${r.pct}%). Geramos uma Lousa de reforço.`);
+        setReviewSlugs(r.reviewTopicSlugs ?? []);
         if (r.reforcoActivityId) {
           setTimeout(() => {
             genFn({ data: { activityId: r.reforcoActivityId!, reforco: true } }).then(() => {
@@ -78,6 +81,7 @@ function LousaHomework() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   function fmt(ms: number) {
     const h = Math.floor(ms / 3_600_000);
