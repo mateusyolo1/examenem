@@ -278,12 +278,13 @@ function LandingPage() {
 
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
-          <div className="space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-center">
+          <div className="space-y-5">
             <p className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-primary">
               Estude em casa com IA
             </p>
             <div className="flex flex-wrap items-center gap-3">
+
 
               <div className="relative">
                 <button
