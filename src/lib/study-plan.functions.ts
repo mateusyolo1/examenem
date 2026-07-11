@@ -170,9 +170,74 @@ export const getTodayAgendaTasks = createServerFn({ method: "GET" })
       (byType[t.type] ??= []).push(t);
     }
     // Video-like types unified: videoaula + teoria (ambos são "estudar o assunto do dia")
-    const videos = [...(byType.videoaula ?? []), ...(byType.teoria ?? [])].filter(
+    const videoTasks = [...(byType.videoaula ?? []), ...(byType.teoria ?? [])].filter(
       (t) => t.topicSlug,
     );
+
+    // Busca composição pedagógica (Layer 6) para cada tópico dos vídeos de hoje.
+    // Isso alimenta o mini-resumo "1 intro · 2 teoria · 2 ex · 1 apl" no
+    // TodayVideosList e permite ordenar as aulas pela jornada pedagógica.
+    const slugs = Array.from(
+      new Set(videoTasks.map((t) => t.topicSlug).filter((s): s is string => !!s)),
+    );
+    const intentsBySlug: Record<
+      string,
+      { intents: (string | null)[]; dominant: string | null }
+    > = {};
+    if (slugs.length) {
+      const { data: topics } = await supabase
+        .from("study_topics")
+        .select("id, slug")
+        .in("slug", slugs);
+      const topicIds = (topics ?? []).map((t) => t.id);
+      const slugById = new Map((topics ?? []).map((t) => [t.id, t.slug]));
+      if (topicIds.length) {
+        const { data: vids } = await supabase
+          .from("study_videos")
+          .select("topic_id, pedagogical_intent, sort_order")
+          .in("topic_id", topicIds)
+          .order("sort_order", { ascending: true });
+        for (const v of vids ?? []) {
+          const slug = slugById.get(v.topic_id as string);
+          if (!slug) continue;
+          const entry = (intentsBySlug[slug] ??= { intents: [], dominant: null });
+          entry.intents.push((v.pedagogical_intent as string | null) ?? null);
+        }
+        // dominant = intent mais frequente da playlist
+        for (const slug of Object.keys(intentsBySlug)) {
+          const counts: Record<string, number> = {};
+          for (const i of intentsBySlug[slug].intents) {
+            if (!i) continue;
+            counts[i] = (counts[i] ?? 0) + 1;
+          }
+          let best: string | null = null;
+          let bestN = 0;
+          for (const [k, n] of Object.entries(counts)) {
+            if (n > bestN) {
+              best = k;
+              bestN = n;
+            }
+          }
+          intentsBySlug[slug].dominant = best;
+        }
+      }
+    }
+
+    // Ordena aulas do dia pela jornada pedagógica (intro → teoria → ex → apl → rev)
+    const INTENT_ORDER = ["introducao", "teoria", "exercicios", "aplicacao", "revisao"];
+    const rank = (slug?: string) => {
+      const d = slug ? intentsBySlug[slug]?.dominant : null;
+      const i = d ? INTENT_ORDER.indexOf(d) : -1;
+      return i < 0 ? INTENT_ORDER.length : i;
+    };
+    const videos = [...videoTasks]
+      .sort((a, b) => rank(a.topicSlug) - rank(b.topicSlug))
+      .map((t) => ({
+        ...t,
+        intents: t.topicSlug ? intentsBySlug[t.topicSlug]?.intents ?? [] : [],
+        dominantIntent: t.topicSlug ? intentsBySlug[t.topicSlug]?.dominant ?? null : null,
+      }));
+
     const focusTopicsFor = (types: string[]): string[] => {
       const s = new Set<string>();
       types.forEach((k) =>
@@ -196,6 +261,7 @@ export const getTodayAgendaTasks = createServerFn({ method: "GET" })
         null,
     };
   });
+
 
 // Sinais para personalizar o enrich do plano: erros recentes + vídeos assistidos.
 export const getPersonalizationSignals = createServerFn({ method: "GET" })
