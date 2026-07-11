@@ -979,6 +979,31 @@ function WatchingView({
   );
 }
 
+const INTENT_META: Record<string, { label: string; cls: string }> = {
+  introducao: { label: "Introdução", cls: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30" },
+  teoria: { label: "Teoria", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" },
+  exercicios: { label: "Exercícios", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  aplicacao: { label: "Aplicação", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  revisao: { label: "Revisão", cls: "bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-500/30" },
+};
+
+function IntentChip({ intent }: { intent: string | null }) {
+  if (!intent) return null;
+  const meta = INTENT_META[intent];
+  if (!meta) return null;
+  return (
+    <span
+      className={
+        "ml-auto shrink-0 px-1.5 py-0.5 rounded border text-[9px] font-mono uppercase tracking-wider " +
+        meta.cls
+      }
+      title={`Etapa pedagógica: ${meta.label}`}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 function ReportVideoButton({ videoId }: { videoId: string }) {
   const params = Route.useParams();
   const router = useRouter();
