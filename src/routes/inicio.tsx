@@ -344,9 +344,8 @@ function LandingPage() {
               Plataforma digital de preparação · ENEM · Vestibulares
             </div>
 
-            <p className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-primary">
-              Estude em casa com IA
-            </p>
+
+
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tighter leading-[1.02]">
               A plataforma de estudos que a sua aprovação no ENEM precisa.
