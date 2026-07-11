@@ -264,6 +264,7 @@ export const listVideosForTopic = createServerFn({ method: "POST" })
         .select("youtube_id")
         .eq("user_id", userId)
         .eq("topic_id", data.topicId)
+        .is("dismissed_at", null)
         .in("youtube_id", aiYoutubeIds);
       allowedAi = new Set((history ?? []).map((h) => h.youtube_id));
     }
@@ -753,6 +754,18 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
 
 
     if (suggestions.length > 0) {
+      const suggestionIds = suggestions.map((s) => s.youtube_id);
+      const { data: previousRows } = await supabase
+        .from("user_video_suggestion_history")
+        .select("youtube_id")
+        .eq("user_id", userId)
+        .eq("topic_id", topic.id)
+        .in("youtube_id", suggestionIds);
+      const previousIds = new Set((previousRows ?? []).map((row) => row.youtube_id));
+      suggestions = suggestions.filter((s) => !previousIds.has(s.youtube_id));
+    }
+
+    if (suggestions.length > 0) {
       // Ordena INTERCALANDO estilos: macete → aula → exercício → resumo →
       // mapa mental → aplicação. Assim a lista renderizada nunca tem 4
       // vídeos seguidos do mesmo formato didático.
@@ -868,9 +881,10 @@ export const clearSuggestedVideos = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { error } = await supabase
       .from("user_video_suggestion_history")
-      .delete()
+      .update({ dismissed_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("topic_id", data.topicId);
+      .eq("topic_id", data.topicId)
+      .is("dismissed_at", null);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -943,7 +957,22 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
       .limit(6);
     if (error) throw new Error(error.message);
 
-    const ids = (videos ?? []).map((v) => v.id);
+    const youtubeIds = (videos ?? []).map((v) => v.youtube_id);
+    let activeYoutubeIds = new Set<string>();
+    if (youtubeIds.length > 0) {
+      const { data: history } = await supabase
+        .from("user_video_suggestion_history")
+        .select("youtube_id")
+        .eq("user_id", context.userId)
+        .eq("topic_id", data.topicId)
+        .is("dismissed_at", null)
+        .in("youtube_id", youtubeIds);
+      activeYoutubeIds = new Set((history ?? []).map((h) => h.youtube_id));
+    }
+
+    const scopedVideos = (videos ?? []).filter((v) => activeYoutubeIds.has(v.youtube_id));
+
+    const ids = scopedVideos.map((v) => v.id);
     const progressMap = new Map<string, { watched: boolean; watch_seconds: number }>();
     if (ids.length > 0) {
       const { data: progress } = await supabase
@@ -961,7 +990,7 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
 
     return {
       topic,
-      videos: (videos ?? []).map((v) => ({
+      videos: scopedVideos.map((v) => ({
         ...v,
         watched: progressMap.get(v.id)?.watched ?? false,
         watch_seconds: progressMap.get(v.id)?.watch_seconds ?? 0,
