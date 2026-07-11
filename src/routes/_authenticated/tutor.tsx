@@ -46,6 +46,13 @@ const TUTOR_HINTS: HintDef[] = [
 ];
 
 export const Route = createFileRoute("/_authenticated/tutor")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z
+      .object({
+        prompt: z.string().max(2000).optional(),
+        autoSend: z.boolean().optional(),
+      })
+      .parse(search),
   head: () => ({
     meta: [
       { title: "Tutor IA — Professor particular de ENEM" },
