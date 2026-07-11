@@ -884,15 +884,17 @@ export const clearSuggestedVideos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ topicId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { error } = await supabase
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: clearedRows, error } = await supabaseAdmin
       .from("user_video_suggestion_history")
       .update({ dismissed_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("topic_id", data.topicId)
-      .is("dismissed_at", null);
+      .is("dismissed_at", null)
+      .select("youtube_id");
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, cleared: clearedRows?.length ?? 0 };
   });
 
 // ============================================================
