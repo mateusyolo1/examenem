@@ -965,6 +965,7 @@ function WatchingView({
                       )}
                     </span>
                     <span className="text-sm truncate">{v.title ?? `Vídeo ${i + 1}`}</span>
+                    <IntentChip intent={(v as { pedagogical_intent?: string | null }).pedagogical_intent ?? null} />
                     {i === current && <Play size={12} className="ml-auto shrink-0" />}
                   </button>
                   <ReportVideoButton videoId={v.id} />
