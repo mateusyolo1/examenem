@@ -592,12 +592,6 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         (p) => !usedIds.has(p.youtube_id) && !historyIds.has(p.youtube_id),
       );
 
-      // Fallback: se o histórico esvaziou a lista, permite reutilizar vídeos
-      // do histórico (mas ainda evita colisão com outros tópicos).
-      if (unique.length < 3) {
-        unique = parsed.filter((p) => !usedIds.has(p.youtube_id));
-      }
-
       // 2) FILTRA CLICKBAIT ÓBVIO — títulos 100% em CAIXA ALTA gritando,
       // excesso de emojis, palavras de isca sem sinal didático.
       const CLICKBAIT_RE = /(🔥|😱|🚨|⚠️|❌){2,}|!!{2,}/;
