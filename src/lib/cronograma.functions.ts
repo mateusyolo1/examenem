@@ -681,6 +681,11 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       })
       .eq("id", act.id);
 
+    if (passed) {
+      await markLinkedAgendaTasksDone(supabase, userId, act.id);
+    }
+
+
     // se falhou e NÃO é reforço, cria atividade de reforço no mesmo dia
     // + prepara vídeo focado no dia seguinte com os tópicos errados
     let reforcoActivityId: string | null = null;
