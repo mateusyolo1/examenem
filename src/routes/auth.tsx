@@ -58,10 +58,11 @@ function AuthPage() {
     try {
       const { lovable } = await import("@/integrations/lovable");
       const target = safeNext(next);
-      const redirectUri =
-        target === "/"
-          ? window.location.origin
-          : `${window.location.origin}/auth?next=${encodeURIComponent(target)}`;
+      // Always return to /auth so onAuthStateChange can hydrate the session
+      // before navigating. Returning to "/" directly caused a white screen on
+      // published sites because the _authenticated gate ran getUser() before
+      // Supabase parsed the OAuth tokens from the URL hash.
+      const redirectUri = `${window.location.origin}/auth?next=${encodeURIComponent(target)}`;
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: redirectUri,
       });
