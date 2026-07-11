@@ -197,7 +197,56 @@ export const getTodayAgendaTasks = createServerFn({ method: "GET" })
     };
   });
 
+// Sinais para personalizar o enrich do plano: erros recentes + vídeos assistidos.
+export const getPersonalizationSignals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    // erros recentes: lousa_failure em study_plan_activities.payload.focus_topics
+    const { data: recentActs } = await supabase
+      .from("study_plan_activities")
+      .select("payload, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const errorsSet = new Set<string>();
+    for (const a of recentActs ?? []) {
+      const p = (a.payload ?? {}) as { source?: string; focus_topics?: unknown };
+      if (p.source === "lousa_failure" && Array.isArray(p.focus_topics)) {
+        for (const t of p.focus_topics) if (typeof t === "string") errorsSet.add(t);
+      }
+      if (errorsSet.size >= 10) break;
+    }
+
+    // vídeos assistidos recentemente
+    const { data: watched } = await supabase
+      .from("user_video_progress")
+      .select("last_watched_at, watched, study_videos(title, channel_name)")
+      .eq("user_id", userId)
+      .eq("watched", true)
+      .order("last_watched_at", { ascending: false })
+      .limit(10);
+    type WatchedRow = {
+      study_videos: { title: string | null; channel_name: string | null } | null;
+    };
+    const watchedVideos = ((watched ?? []) as unknown as WatchedRow[])
+      .map((w) => ({
+        title: w.study_videos?.title ?? "",
+        channel: w.study_videos?.channel_name ?? null,
+      }))
+      .filter((v) => v.title)
+      .slice(0, 8);
+
+    return {
+      recentErrors: Array.from(errorsSet),
+      watchedVideos,
+    };
+  });
+
 // ============ Fim persistência ============
+
+
 
 const taskInput = z.object({
   id: z.string(),
