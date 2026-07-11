@@ -249,7 +249,29 @@ export const listVideosForTopic = createServerFn({ method: "POST" })
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
 
-    const ids = (videos ?? []).map((v) => v.id);
+    // Per-user isolation: AI-suggested videos are stored in the shared
+    // study_videos table (to dedupe across topics/users), but the list
+    // shown to each user must be filtered to what THIS user has been
+    // suggested — tracked in user_video_suggestion_history. Curated
+    // videos remain visible to everyone.
+    const aiYoutubeIds = (videos ?? [])
+      .filter((v) => v.source === "ai")
+      .map((v) => v.youtube_id);
+    let allowedAi = new Set<string>();
+    if (aiYoutubeIds.length > 0) {
+      const { data: history } = await supabase
+        .from("user_video_suggestion_history")
+        .select("youtube_id")
+        .eq("user_id", userId)
+        .eq("topic_id", data.topicId)
+        .in("youtube_id", aiYoutubeIds);
+      allowedAi = new Set((history ?? []).map((h) => h.youtube_id));
+    }
+    const scoped = (videos ?? []).filter(
+      (v) => v.source !== "ai" || allowedAi.has(v.youtube_id),
+    );
+
+    const ids = scoped.map((v) => v.id);
     let watched = new Set<string>();
     if (ids.length > 0) {
       const { data: progress } = await supabase
@@ -262,12 +284,13 @@ export const listVideosForTopic = createServerFn({ method: "POST" })
     }
 
     return {
-      videos: (videos ?? []).map((v) => ({
+      videos: scoped.map((v) => ({
         ...v,
         watched: watched.has(v.id),
       })),
     };
   });
+
 
 // ============================================================
 // Mark video as watched (toggles)
@@ -723,15 +746,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       }
     }
 
-    // Se forceRefresh, remove os vídeos AI atuais do tópico antes de inserir
-    // os novos — caso contrário eles se acumulariam na tela.
-    if (forceRefresh) {
-      await supabaseAdmin
-        .from("study_videos")
-        .delete()
-        .eq("topic_id", topic.id)
-        .eq("source", "ai");
-    }
+    // NOTE: previously deleted shared study_videos rows on forceRefresh,
+    // but the per-user list is now scoped by user_video_suggestion_history,
+    // so accumulation in the shared table is harmless — and deleting shared
+    // rows would break other users' history references.
+
 
     if (suggestions.length > 0) {
       // Ordena INTERCALANDO estilos: macete → aula → exercício → resumo →
