@@ -514,6 +514,18 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       if (cached) {
         suggestions = (cached.response as unknown as { suggestions: AiVideoSuggestion[] })
           .suggestions;
+        const cachedIds = suggestions.map((s) => s.youtube_id);
+        if (cachedIds.length > 0) {
+          const { data: previousRows } = await supabase
+            .from("user_video_suggestion_history")
+            .select("youtube_id")
+            .eq("user_id", userId)
+            .eq("topic_id", topic.id)
+            .in("youtube_id", cachedIds);
+          const previousIds = new Set((previousRows ?? []).map((row) => row.youtube_id));
+          suggestions = suggestions.filter((s) => !previousIds.has(s.youtube_id));
+          if (suggestions.length === 0) suggestions = null;
+        }
       }
     }
 
