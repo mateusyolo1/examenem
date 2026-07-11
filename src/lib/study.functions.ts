@@ -243,7 +243,7 @@ export const listVideosForTopic = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: videos, error } = await supabase
       .from("study_videos")
-      .select("id, youtube_id, title, channel_name, thumbnail_url, duration_seconds, source, sort_order, suggested_at")
+      .select("id, youtube_id, title, channel_name, thumbnail_url, duration_seconds, source, sort_order, suggested_at, pedagogical_intent")
       .eq("topic_id", data.topicId)
       .order("source", { ascending: true }) // 'ai' > 'curated' alphabetically so curated first
       .order("sort_order", { ascending: true });
