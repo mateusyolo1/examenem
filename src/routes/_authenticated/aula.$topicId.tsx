@@ -430,6 +430,9 @@ function WatchingView({
   autoplay,
   onSaveProgress,
   resumeAt,
+  topicId,
+  topicTitle,
+  topicArea,
 }: {
   video: Video;
   current: number;
@@ -448,6 +451,9 @@ function WatchingView({
   autoplay: boolean;
   onSaveProgress: (seconds: number) => void;
   resumeAt: number;
+  topicId: string;
+  topicTitle: string;
+  topicArea: string;
 }) {
   const isWatched = watched.has(current);
   const isLast = current === total - 1;
