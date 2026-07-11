@@ -219,8 +219,14 @@ const enrichInput = z.object({
     .array(z.object({ title: z.string(), area: z.string(), score: z.number() }))
     .max(20)
     .optional(),
+  recentErrors: z.array(z.string()).max(20).optional(),
+  watchedVideos: z
+    .array(z.object({ title: z.string(), channel: z.string().nullable().optional() }))
+    .max(10)
+    .optional(),
   tasks: z.array(taskInput).min(1).max(40),
 });
+
 
 export const enrichStudyPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
