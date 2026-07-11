@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Eye,
@@ -16,18 +18,25 @@ import {
   Languages,
   Loader2,
   X,
+  Sparkles,
 } from "lucide-react";
 import { askTutor } from "@/lib/ai.functions";
+import {
+  getLatestLousaSession,
+  generateLousaLesson,
+  type LousaLessonContent,
+  type LousaContextSnapshot,
+} from "@/lib/lousa.functions";
 import { Markdown } from "@/components/Markdown";
 
 export const Route = createFileRoute("/_authenticated/lousa")({
   head: () => ({
     meta: [
-      { title: "Lousa Interativa — Tutor IA" },
+      { title: "Lousa Interativa — Professor IA" },
       {
         name: "description",
         content:
-          "Lousa interativa do Tutor IA para praticar em tempo real: leia, ouça, escreva, pratique e ensine.",
+          "Aulas personalizadas geradas pelo Professor IA a partir do seu plano de estudos, do seu desempenho e do que você já assistiu.",
       },
     ],
   }),
@@ -35,58 +44,43 @@ export const Route = createFileRoute("/_authenticated/lousa")({
 });
 
 type BoardMode = "white" | "dark";
-
-type Exercise = {
-  enunciado: string;
-  resposta: string;
-  comentario: string;
-};
-
-type LousaContent = {
-  materia: string;
-  tema: string;
-  resumo: string[];
-  exercicios: Exercise[];
-  desafioEnsinar: { pergunta: string; respostaModelo: string };
-};
-
-const MOCK: LousaContent = {
-  materia: "Matemática",
-  tema: "Função afim — coeficientes e gráfico",
-  resumo: [
-    "Uma função afim tem a forma f(x) = ax + b, com a ≠ 0.",
-    "O coeficiente a é a taxa de variação (inclinação da reta).",
-    "O coeficiente b é o valor de f(0) — onde a reta cruza o eixo y.",
-    "Se a > 0, a função é crescente. Se a < 0, decrescente.",
-  ],
-  exercicios: [
-    {
-      enunciado: "Dada f(x) = 3x − 5, calcule f(2).",
-      resposta: "f(2) = 3·2 − 5 = 1.",
-      comentario: "Substituição direta. Cuidado com o sinal do −5.",
-    },
-    {
-      enunciado: "Qual o coeficiente angular de f(x) = −2x + 7?",
-      resposta: "a = −2 (função decrescente).",
-      comentario: "O coeficiente angular é sempre o número que acompanha o x.",
-    },
-    {
-      enunciado: "Em que ponto a reta y = 4x − 8 corta o eixo x?",
-      resposta: "x = 2, pois 4x − 8 = 0 ⇒ x = 2.",
-      comentario: "Raiz da função afim: iguale a expressão a zero.",
-    },
-  ],
-  desafioEnsinar: {
-    pergunta: "Explique com suas palavras o que muda no gráfico se aumentarmos o valor de b.",
-    respostaModelo:
-      "A reta é deslocada verticalmente para cima (b maior) sem mudar a inclinação. O coeficiente a controla o ângulo; b controla a altura em que ela cruza o eixo y.",
-  },
-};
-
 const STAGES = ["Ler", "Ouvir", "Escrever", "Praticar", "Ensinar"] as const;
 type Stage = (typeof STAGES)[number];
 
+type SessionRow = {
+  id: string;
+  content: LousaLessonContent;
+  context_snapshot: LousaContextSnapshot | null;
+  materia: string;
+  tema: string;
+  created_at: string;
+};
+
 function LousaPage() {
+  const qc = useQueryClient();
+  const getLatestFn = useServerFn(getLatestLousaSession);
+  const generateFn = useServerFn(generateLousaLesson);
+  const askTutorFn = useServerFn(askTutor);
+
+  const latestQ = useQuery({
+    queryKey: ["lousa-latest-session"],
+    queryFn: () => getLatestFn({}),
+  });
+
+  const genMut = useMutation({
+    mutationFn: () => generateFn({ data: {} }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lousa-latest-session"] });
+      toast.success("Nova aula gerada!");
+      resetProgress();
+    },
+    onError: (e: Error) => toast.error(e.message ?? "Falha ao gerar aula"),
+  });
+
+  const session = latestQ.data?.session as SessionRow | null | undefined;
+  const content = (session?.content ?? null) as LousaLessonContent | null;
+  const ctx = (session?.context_snapshot ?? null) as LousaContextSnapshot | null;
+
   const [mode, setMode] = useState<BoardMode>("white");
   const [done, setDone] = useState<Record<Stage, boolean>>({
     Ler: false,
@@ -110,23 +104,29 @@ function LousaPage() {
   const [studyLoading, setStudyLoading] = useState(false);
   const [studyPath, setStudyPath] = useState<string>("");
   const [studyError, setStudyError] = useState<string>("");
-  const askTutorFn = useServerFn(askTutor);
-  const content = MOCK;
+
+  function resetProgress() {
+    setRevealed({});
+    setAnswers({});
+    setTeachAnswer("");
+    setTeachRevealed(false);
+    setDone({ Ler: false, Ouvir: false, Escrever: false, Praticar: false, Ensinar: false });
+  }
 
   const PROMPTS: Record<
     "ask" | "source" | "learn" | "example" | "translate",
     (sel: string) => string
   > = {
     ask: (s) =>
-      `Estou estudando "${content.tema}" (${content.materia}) na lousa interativa e selecionei este trecho:\n\n"${s}"\n\nO que exatamente isto significa? Explique como se eu nunca tivesse visto antes.`,
+      `Estou estudando "${content?.tema ?? ""}" (${content?.materia ?? ""}) na lousa interativa e selecionei este trecho:\n\n"${s}"\n\nO que exatamente isto significa? Explique como se eu nunca tivesse visto antes.`,
     learn: (s) =>
-      `Quero aprender a fundo sobre este trecho da minha aula de ${content.materia} — "${content.tema}":\n\n"${s}"\n\nMonte uma nota de aula curta com definição, pontos-chave e um exemplo aplicado ao ENEM.`,
+      `Quero aprender a fundo sobre este trecho da minha aula de ${content?.materia ?? ""} — "${content?.tema ?? ""}":\n\n"${s}"\n\nMonte uma nota de aula curta com definição, pontos-chave e um exemplo aplicado ao ENEM.`,
     example: (s) =>
-      `Sobre este trecho da aula de ${content.materia} (${content.tema}):\n\n"${s}"\n\nMe dê 1 exemplo prático e resolvido passo a passo, de preferência no estilo ENEM.`,
+      `Sobre este trecho da aula de ${content?.materia ?? ""} (${content?.tema ?? ""}):\n\n"${s}"\n\nMe dê 1 exemplo prático e resolvido passo a passo, de preferência no estilo ENEM.`,
     source: (s) =>
-      `Na aula "${content.tema}" (${content.materia}), este trecho foi apresentado:\n\n"${s}"\n\nDe onde vem essa afirmação? Cite base teórica, autor(es), fórmula original ou referência de livro didático quando aplicável, e explique por que ela é aceita.`,
+      `Na aula "${content?.tema ?? ""}" (${content?.materia ?? ""}), este trecho foi apresentado:\n\n"${s}"\n\nDe onde vem essa afirmação? Cite base teórica, autor(es), fórmula original ou referência de livro didático quando aplicável, e explique por que ela é aceita.`,
     translate: (s) =>
-      `Traduza para uma linguagem bem simples, como se eu tivesse 12 anos, este trecho da aula de ${content.materia} sobre "${content.tema}":\n\n"${s}"\n\nUse analogia do dia a dia e evite jargão.`,
+      `Traduza para uma linguagem bem simples, como se eu tivesse 12 anos, este trecho da aula de ${content?.materia ?? ""} sobre "${content?.tema ?? ""}":\n\n"${s}"\n\nUse analogia do dia a dia e evite jargão.`,
   };
 
   useEffect(() => {
@@ -151,7 +151,7 @@ function LousaPage() {
       data: {
         messages: [{ role: "user", content: prompt }],
         mode: panel.action === "learn" || panel.action === "example" ? "explicar" : "livre",
-        context: `Lousa interativa · Matéria: ${content.materia} · Tema: ${content.tema}`,
+        context: `Lousa interativa · Matéria: ${content?.materia ?? ""} · Tema: ${content?.tema ?? ""}`,
       },
     })
       .then((res) => {
@@ -173,10 +173,9 @@ function LousaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel]);
 
-
   const onSelectionContextMenu = (e: React.MouseEvent) => {
     const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
-    if (!sel) return; // permite menu nativo quando não há seleção
+    if (!sel) return;
     e.preventDefault();
     const pad = 8;
     const maxX = window.innerWidth - 260 - pad;
@@ -206,14 +205,10 @@ function LousaPage() {
   const grain = isDark
     ? "radial-gradient(circle at 30% 20%, rgba(255,255,255,.06), transparent 60%), radial-gradient(circle at 70% 80%, rgba(255,255,255,.04), transparent 55%)"
     : "radial-gradient(circle at 30% 20%, rgba(0,0,0,.03), transparent 60%), radial-gradient(circle at 70% 80%, rgba(0,0,0,.02), transparent 55%)";
-  const fontWrite = isDark
-    ? '"LousaWriteDark", cursive'
-    : '"LousaWriteLight", cursive';
-  const fontTitle = isDark
-    ? '"LousaTitleDark", cursive'
-    : '"LousaTitleLight", cursive';
-  const cQuestion = isDark ? "#7dd3fc" : "#1d4ed8"; // azul
-  const cAnswer = isDark ? "#fca5a5" : "#dc2626"; // vermelho
+  const fontWrite = isDark ? '"LousaWriteDark", cursive' : '"LousaWriteLight", cursive';
+  const fontTitle = isDark ? '"LousaTitleDark", cursive' : '"LousaTitleLight", cursive';
+  const cQuestion = isDark ? "#7dd3fc" : "#1d4ed8";
+  const cAnswer = isDark ? "#fca5a5" : "#dc2626";
   const cText = isDark ? "#f3f4f6" : "#111827";
   const cMuted = isDark ? "rgba(243,244,246,.55)" : "rgba(17,24,39,.55)";
   const cBorder = isDark ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.10)";
@@ -230,6 +225,56 @@ function LousaPage() {
     markDone("Ouvir");
   };
 
+  /* ============ Estado vazio (sem sessão) ============ */
+  if (!latestQ.isLoading && !content) {
+    return (
+      <div
+        className="fixed inset-0 z-30 overflow-auto"
+        style={{ background: bg, color: cText, backgroundImage: grain }}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 backdrop-blur"
+          style={{ background: isDark ? "rgba(5,25,0,.75)" : "rgba(250,250,250,.75)", borderBottom: `1px solid ${cBorder}` }}
+        >
+          <Link to="/tutor" className="inline-flex items-center gap-2 text-sm opacity-80 hover:opacity-100">
+            <ArrowLeft size={16} /> Voltar ao Tutor
+          </Link>
+        </div>
+        <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+          <div style={{ fontFamily: fontTitle, fontSize: 40, lineHeight: 1.1 }}>
+            Sua primeira aula na Lousa
+          </div>
+          <p style={{ fontFamily: fontWrite, fontSize: 22, color: cMuted, marginTop: 16, lineHeight: 1.5 }}>
+            O Professor IA vai montar uma aula personalizada usando seu plano de estudos, seu desempenho e o que você já assistiu.
+          </p>
+          <button
+            type="button"
+            onClick={() => genMut.mutate()}
+            disabled={genMut.isPending}
+            className="mt-8 inline-flex items-center gap-2 rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: cQuestion, color: isDark ? "#051900" : "#ffffff", fontFamily: fontTitle, letterSpacing: ".05em" }}
+          >
+            {genMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {genMut.isPending ? "Montando aula…" : "Gerar minha aula"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ============ Loading inicial ============ */
+  if (latestQ.isLoading || !content) {
+    return (
+      <div
+        className="fixed inset-0 z-30 flex items-center justify-center"
+        style={{ background: bg, color: cText, backgroundImage: grain }}
+      >
+        <div className="flex items-center gap-2" style={{ fontFamily: fontWrite, fontSize: 22 }}>
+          <Loader2 size={20} className="animate-spin" /> Carregando sua lousa…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-30 overflow-auto transition-colors"
@@ -244,10 +289,7 @@ function LousaPage() {
           borderBottom: `1px solid ${cBorder}`,
         }}
       >
-        <Link
-          to="/tutor"
-          className="inline-flex items-center gap-2 text-sm opacity-80 hover:opacity-100"
-        >
+        <Link to="/tutor" className="inline-flex items-center gap-2 text-sm opacity-80 hover:opacity-100">
           <ArrowLeft size={16} /> Voltar ao Tutor
         </Link>
         <div className="flex items-center gap-2">
@@ -263,17 +305,14 @@ function LousaPage() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setRevealed({});
-              setAnswers({});
-              setTeachAnswer("");
-              setTeachRevealed(false);
-              setDone({ Ler: false, Ouvir: false, Escrever: false, Praticar: false, Ensinar: false });
-            }}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
+            onClick={() => genMut.mutate()}
+            disabled={genMut.isPending}
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
             style={{ borderColor: cBorder }}
+            title="Gerar uma nova aula personalizada"
           >
-            <RefreshCcw size={14} /> Nova lousa
+            {genMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
+            {genMut.isPending ? "Gerando…" : "Nova aula"}
           </button>
         </div>
       </div>
@@ -307,10 +346,8 @@ function LousaPage() {
       {/* Corpo da lousa */}
       <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
         {/* Cabeçalho */}
-        <header className="mb-8">
-          <div style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}>
-            {content.materia}
-          </div>
+        <header className="mb-6">
+          <div style={{ color: cMuted, fontFamily: fontWrite, fontSize: 18 }}>{content.materia}</div>
           <h1
             style={{
               fontFamily: fontTitle,
@@ -323,6 +360,37 @@ function LousaPage() {
             {content.tema}
           </h1>
         </header>
+
+        {/* Faixa de contexto personalizado */}
+        {ctx && (ctx.masteryPct != null || ctx.recentErrors.length > 0 || ctx.watchedVideos.length > 0) && (
+          <div
+            className="mb-8 rounded-lg p-4"
+            style={{ border: `1px dashed ${cBorder}`, background: isDark ? "rgba(125,211,252,.05)" : "rgba(29,78,216,.04)" }}
+          >
+            <div style={{ fontFamily: fontTitle, fontSize: 16, color: cQuestion, letterSpacing: ".02em" }}>
+              Aula personalizada para você
+            </div>
+            <ul className="mt-2 space-y-1" style={{ fontFamily: fontWrite, fontSize: 16, color: cMuted }}>
+              {ctx.masteryPct != null && (
+                <li>• Seu domínio neste tópico: <span style={{ color: cText }}>{ctx.masteryPct}%</span></li>
+              )}
+              {ctx.recentErrors.length > 0 && (
+                <li>• Foco em erros recentes: <span style={{ color: cText }}>{ctx.recentErrors.slice(0, 3).join(", ")}</span></li>
+              )}
+              {ctx.watchedVideos.length > 0 && (
+                <li>
+                  • Referências dos vídeos que você assistiu:{" "}
+                  <span style={{ color: cText }}>
+                    {ctx.watchedVideos.slice(0, 2).map((v) => `"${v.title}"`).join(" · ")}
+                  </span>
+                </li>
+              )}
+              {ctx.planTaskTitle && (
+                <li>• Tarefa do plano: <span style={{ color: cText }}>{ctx.planTaskTitle}</span></li>
+              )}
+            </ul>
+          </div>
+        )}
 
         {/* LER */}
         <StreamSection
@@ -359,8 +427,8 @@ function LousaPage() {
           title="3. Escrever no caderno · 4. Praticar respostas"
         >
           <p style={{ fontFamily: fontWrite, fontSize: 18, color: cMuted, marginBottom: 16 }}>
-            Copie cada exercício no caderno, resolva à mão e depois passe a limpo aqui. Só então
-            revele a resposta do professor.
+            Copie cada exercício no caderno, resolva à mão e depois passe a limpo aqui. Só então revele
+            a resposta do professor.
           </p>
           <ol className="space-y-6">
             {content.exercicios.map((ex, i) => (
@@ -464,9 +532,15 @@ function LousaPage() {
           )}
         </StreamSection>
 
+        {content.referencias && content.referencias.length > 0 && (
+          <p style={{ color: cMuted, fontFamily: fontWrite, fontSize: 16, marginTop: 24 }}>
+            Materiais que a aula referencia: {content.referencias.join(" · ")}
+          </p>
+        )}
+
         <p style={{ color: cMuted, fontFamily: fontWrite, fontSize: 14, marginTop: 40 }}>
-          Conteúdo demonstrativo. Na próxima onda, o Professor IA vai gerar cada lousa a partir da
-          sua última aula, seus erros recentes e seu plano de estudos.
+          A lição de casa continua na seção Lousa do Cronograma — lá você envia as respostas 24h
+          depois e recebe o feedback do Professor IA.
         </p>
       </div>
 
@@ -514,13 +588,10 @@ function LousaPage() {
         </div>
       )}
 
-      {/* Painel lateral com a "resposta" do professor */}
+      {/* Painel lateral */}
       {panel && (
         <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40"
-            onClick={() => setPanel(null)}
-          />
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setPanel(null)} />
           <aside
             className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col shadow-2xl"
             style={{
@@ -596,9 +667,7 @@ function LousaPage() {
                     {panelError}
                   </div>
                 )}
-                {!panelLoading && !panelError && panelAnswer && (
-                  <Markdown>{panelAnswer}</Markdown>
-                )}
+                {!panelLoading && !panelError && panelAnswer && <Markdown>{panelAnswer}</Markdown>}
               </div>
 
               {!panelLoading && (panelAnswer || panelError) && (
@@ -751,7 +820,7 @@ function StreamText({
     let raf = 0;
     let start = 0;
     const total = text.length;
-    const speedPerChar = 18; // ms/char
+    const speedPerChar = 18;
     const tick = (t: number) => {
       if (!start) start = t + delay;
       const elapsed = t - start;
