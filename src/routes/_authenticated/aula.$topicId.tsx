@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Check,
   ClipboardList,
+  HelpCircle,
   Lock,
   PenLine,
   Play,
@@ -15,6 +16,12 @@ import {
   ThumbsDown,
   X,
 } from "lucide-react";
+import {
+  INTENT_META as SHARED_INTENT_META,
+  INTENT_ORDER,
+  isIntent,
+  summarizeJourney,
+} from "@/lib/pedagogical-intent";
 
 // YouTube IFrame API loader (singleton)
 let ytApiPromise: Promise<any> | null = null;
@@ -926,6 +933,8 @@ function WatchingView({
         </p>
       )}
 
+      <PlaylistJourneyHeader videos={videos} />
+
       <div>
         <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
           Playlist
@@ -975,34 +984,110 @@ function WatchingView({
           })}
         </ol>
       </div>
+
     </div>
   );
 }
 
-const INTENT_META: Record<string, { label: string; cls: string }> = {
-  introducao: { label: "Introdução", cls: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30" },
-  teoria: { label: "Teoria", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" },
-  exercicios: { label: "Exercícios", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
-  aplicacao: { label: "Aplicação", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
-  revisao: { label: "Revisão", cls: "bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-500/30" },
-};
-
 function IntentChip({ intent }: { intent: string | null }) {
-  if (!intent) return null;
-  const meta = INTENT_META[intent];
-  if (!meta) return null;
+  if (!intent || !isIntent(intent)) return null;
+  const meta = SHARED_INTENT_META[intent];
   return (
     <span
       className={
         "ml-auto shrink-0 px-1.5 py-0.5 rounded border text-[9px] font-mono uppercase tracking-wider " +
         meta.cls
       }
-      title={`Etapa pedagógica: ${meta.label}`}
+      title={`Etapa pedagógica: ${meta.label} — ${meta.description}`}
     >
       {meta.label}
     </span>
   );
 }
+
+// Header de qualidade da jornada pedagógica (Layer 6).
+// Mostra a composição da playlist ao aluno + loga no console para debug.
+function PlaylistJourneyHeader({
+  videos,
+}: {
+  videos: Array<{ id: string } & Partial<{ pedagogical_intent: string | null }>>;
+}) {
+  const [showLegend, setShowLegend] = useState(false);
+  const intents = videos.map(
+    (v) => (v as { pedagogical_intent?: string | null }).pedagogical_intent ?? null,
+  );
+  const summary = summarizeJourney(intents);
+  // Observability: composição fica visível no console p/ debug do algoritmo.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.info(
+      "[aula] playlist journey:",
+      summary.label || "(sem intents classificados)",
+      { total: videos.length, counts: summary.counts },
+    );
+  }, [summary.label, summary.counts, videos.length]);
+
+  if (summary.total === 0) return null;
+
+  return (
+    <div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+          Jornada pedagógica · {summary.label}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowLegend((v) => !v)}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          aria-label="Legenda das etapas"
+          title="O que significam essas etapas?"
+        >
+          <HelpCircle size={14} />
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {INTENT_ORDER.map((k) => {
+          const n = summary.counts[k];
+          if (!n) return null;
+          const meta = SHARED_INTENT_META[k];
+          return (
+            <span
+              key={k}
+              className={
+                "px-1.5 py-0.5 rounded border text-[10px] font-mono uppercase tracking-wider " +
+                meta.cls
+              }
+              title={meta.description}
+            >
+              {n}× {meta.label}
+            </span>
+          );
+        })}
+      </div>
+      {showLegend && (
+        <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+          {INTENT_ORDER.map((k) => {
+            const meta = SHARED_INTENT_META[k];
+            return (
+              <div key={k} className="flex items-start gap-2 text-xs">
+                <span
+                  className={
+                    "px-1.5 py-0.5 rounded border text-[9px] font-mono uppercase tracking-wider shrink-0 " +
+                    meta.cls
+                  }
+                >
+                  {meta.label}
+                </span>
+                <span className="text-muted-foreground">{meta.description}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function ReportVideoButton({ videoId }: { videoId: string }) {
   const params = Route.useParams();

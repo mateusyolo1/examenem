@@ -44,6 +44,8 @@ function LousaHomework() {
   const alreadyDone = data?.activity.status === "done";
   const alreadyFailed = data?.activity.status === "failed";
 
+  const [reviewSlugs, setReviewSlugs] = useState<string[]>([]);
+
   const submitMut = useMutation({
     mutationFn: () =>
       submitFn({
@@ -64,6 +66,7 @@ function LousaHomework() {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
       } else {
         toast.error(`Reprovou: ${r.correctCount}/${r.total} (${r.pct}%). Geramos uma Lousa de reforço.`);
+        setReviewSlugs(r.reviewTopicSlugs ?? []);
         if (r.reforcoActivityId) {
           setTimeout(() => {
             genFn({ data: { activityId: r.reforcoActivityId!, reforco: true } }).then(() => {
@@ -78,6 +81,7 @@ function LousaHomework() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   function fmt(ms: number) {
     const h = Math.floor(ms / 3_600_000);
@@ -207,13 +211,34 @@ function LousaHomework() {
             )}
 
             {alreadyFailed && (
-              <div className="mt-6 border border-amber-500/40 bg-amber-500/5 rounded-xl p-5 flex items-center gap-3">
-                <Sparkles className="text-amber-500" size={20} />
-                <div className="text-sm">
-                  Uma Lousa de reforço foi adicionada ao seu dia. Volte ao Cronograma para acessá-la.
+              <div className="mt-6 space-y-3">
+                <div className="border border-amber-500/40 bg-amber-500/5 rounded-xl p-5 flex items-center gap-3">
+                  <Sparkles className="text-amber-500" size={20} />
+                  <div className="text-sm">
+                    Uma Lousa de reforço foi adicionada ao seu dia, e um vídeo focado no que
+                    você errou entra no plano de amanhã automaticamente.
+                  </div>
                 </div>
+                {reviewSlugs.length > 0 && (
+                  <div className="border border-blue-500/40 bg-blue-500/5 rounded-xl p-5 flex flex-wrap items-center gap-3">
+                    <div className="text-sm flex-1 min-w-[200px]">
+                      Quer revisar agora antes de refazer? Abra a aula do assunto que travou.
+                    </div>
+                    {reviewSlugs.slice(0, 3).map((slug) => (
+                      <Link
+                        key={slug}
+                        to="/aula/$topicId"
+                        params={{ topicId: slug }}
+                        className="px-4 py-2 rounded-lg bg-foreground text-background text-xs font-bold uppercase tracking-widest hover:bg-primary transition-all"
+                      >
+                        Rever · {slug.split("-").slice(-2).join(" ")}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
+
 
             <button
               onClick={() => refetch()}
