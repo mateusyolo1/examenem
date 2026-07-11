@@ -118,6 +118,7 @@ function Cronograma() {
     mutationFn: (id: string) => markDoneFn({ data: { activityId: id } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cron-today"] });
+      qc.invalidateQueries({ queryKey: ["today-agenda"] });
       toast.success("Atividade concluída");
     },
   });
@@ -126,6 +127,7 @@ function Cronograma() {
     mutationFn: (v: { activityId: string; correct: number; total: number }) => pressureFn({ data: v }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["cron-today"] });
+      qc.invalidateQueries({ queryKey: ["today-agenda"] });
       const msg =
         r.movement === "up"
           ? `Você subiu para o nível ${r.level}!`
@@ -135,6 +137,7 @@ function Cronograma() {
       toast.success(msg);
     },
   });
+
 
   const settingsMut = useMutation({
     mutationFn: (v: number) => settingsFn({ data: { lousaPassThreshold: v } }),
