@@ -326,8 +326,8 @@ Gere 3 exercícios. Não escreva NADA fora do JSON.`;
         topic_area: topicArea,
         materia: lesson.materia,
         tema: lesson.tema,
-        content: lesson as unknown as Record<string, unknown>,
-        context_snapshot: contextSnapshot as unknown as Record<string, unknown>,
+        content: lesson as never,
+        context_snapshot: contextSnapshot as never,
         status: "active",
       })
       .select()
