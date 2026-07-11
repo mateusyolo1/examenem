@@ -197,7 +197,56 @@ export const getTodayAgendaTasks = createServerFn({ method: "GET" })
     };
   });
 
+// Sinais para personalizar o enrich do plano: erros recentes + vídeos assistidos.
+export const getPersonalizationSignals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    // erros recentes: lousa_failure em study_plan_activities.payload.focus_topics
+    const { data: recentActs } = await supabase
+      .from("study_plan_activities")
+      .select("payload, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const errorsSet = new Set<string>();
+    for (const a of recentActs ?? []) {
+      const p = (a.payload ?? {}) as { source?: string; focus_topics?: unknown };
+      if (p.source === "lousa_failure" && Array.isArray(p.focus_topics)) {
+        for (const t of p.focus_topics) if (typeof t === "string") errorsSet.add(t);
+      }
+      if (errorsSet.size >= 10) break;
+    }
+
+    // vídeos assistidos recentemente
+    const { data: watched } = await supabase
+      .from("user_video_progress")
+      .select("last_watched_at, watched, study_videos(title, channel_name)")
+      .eq("user_id", userId)
+      .eq("watched", true)
+      .order("last_watched_at", { ascending: false })
+      .limit(10);
+    type WatchedRow = {
+      study_videos: { title: string | null; channel_name: string | null } | null;
+    };
+    const watchedVideos = ((watched ?? []) as unknown as WatchedRow[])
+      .map((w) => ({
+        title: w.study_videos?.title ?? "",
+        channel: w.study_videos?.channel_name ?? null,
+      }))
+      .filter((v) => v.title)
+      .slice(0, 8);
+
+    return {
+      recentErrors: Array.from(errorsSet),
+      watchedVideos,
+    };
+  });
+
 // ============ Fim persistência ============
+
+
 
 const taskInput = z.object({
   id: z.string(),
@@ -219,8 +268,14 @@ const enrichInput = z.object({
     .array(z.object({ title: z.string(), area: z.string(), score: z.number() }))
     .max(20)
     .optional(),
+  recentErrors: z.array(z.string()).max(20).optional(),
+  watchedVideos: z
+    .array(z.object({ title: z.string(), channel: z.string().nullable().optional() }))
+    .max(10)
+    .optional(),
   tasks: z.array(taskInput).min(1).max(40),
 });
+
 
 export const enrichStudyPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -262,6 +317,16 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
           .join("\n")
       : "(sem dados de desempenho ainda)";
 
+    const errorsSummary = data.recentErrors?.length
+      ? data.recentErrors.map((e) => `- ${e}`).join("\n")
+      : "(nenhum erro registrado recentemente)";
+
+    const videosSummary = data.watchedVideos?.length
+      ? data.watchedVideos
+          .map((v) => `- "${v.title}"${v.channel ? ` (${v.channel})` : ""}`)
+          .join("\n")
+      : "(nenhum vídeo assistido recentemente)";
+
     const prompt =
       `Você é um(a) professor(a) particular brasileiro(a), especialista em ${data.examName ?? "ENEM"}. ` +
       `Reescreva os títulos das tarefas do cronograma abaixo para ficarem específicos, ` +
@@ -272,7 +337,9 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       `- Mantenha o TIPO da tarefa (teoria, questões, revisão, etc.) coerente com o novo título.\n` +
       `- Se a tarefa tiver um tópico, use o nome do tópico no título.\n` +
       `- Não invente matérias que não existam no ENEM.\n` +
-      `- Cada título deve ser diferente dos demais (evite repetição).\n\n` +
+      `- Cada título deve ser diferente dos demais (evite repetição).\n` +
+      `- Se a tarefa cobrir um tópico onde o aluno tem ERRO RECENTE, mencione explicitamente na note (ex: "revisar o erro X").\n` +
+      `- Se algum vídeo assistido tratar do mesmo assunto, referencie ("como visto no vídeo Y").\n\n` +
       `Perfil do(a) aluno(a):\n` +
       `- Prova alvo: ${data.examName ?? "ENEM"}\n` +
       `- Foco: ${data.focus ?? "equilibrado"}\n` +
@@ -280,8 +347,11 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       `- Meta de nota: ${data.targetScore ?? "?"}\n` +
       `- Áreas difíceis: ${data.hardAreas?.join(", ") || "nenhuma"}\n` +
       `\nTópicos com desempenho fraco:\n${weakSummary}\n` +
+      `\nErros recentes (lousa/questões):\n${errorsSummary}\n` +
+      `\nVídeos que o aluno JÁ ASSISTIU (use como âncora):\n${videosSummary}\n` +
       `\nTarefas (id | data | tipo | área | minutos | título atual):\n${tasksSummary}\n` +
       `\nDevolva um JSON com { updates: [{ id, title, note }] } cobrindo TODAS as tarefas listadas.`;
+
 
     try {
       const { object } = await generateObject({
