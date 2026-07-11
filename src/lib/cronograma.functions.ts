@@ -791,6 +791,29 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       }
     }
 
+    // Etapa 5: expõe slugs revisáveis pro CTA "Rever com vídeo agora" na tela da Lousa.
+    // (a injeção do vídeo no dia seguinte acima já cuida do plano; isto é o CTA imediato)
+    let reviewTopicSlugs: string[] = [];
+    if (!passed && !isReforco) {
+      const wrongTopics = qs
+        .filter((q) => {
+          const c = corr.find((x) => x.id === q.id);
+          return !c?.correta;
+        })
+        .map((q) => q.topico)
+        .filter((t): t is string => !!t);
+      if (wrongTopics.length) {
+        const { data: matched } = await supabase
+          .from("study_topics")
+          .select("slug, title")
+          .in("title", wrongTopics)
+          .limit(10);
+        reviewTopicSlugs = Array.from(
+          new Set((matched ?? []).map((m) => m.slug as string).filter(Boolean)),
+        );
+      }
+    }
+
     return {
       pct,
       passed,
@@ -798,6 +821,7 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       correctCount,
       total: qs.length,
       reforcoActivityId,
+      reviewTopicSlugs,
       corrections: qs.map((q) => {
         const c = corr.find((x) => x.id === q.id);
         return {
@@ -811,3 +835,4 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       }),
     };
   });
+
