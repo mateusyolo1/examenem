@@ -388,6 +388,9 @@ function LessonPlayer({
               )
             }
             resumeAt={video.watch_seconds ?? 0}
+            topicId={topicId}
+            topicTitle={topicTitle}
+            topicArea={topicArea}
           />
 
 
