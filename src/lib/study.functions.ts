@@ -746,15 +746,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       }
     }
 
-    // Se forceRefresh, remove os vídeos AI atuais do tópico antes de inserir
-    // os novos — caso contrário eles se acumulariam na tela.
-    if (forceRefresh) {
-      await supabaseAdmin
-        .from("study_videos")
-        .delete()
-        .eq("topic_id", topic.id)
-        .eq("source", "ai");
-    }
+    // NOTE: previously deleted shared study_videos rows on forceRefresh,
+    // but the per-user list is now scoped by user_video_suggestion_history,
+    // so accumulation in the shared table is harmless — and deleting shared
+    // rows would break other users' history references.
+
 
     if (suggestions.length > 0) {
       // Ordena INTERCALANDO estilos: macete → aula → exercício → resumo →
