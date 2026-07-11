@@ -926,6 +926,8 @@ function WatchingView({
         </p>
       )}
 
+      <PlaylistJourneyHeader videos={videos} />
+
       <div>
         <h3 className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-3">
           Playlist
@@ -975,6 +977,7 @@ function WatchingView({
           })}
         </ol>
       </div>
+
     </div>
   );
 }
