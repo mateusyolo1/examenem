@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Check,
   ClipboardList,
+  HelpCircle,
   Lock,
   PenLine,
   Play,
@@ -15,6 +16,12 @@ import {
   ThumbsDown,
   X,
 } from "lucide-react";
+import {
+  INTENT_META as SHARED_INTENT_META,
+  INTENT_ORDER,
+  isIntent,
+  summarizeJourney,
+} from "@/lib/pedagogical-intent";
 
 // YouTube IFrame API loader (singleton)
 let ytApiPromise: Promise<any> | null = null;
