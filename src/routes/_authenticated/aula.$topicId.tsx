@@ -1010,7 +1010,7 @@ function IntentChip({ intent }: { intent: string | null }) {
 function PlaylistJourneyHeader({
   videos,
 }: {
-  videos: Array<{ id: string; title: string | null } & Record<string, unknown>>;
+  videos: Array<{ id: string } & Partial<{ pedagogical_intent: string | null }>>;
 }) {
   const [showLegend, setShowLegend] = useState(false);
   const intents = videos.map(
