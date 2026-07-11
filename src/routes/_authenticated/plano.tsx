@@ -753,6 +753,7 @@ function PlanView({
   const today = new Date();
   const [weekStart, setWeekStart] = useState(0);
   const enrichFn = useServerFn(enrichStudyPlan);
+  const signalsFn = useServerFn(getPersonalizationSignals);
   const enrichMutation = useMutation({
     mutationFn: async () => {
       const todayIso = new Date().toISOString().slice(0, 10);
@@ -768,6 +769,10 @@ function PlanView({
         .sort((a, b) => a.last_score - b.last_score)
         .slice(0, 10)
         .map((m) => ({ title: m.topic_slug, area: m.area, score: m.last_score }));
+      const signals = await signalsFn().catch(() => ({
+        recentErrors: [] as string[],
+        watchedVideos: [] as { title: string; channel: string | null }[],
+      }));
       return enrichFn({
         data: {
           focus: plan.config.focus,
@@ -776,6 +781,8 @@ function PlanView({
           targetScore: plan.config.targetScore,
           hardAreas: plan.config.hardAreas,
           weakTopics,
+          recentErrors: signals.recentErrors,
+          watchedVideos: signals.watchedVideos,
           tasks: window.map((t) => ({
             id: t.id,
             date: t.date,
@@ -788,6 +795,7 @@ function PlanView({
         },
       });
     },
+
     onSuccess: (res) => {
       applyAiEnrichment(res.updates);
       toast.success(`IA reescreveu ${res.updates.length} tarefa${res.updates.length === 1 ? "" : "s"}.`);
