@@ -369,6 +369,42 @@ export type Database = {
           },
         ]
       }
+      micro_learning_events: {
+        Row: {
+          created_at: string
+          id: string
+          resources: Json
+          sub_concept: string
+          sub_concept_term: string | null
+          timestamp_sec: number
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resources?: Json
+          sub_concept: string
+          sub_concept_term?: string | null
+          timestamp_sec: number
+          topic_id: string
+          user_id: string
+          youtube_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resources?: Json
+          sub_concept?: string
+          sub_concept_term?: string | null
+          timestamp_sec?: number
+          topic_id?: string
+          user_id?: string
+          youtube_id?: string
+        }
+        Relationships: []
+      }
       mind_maps: {
         Row: {
           created_at: string
