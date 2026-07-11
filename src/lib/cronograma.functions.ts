@@ -37,6 +37,101 @@ function todayISO(): string {
 }
 
 /* =========================================================
+ * Mapa ActivityKind → tipos de tarefas da Agenda que ela cobre.
+ * Usado tanto para semear focus_topics no Cronograma quanto para
+ * fechar automaticamente as tarefas correspondentes na Agenda.
+ * ======================================================= */
+const KIND_TO_AGENDA_TYPES: Record<ActivityKind, string[]> = {
+  videos: ["teoria", "videoaula"],
+  lousa: ["teoria", "videoaula", "questoes"],
+  treino: ["questoes", "prova_antiga"],
+  flashcards: ["flashcards", "revisao", "resumo", "mapa_mental"],
+  simulado: ["simulado"],
+};
+
+type AgendaTask = {
+  id: string;
+  date: string;
+  title: string;
+  area: string;
+  type: string;
+  status: string;
+  topicSlug?: string;
+  topicArea?: string;
+};
+
+async function loadTodayAgendaTasks(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+  date: string,
+): Promise<AgendaTask[]> {
+  const { data: row } = await supabase
+    .from("user_study_plan")
+    .select("cronograma")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const plan = row?.cronograma as { tasks?: AgendaTask[] } | null | undefined;
+  return (plan?.tasks ?? []).filter((t) => t.date === date);
+}
+
+function seedFromAgenda(kind: ActivityKind, todayTasks: AgendaTask[]) {
+  const types = KIND_TO_AGENDA_TYPES[kind] ?? [];
+  const matches = todayTasks.filter((t) => types.includes(t.type));
+  const focus_topics = Array.from(
+    new Set(matches.map((t) => t.topicSlug).filter((s): s is string => !!s)),
+  );
+  const agenda_task_ids = matches.map((t) => t.id);
+  const agenda_titles = matches.map((t) => t.title).slice(0, 3);
+  return { focus_topics, agenda_task_ids, agenda_titles };
+}
+
+async function markLinkedAgendaTasksDone(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  userId: string,
+  activityId: string,
+) {
+  const { data: act } = await supabase
+    .from("study_plan_activities")
+    .select("payload")
+    .eq("id", activityId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const ids =
+    (act?.payload as { agenda_task_ids?: unknown } | null)?.agenda_task_ids;
+  if (!Array.isArray(ids) || !ids.length) return;
+  const targetIds = ids.filter((i): i is string => typeof i === "string");
+  if (!targetIds.length) return;
+
+  const { data: row } = await supabase
+    .from("user_study_plan")
+    .select("cronograma")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const plan = row?.cronograma as {
+    tasks: Array<{ id: string; status: string }>;
+  } | null;
+  if (!plan?.tasks?.length) return;
+  let changed = 0;
+  const nextTasks = plan.tasks.map((t) => {
+    if (targetIds.includes(t.id) && t.status !== "concluida") {
+      changed += 1;
+      return { ...t, status: "concluida" };
+    }
+    return t;
+  });
+  if (!changed) return;
+  await supabase
+    .from("user_study_plan")
+    .update({
+      cronograma: { ...plan, tasks: nextTasks } as never,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+}
+
+
+
+/* =========================================================
  * ensureTodayPlan — cria o dia + atividades se ainda não existirem
  * Também arrasta pendências do último dia anterior (ativa "pulada").
  * ======================================================= */
