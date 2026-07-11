@@ -164,6 +164,7 @@ export const ensureTodayPlan = createServerFn({ method: "POST" })
 
       const kinds = WEEK_PATTERN[weekday] ?? [];
       if (kinds.length) {
+        const agendaToday = await loadTodayAgendaTasks(supabase, userId, date);
         // deixa espaço no início para pendências arrastadas (offset 100)
         const rows = kinds.map((kind, i) => ({
           day_id: day!.id,
@@ -171,11 +172,12 @@ export const ensureTodayPlan = createServerFn({ method: "POST" })
           order_index: 100 + i,
           kind,
           status: "pending",
-          payload: {},
+          payload: seedFromAgenda(kind, agendaToday),
         }));
         const { error: aerr } = await supabase.from("study_plan_activities").insert(rows);
         if (aerr) throw new Error(aerr.message);
       }
+
     }
 
     // === CARRY-OVER de pendências do último dia anterior ===
