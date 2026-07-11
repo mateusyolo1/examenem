@@ -366,6 +366,12 @@ function LandingPage() {
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-primary" /> Estudos de graça
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-primary" /> Organizador de rotina
+              </div>
+              <div className="flex items-center gap-2">
                 <CheckCircle2 size={16} className="text-primary" /> Sem cartão
               </div>
               <div className="flex items-center gap-2">
@@ -375,6 +381,7 @@ function LandingPage() {
                 <CheckCircle2 size={16} className="text-primary" /> Cancele quando quiser
               </div>
             </div>
+
           </div>
 
           <div className="relative">
