@@ -340,9 +340,14 @@ function LandingPage() {
               Plataforma digital de preparação · ENEM · Vestibulares
             </div>
 
+            <p className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-primary">
+              Estude em casa com IA
+            </p>
+
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tighter leading-[1.02]">
               A plataforma de estudos que a sua aprovação no ENEM precisa.
             </h1>
+
             <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
               Cronograma inteligente, redação corrigida por IA e simulados oficiais em um só lugar.
               A gente organiza o método, você conquista a vaga.
