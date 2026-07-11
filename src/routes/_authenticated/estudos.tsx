@@ -932,7 +932,9 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const clearMutation = useMutation({
     mutationFn: () => clearSuggested({ data: { topicId: topic.id } }),
     onSuccess: () => {
+      qc.setQueryData(key, { videos: [] });
       qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ["suggestion-history", topic.id] });
       toast.success("Lista de sugestões limpa");
     },
     onError: (e: Error) => toast.error(e.message),

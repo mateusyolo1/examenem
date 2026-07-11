@@ -870,8 +870,8 @@ export const clearSuggestionHistory = createServerFn({ method: "POST" })
 // Clear AI-suggested videos for a topic (per-user only).
 // SECURITY: previously deleted shared study_videos + ai_response_cache
 // rows via supabaseAdmin, which let any authenticated user wipe content
-// visible to everyone. Now this only clears the CURRENT user's
-// suggestion history so their next fetch re-ranks fresh suggestions,
+// visible to everyone. Now this only hides the CURRENT user's
+// active suggestion rows so their next fetch re-ranks fresh suggestions,
 // without touching shared data.
 // ============================================================
 export const clearSuggestedVideos = createServerFn({ method: "POST" })
