@@ -427,9 +427,13 @@ export const submitPressureResult = createServerFn({ method: "POST" })
       .eq("id", data.activityId)
       .eq("user_id", userId);
     if (aerr) throw new Error(aerr.message);
+    if (pct >= DOWN_THRESHOLD) {
+      await markLinkedAgendaTasksDone(supabase, userId, data.activityId);
+    }
 
     return { ok: true, level, streak, movement, pct };
   });
+
 
 /* =========================================================
  * generateLousa — cria 5 questões via IA
