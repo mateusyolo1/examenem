@@ -196,19 +196,44 @@ REGRAS:
 - "tutorPrompt" pronto para colar no Tutor IA, começando por "Estou vendo uma aula de ${data.subject} sobre '${data.mainTopic}' e não entendi...".
 - Português brasileiro, sem markdown, sem emojis.`;
 
-    let cycle: z.infer<typeof cycleSchema>;
-    try {
-      const { output } = await generateText({
-        model: gateway(CHAT_MODEL),
-        output: Output.object({ schema: cycleSchema }),
-        prompt,
-      });
-      cycle = output;
-    } catch (err) {
-      if (NoObjectGeneratedError.isInstance(err)) {
+    // Modelos em ordem de preferência. Se o primeiro falhar em produzir JSON
+    // válido (NoObjectGeneratedError é comum em previews instáveis), tentamos
+    // o próximo antes de desistir.
+    const models = [
+      "google/gemini-2.5-flash",
+      CHAT_MODEL,
+      "google/gemini-2.5-flash-lite",
+    ];
+    let cycle: z.infer<typeof cycleSchema> | null = null;
+    let lastErr: unknown = null;
+    for (const modelId of models) {
+      try {
+        const { output } = await generateText({
+          model: gateway(modelId),
+          output: Output.object({ schema: cycleSchema }),
+          prompt,
+        });
+        cycle = output;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.error(
+          `[micro-learning] modelo ${modelId} falhou:`,
+          err instanceof Error ? err.message : err,
+        );
+        if (!NoObjectGeneratedError.isInstance(err)) {
+          // Erro não relacionado ao JSON (rede, auth) — não adianta tentar outro.
+          break;
+        }
+      }
+    }
+    if (!cycle) {
+      if (NoObjectGeneratedError.isInstance(lastErr)) {
         throw new Error("A IA não conseguiu montar o ciclo. Tente novamente.");
       }
-      throw err;
+      throw lastErr instanceof Error
+        ? lastErr
+        : new Error("Falha ao gerar o ciclo.");
     }
 
     // 3) Vídeos curtos do próprio tópico (reaproveita catálogo já indexado).
