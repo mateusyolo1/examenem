@@ -227,7 +227,7 @@ function LandingPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ============ NAVBAR ============ */}
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <Link to="/inicio" className="font-black text-2xl tracking-tighter uppercase shrink-0">
             Exame<sup className="text-xs font-black">®</sup>
           </Link>
@@ -278,7 +278,7 @@ function LandingPage() {
 
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-center">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-center">
           <div className="space-y-5">
             <p className="text-sm sm:text-base font-mono uppercase tracking-[0.2em] text-primary">
               Estude em casa com IA
@@ -422,7 +422,7 @@ function LandingPage() {
 
       {/* ============ STATS STRIP ============ */}
       <section className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-2 lg:grid-cols-4 gap-8">
           {[
             { n: "+10 mil", l: "Questões oficiais" },
             { n: "+2.000", l: "Estudantes ativos" },
@@ -443,7 +443,7 @@ function LandingPage() {
 
       {/* ============ SERVICES / KEY RESOURCES ============ */}
       <section id="recursos" className="py-20 lg:py-28 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-[1fr_1.2fr] gap-10 lg:gap-16 mb-14">
             <div>
               <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
@@ -484,7 +484,7 @@ function LandingPage() {
 
       {/* ============ CREDENTIALS / PARTNERSHIPS ============ */}
       <section className="py-20 lg:py-24 border-b border-border bg-secondary/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-[1fr_1.4fr] gap-10 items-start">
             <div>
               <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
@@ -532,7 +532,7 @@ function LandingPage() {
 
       {/* ============ METHODOLOGY TABS ============ */}
       <section id="metodo" className="py-20 lg:py-28 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-12">
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
               Metodologia
@@ -584,7 +584,7 @@ function LandingPage() {
 
       {/* ============ CASES ============ */}
       <section id="cases" className="py-20 lg:py-28 border-b border-border bg-secondary/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div className="max-w-2xl">
               <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
@@ -657,7 +657,7 @@ function LandingPage() {
 
       {/* ============ WHY US ============ */}
       <section className="py-20 lg:py-28 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-14">
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
               Por que a Exame?
@@ -703,7 +703,7 @@ function LandingPage() {
 
       {/* ============ RESULTS CAROUSEL ============ */}
       <section className="py-20 lg:py-28 border-b border-border bg-foreground text-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-12">
             <div className="text-xs font-mono uppercase tracking-widest text-background/60 mb-3">
               Resultados que a Exame gerou
@@ -728,7 +728,7 @@ function LandingPage() {
 
       {/* ============ ABOUT ============ */}
       <section id="sobre" className="py-20 lg:py-28 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.2fr] gap-12 items-center">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.2fr] gap-12 items-center">
           <div>
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
               Sobre a Exame
@@ -779,7 +779,7 @@ function LandingPage() {
 
       {/* ============ 3 STEPS + CTA ============ */}
       <section className="py-20 lg:py-28 border-b border-border bg-secondary/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-14">
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
               Em apenas 3 passos
@@ -838,7 +838,7 @@ function LandingPage() {
 
       {/* ============ FAQ / CONTACT MINI ============ */}
       <section id="faq" className="py-20 lg:py-28 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.2fr] gap-12">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.2fr] gap-12">
           <div>
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
               Perguntas frequentes
@@ -875,7 +875,7 @@ function LandingPage() {
 
       {/* ============ FOOTER ============ */}
       <footer className="bg-secondary/60 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 mb-12">
             <div className="max-w-sm">
               <div className="font-black text-2xl tracking-tighter uppercase mb-4">
