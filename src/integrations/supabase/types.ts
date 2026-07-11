@@ -1162,6 +1162,7 @@ export type Database = {
       user_video_suggestion_history: {
         Row: {
           channel_name: string | null
+          dismissed_at: string | null
           duration_seconds: number | null
           id: string
           suggested_at: string
@@ -1172,6 +1173,7 @@ export type Database = {
         }
         Insert: {
           channel_name?: string | null
+          dismissed_at?: string | null
           duration_seconds?: number | null
           id?: string
           suggested_at?: string
@@ -1182,6 +1184,7 @@ export type Database = {
         }
         Update: {
           channel_name?: string | null
+          dismissed_at?: string | null
           duration_seconds?: number | null
           id?: string
           suggested_at?: string
