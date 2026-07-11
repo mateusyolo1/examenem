@@ -365,8 +365,10 @@ export const markSimpleActivityDone = createServerFn({ method: "POST" })
       .eq("id", data.activityId)
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
+    await markLinkedAgendaTasksDone(supabase, userId, data.activityId);
     return { ok: true };
   });
+
 
 /* =========================================================
  * submitPressureResult — atualiza nível conforme desempenho
