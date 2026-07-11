@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Nav } from "@/components/Nav";
@@ -45,6 +46,13 @@ const TUTOR_HINTS: HintDef[] = [
 ];
 
 export const Route = createFileRoute("/_authenticated/tutor")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z
+      .object({
+        prompt: z.string().max(2000).optional(),
+        autoSend: z.boolean().optional(),
+      })
+      .parse(search),
   head: () => ({
     meta: [
       { title: "Tutor IA — Professor particular de ENEM" },
@@ -126,6 +134,7 @@ function loadHistory(): Msg[] {
 }
 
 function Tutor() {
+  const search = Route.useSearch();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -141,6 +150,19 @@ function Tutor() {
   useEffect(() => {
     setMessages(loadHistory());
   }, []);
+
+  // Pré-preenche o input quando /tutor recebe ?prompt=... (usado pelo
+  // botão "Ensinar com vídeo" na página da aula).
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (search.prompt && search.prompt.trim().length > 0) {
+      prefilledRef.current = true;
+      setInput(search.prompt);
+      // foco automático; envio manual (deixa o aluno revisar antes)
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [search.prompt]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
