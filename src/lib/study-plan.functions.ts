@@ -268,6 +268,16 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
           .join("\n")
       : "(sem dados de desempenho ainda)";
 
+    const errorsSummary = data.recentErrors?.length
+      ? data.recentErrors.map((e) => `- ${e}`).join("\n")
+      : "(nenhum erro registrado recentemente)";
+
+    const videosSummary = data.watchedVideos?.length
+      ? data.watchedVideos
+          .map((v) => `- "${v.title}"${v.channel ? ` (${v.channel})` : ""}`)
+          .join("\n")
+      : "(nenhum vídeo assistido recentemente)";
+
     const prompt =
       `Você é um(a) professor(a) particular brasileiro(a), especialista em ${data.examName ?? "ENEM"}. ` +
       `Reescreva os títulos das tarefas do cronograma abaixo para ficarem específicos, ` +
@@ -278,7 +288,9 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       `- Mantenha o TIPO da tarefa (teoria, questões, revisão, etc.) coerente com o novo título.\n` +
       `- Se a tarefa tiver um tópico, use o nome do tópico no título.\n` +
       `- Não invente matérias que não existam no ENEM.\n` +
-      `- Cada título deve ser diferente dos demais (evite repetição).\n\n` +
+      `- Cada título deve ser diferente dos demais (evite repetição).\n` +
+      `- Se a tarefa cobrir um tópico onde o aluno tem ERRO RECENTE, mencione explicitamente na note (ex: "revisar o erro X").\n` +
+      `- Se algum vídeo assistido tratar do mesmo assunto, referencie ("como visto no vídeo Y").\n\n` +
       `Perfil do(a) aluno(a):\n` +
       `- Prova alvo: ${data.examName ?? "ENEM"}\n` +
       `- Foco: ${data.focus ?? "equilibrado"}\n` +
@@ -286,8 +298,11 @@ export const enrichStudyPlan = createServerFn({ method: "POST" })
       `- Meta de nota: ${data.targetScore ?? "?"}\n` +
       `- Áreas difíceis: ${data.hardAreas?.join(", ") || "nenhuma"}\n` +
       `\nTópicos com desempenho fraco:\n${weakSummary}\n` +
+      `\nErros recentes (lousa/questões):\n${errorsSummary}\n` +
+      `\nVídeos que o aluno JÁ ASSISTIU (use como âncora):\n${videosSummary}\n` +
       `\nTarefas (id | data | tipo | área | minutos | título atual):\n${tasksSummary}\n` +
       `\nDevolva um JSON com { updates: [{ id, title, note }] } cobrindo TODAS as tarefas listadas.`;
+
 
     try {
       const { object } = await generateObject({
