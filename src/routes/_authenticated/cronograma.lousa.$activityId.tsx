@@ -58,6 +58,8 @@ function LousaHomework() {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["lousa", activityId] });
       qc.invalidateQueries({ queryKey: ["cron-today"] });
+      qc.invalidateQueries({ queryKey: ["today-agenda"] });
+
       if (r.passed) {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
       } else {
