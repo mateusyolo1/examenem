@@ -369,6 +369,59 @@ export type Database = {
           },
         ]
       }
+      lousa_sessions: {
+        Row: {
+          content: Json
+          context_snapshot: Json | null
+          created_at: string
+          homework_activity_id: string | null
+          id: string
+          materia: string
+          status: string
+          tema: string
+          topic_area: string | null
+          topic_slug: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: Json
+          context_snapshot?: Json | null
+          created_at?: string
+          homework_activity_id?: string | null
+          id?: string
+          materia: string
+          status?: string
+          tema: string
+          topic_area?: string | null
+          topic_slug?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          context_snapshot?: Json | null
+          created_at?: string
+          homework_activity_id?: string | null
+          id?: string
+          materia?: string
+          status?: string
+          tema?: string
+          topic_area?: string | null
+          topic_slug?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lousa_sessions_homework_activity_id_fkey"
+            columns: ["homework_activity_id"]
+            isOneToOne: false
+            referencedRelation: "study_plan_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       micro_learning_events: {
         Row: {
           created_at: string
