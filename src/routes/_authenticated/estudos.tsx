@@ -889,7 +889,6 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
   const qc = useQueryClient();
 
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
 
   const key = ["suggested-videos", topic.id];
@@ -931,11 +930,14 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
 
   const clearMutation = useMutation({
     mutationFn: () => clearSuggested({ data: { topicId: topic.id } }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.setQueryData(key, { videos: [] });
-      qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ["suggestion-history", topic.id] });
-      toast.success("Lista de sugestões limpa");
+      toast.success(
+        result.cleared > 0
+          ? "Lista de sugestões limpa"
+          : "A lista já estava limpa",
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -974,7 +976,7 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
                 {busy ? "Buscando…" : "Trocar sugestões"}
               </button>
               <button
-                onClick={() => setClearConfirmOpen(true)}
+                onClick={() => clearMutation.mutate()}
                 disabled={clearMutation.isPending}
                 data-hint="estudos.limpar-lista"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border border-border rounded hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
@@ -1092,18 +1094,6 @@ function SuggestedVideos({ topic }: { topic: Topic }) {
         </div>
       )}
 
-      <ConfirmDialog
-        open={clearConfirmOpen}
-        title="Limpar lista de sugestões?"
-        description="Todos os vídeos sugeridos pela IA para este assunto serão removidos. Você poderá gerar novas sugestões depois."
-        confirmLabel="Limpar lista"
-        destructive
-        onConfirm={() => {
-          clearMutation.mutate();
-          setClearConfirmOpen(false);
-        }}
-        onCancel={() => setClearConfirmOpen(false)}
-      />
     </div>
 
   );
