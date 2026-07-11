@@ -824,11 +824,31 @@ function WatchingView({
               <Check size={12} /> Assistido
             </div>
           )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <EnsinarComVideoButton
+              topicId={topicId}
+              topicTitle={topicTitle}
+              topicArea={topicArea}
+              youtubeId={video.youtube_id}
+              getCurrentTime={() => {
+                try {
+                  const p = playerRef.current;
+                  if (p && typeof p.getCurrentTime === "function") return p.getCurrentTime();
+                } catch {}
+                return 0;
+              }}
+              pausePlayer={() => {
+                try {
+                  playerRef.current?.pauseVideo?.();
+                } catch {}
+              }}
+            />
+          </div>
           <VideoNotesLayer
             videoId={video.id}
             youtubeId={video.youtube_id}
             videoTitle={video.title ?? ""}
-            topicTitle=""
+            topicTitle={topicTitle}
             getCurrentTime={() => {
               try {
                 const p = playerRef.current;
