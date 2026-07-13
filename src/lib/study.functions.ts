@@ -327,10 +327,13 @@ export const markVideoWatched = createServerFn({ method: "POST" })
 // known BR education channels. Cached in ai_response_cache to save credits.
 // ============================================================
 const suggestInput = z.object({
-  topicId: z.string().uuid(),
+  topicId: z.string().min(1),
   maxMinutes: z.number().int().min(5).max(720).optional(),
   forceRefresh: z.boolean().optional(),
 });
+
+// Resolves either a UUID or a slug to a topic row.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface AiVideoSuggestion {
   youtube_id: string;
@@ -493,12 +496,16 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     const forceRefresh = !!data.forceRefresh;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: topic, error: tErr } = await supabase
+    const topicQuery = supabase
       .from("study_topics")
-      .select("id, title, area, subject")
-      .eq("id", data.topicId)
-      .single();
+      .select("id, title, area, subject");
+    const { data: topic, error: tErr } = await (
+      UUID_RE.test(data.topicId)
+        ? topicQuery.eq("id", data.topicId)
+        : topicQuery.eq("slug", data.topicId)
+    ).single();
     if (tErr) throw new Error(tErr.message);
+    if (!topic) throw new Error("Tópico não encontrado.");
 
     const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
 
@@ -943,8 +950,8 @@ export const reportIrrelevantVideo = createServerFn({ method: "POST" })
 // Lesson Mode: playlist + quiz generated from real transcripts
 // ============================================================
 const lessonInput = z.object({
-  topicId: z.string().uuid(),
-  taskId: z.string().uuid().optional(),
+  topicId: z.string().min(1),
+  taskId: z.string().optional(),
   maxMinutes: z.number().int().min(5).max(240).optional(),
 });
 
@@ -953,12 +960,16 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => lessonInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: topic, error: tErr } = await supabase
+    const topicQuery = supabase
       .from("study_topics")
-      .select("id, slug, title, subject, area")
-      .eq("id", data.topicId)
-      .single();
+      .select("id, slug, title, subject, area");
+    const { data: topic, error: tErr } = await (
+      UUID_RE.test(data.topicId)
+        ? topicQuery.eq("id", data.topicId)
+        : topicQuery.eq("slug", data.topicId)
+    ).single();
     if (tErr) throw new Error(tErr.message);
+    if (!topic) throw new Error("Tópico não encontrado.");
 
     // Determina duração máxima da playlist:
     // 1) parâmetro explícito, 2) minutes da atividade do plano se taskId, 3) 120 min.
@@ -981,11 +992,12 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
     const { data: videos, error } = await supabase
       .from("study_videos")
       .select("id, youtube_id, title, channel_name, sort_order, duration_seconds")
-      .eq("topic_id", data.topicId)
+      .eq("topic_id", topic.id)
       .eq("source", "ai")
       .order("sort_order", { ascending: true })
       .limit(6);
     if (error) throw new Error(error.message);
+
 
     const youtubeIds = (videos ?? []).map((v) => v.youtube_id);
     let activeYoutubeIds = new Set<string>();
@@ -994,7 +1006,7 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
         .from("user_video_suggestion_history")
         .select("youtube_id")
         .eq("user_id", context.userId)
-        .eq("topic_id", data.topicId)
+        .eq("topic_id", topic.id)
         .is("dismissed_at", null)
         .in("youtube_id", youtubeIds);
       activeYoutubeIds = new Set((history ?? []).map((h) => h.youtube_id));
