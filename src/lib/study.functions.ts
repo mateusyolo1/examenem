@@ -496,11 +496,14 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     const forceRefresh = !!data.forceRefresh;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: topic, error: tErr } = await supabase
+    const topicQuery = supabase
       .from("study_topics")
-      .select("id, title, area, subject")
-      .eq("id", data.topicId)
-      .single();
+      .select("id, title, area, subject");
+    const { data: topic, error: tErr } = await (
+      UUID_RE.test(data.topicId)
+        ? topicQuery.eq("id", data.topicId)
+        : topicQuery.eq("slug", data.topicId)
+    ).single();
     if (tErr) throw new Error(tErr.message);
 
     const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
