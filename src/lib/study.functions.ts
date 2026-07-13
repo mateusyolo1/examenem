@@ -650,7 +650,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       const verifyCacheKey = `video-verify:${topic.id}:${withTranscripts
         .map((c) => c.youtube_id).sort().join(",").slice(0, 200)}`;
       let verifyMap: Awaited<ReturnType<typeof verifyRelevanceBatch>> | null = null;
-      const { data: verifyCached } = await supabase
+      const { data: verifyCached } = await supabaseAdmin
         .from("ai_response_cache")
         .select("response")
         .eq("cache_key", verifyCacheKey)
