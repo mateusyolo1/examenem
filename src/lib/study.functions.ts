@@ -1005,7 +1005,7 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
         .from("user_video_suggestion_history")
         .select("youtube_id")
         .eq("user_id", context.userId)
-        .eq("topic_id", data.topicId)
+        .eq("topic_id", topic.id)
         .is("dismissed_at", null)
         .in("youtube_id", youtubeIds);
       activeYoutubeIds = new Set((history ?? []).map((h) => h.youtube_id));
