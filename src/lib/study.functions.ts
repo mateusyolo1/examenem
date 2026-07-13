@@ -1136,9 +1136,10 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => submitInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
