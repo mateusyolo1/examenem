@@ -968,6 +968,7 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
         : topicQuery.eq("slug", data.topicId)
     ).single();
     if (tErr) throw new Error(tErr.message);
+    if (!topic) throw new Error("Tópico não encontrado.");
 
     // Determina duração máxima da playlist:
     // 1) parâmetro explícito, 2) minutes da atividade do plano se taskId, 3) 120 min.
