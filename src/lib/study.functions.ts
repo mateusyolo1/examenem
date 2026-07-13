@@ -1179,10 +1179,10 @@ const getEssayTaskInput = z.object({ topicId: z.string().uuid() });
 export const getLessonEssayTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => getEssayTaskInput.parse(data))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
+  .handler(async ({ data, context: _context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
