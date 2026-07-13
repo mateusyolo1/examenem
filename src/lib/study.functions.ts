@@ -327,10 +327,13 @@ export const markVideoWatched = createServerFn({ method: "POST" })
 // known BR education channels. Cached in ai_response_cache to save credits.
 // ============================================================
 const suggestInput = z.object({
-  topicId: z.string().uuid(),
+  topicId: z.string().min(1),
   maxMinutes: z.number().int().min(5).max(720).optional(),
   forceRefresh: z.boolean().optional(),
 });
+
+// Resolves either a UUID or a slug to a topic row.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface AiVideoSuggestion {
   youtube_id: string;
