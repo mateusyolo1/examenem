@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Sparkles, Heart } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/precos")({
   head: () => ({
