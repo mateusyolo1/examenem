@@ -505,6 +505,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
         : topicQuery.eq("slug", data.topicId)
     ).single();
     if (tErr) throw new Error(tErr.message);
+    if (!topic) throw new Error("Tópico não encontrado.");
 
     const cacheKey = `video-suggestions:${topic.id}:${maxMinutes}`;
 
