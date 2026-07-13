@@ -125,8 +125,9 @@ function PrecosPage() {
             "Flashcards e quizzes gerados automaticamente",
             "Sugestões de vídeos personalizadas ao seu nível",
           ]}
-          ctaLabel="Assinar por R$ 25/mês"
-          ctaTo="/auth"
+          ctaLabel={subscribing || loading ? "Abrindo checkout..." : "Assinar por R$ 25/mês"}
+          onCtaClick={handleSubscribe}
+          ctaDisabled={subscribing || loading}
           note="Cobrança mensal recorrente processada pela Paddle. Cancele a qualquer momento."
         />
       </section>
