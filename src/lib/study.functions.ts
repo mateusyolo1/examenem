@@ -1079,7 +1079,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
