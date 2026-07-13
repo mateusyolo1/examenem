@@ -263,10 +263,24 @@ function Cronograma() {
                       const meta = ACT_META[a.kind as ActivityKind];
                       const Icon = meta.icon;
                       const previousIncomplete = acts.slice(0, idx).some((p) => p.status !== "done");
-                      const locked = previousIncomplete && a.status === "pending";
+                      const lockedUntilRaw = (a.payload as { locked_until?: string })?.locked_until;
+                      const lockedUntilMs = lockedUntilRaw
+                        ? new Date(lockedUntilRaw).getTime()
+                        : 0;
+                      const timeLocked = lockedUntilMs > Date.now();
+                      const locked = (previousIncomplete && a.status === "pending") || timeLocked;
                       const done = a.status === "done";
                       const failed = a.status === "failed";
                       const isReforco = Boolean((a.payload as { reforco?: boolean })?.reforco);
+                      const reviewTitle = (a.payload as { title?: string })?.title;
+                      const isReview =
+                        (a.payload as { source?: string })?.source === "video_lesson_review";
+                      const timeLockLabel = timeLocked
+                        ? (() => {
+                            const h = Math.ceil((lockedUntilMs - Date.now()) / (60 * 60 * 1000));
+                            return `Liberado em ${h}h`;
+                          })()
+                        : null;
 
                       return (
                         <div
@@ -288,7 +302,12 @@ function Cronograma() {
                           </div>
                           <div className="flex-1 min-w-[200px]">
                             <div className="font-bold flex items-center gap-2 flex-wrap">
-                              {meta.label}
+                              {isReview && reviewTitle ? reviewTitle : meta.label}
+                              {isReview && (
+                                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                  Revisão
+                                </span>
+                              )}
                               {isReforco && a.kind === "lousa" && (
                                 <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
                                   Reforço
@@ -312,9 +331,11 @@ function Cronograma() {
                                   : "Concluída"
                                 : failed
                                   ? `Precisa refazer — ${Math.round(Number(a.score ?? 0))}%`
-                                  : locked
-                                    ? "Termine a atividade anterior para desbloquear"
-                                    : meta.hint}
+                                  : timeLocked
+                                    ? timeLockLabel
+                                    : locked
+                                      ? "Termine a atividade anterior para desbloquear"
+                                      : meta.hint}
                             </div>
                             {(() => {
                               const focus = (a.payload as { focus_topics?: string[] })?.focus_topics;
@@ -326,6 +347,7 @@ function Cronograma() {
                               );
                             })()}
                           </div>
+
 
                           {/* Action */}
                           {done ? (

@@ -942,7 +942,11 @@ export const reportIrrelevantVideo = createServerFn({ method: "POST" })
 // ============================================================
 // Lesson Mode: playlist + quiz generated from real transcripts
 // ============================================================
-const lessonInput = z.object({ topicId: z.string().uuid() });
+const lessonInput = z.object({
+  topicId: z.string().uuid(),
+  taskId: z.string().uuid().optional(),
+  maxMinutes: z.number().int().min(5).max(240).optional(),
+});
 
 export const getLessonPlaylist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -956,9 +960,27 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
       .single();
     if (tErr) throw new Error(tErr.message);
 
+    // Determina duração máxima da playlist:
+    // 1) parâmetro explícito, 2) minutes da atividade do plano se taskId, 3) 120 min.
+    let maxMinutes = data.maxMinutes ?? null;
+    if (!maxMinutes && data.taskId) {
+      const { data: plan } = await supabase
+        .from("user_study_plan")
+        .select("cronograma")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      const tasks =
+        ((plan?.cronograma as { tasks?: Array<{ id: string; minutes?: number }> } | null)
+          ?.tasks) ?? [];
+      const t = tasks.find((x) => x.id === data.taskId);
+      if (t?.minutes && t.minutes > 0) maxMinutes = t.minutes;
+    }
+    const cap = maxMinutes ?? 120;
+    const maxSeconds = cap * 60;
+
     const { data: videos, error } = await supabase
       .from("study_videos")
-      .select("id, youtube_id, title, channel_name, sort_order")
+      .select("id, youtube_id, title, channel_name, sort_order, duration_seconds")
       .eq("topic_id", data.topicId)
       .eq("source", "ai")
       .order("sort_order", { ascending: true })
@@ -980,7 +1002,23 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
 
     const scopedVideos = (videos ?? []).filter((v) => activeYoutubeIds.has(v.youtube_id));
 
-    const ids = scopedVideos.map((v) => v.id);
+    // Trim por duração cumulativa — respeita o tempo planejado da tarefa.
+    // Sempre inclui pelo menos 1 vídeo, mesmo que ultrapasse o cap.
+    const trimmed: typeof scopedVideos = [];
+    let accSeconds = 0;
+    for (const v of scopedVideos) {
+      const dur = (v as { duration_seconds?: number | null }).duration_seconds ?? 0;
+      if (trimmed.length === 0) {
+        trimmed.push(v);
+        accSeconds += dur;
+        continue;
+      }
+      if (accSeconds + dur > maxSeconds) break;
+      trimmed.push(v);
+      accSeconds += dur;
+    }
+
+    const ids = trimmed.map((v) => v.id);
     const progressMap = new Map<string, { watched: boolean; watch_seconds: number }>();
     if (ids.length > 0) {
       const { data: progress } = await supabase
@@ -998,7 +1036,8 @@ export const getLessonPlaylist = createServerFn({ method: "POST" })
 
     return {
       topic,
-      videos: scopedVideos.map((v) => ({
+      maxMinutes: cap,
+      videos: trimmed.map((v) => ({
         ...v,
         watched: progressMap.get(v.id)?.watched ?? false,
         watch_seconds: progressMap.get(v.id)?.watch_seconds ?? 0,

@@ -176,7 +176,12 @@ export function TodayVideosList() {
                   <Link
                     to="/aula/$topicId"
                     params={{ topicId: v.topicSlug }}
-                    search={{ taskId: v.id }}
+                    search={{
+                      taskId: v.id,
+                      maxMinutes: v.minutes,
+                      topicSlug: v.topicSlug,
+                      topicArea: v.topicArea ?? v.area,
+                    }}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-foreground text-background text-[11px] font-bold uppercase tracking-widest hover:bg-primary transition-all"
                   >
                     <Play size={12} /> Assistir
