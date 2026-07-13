@@ -44,7 +44,7 @@ function LousaHomework() {
   const alreadyDone = data?.activity.status === "done";
   const alreadyFailed = data?.activity.status === "failed";
 
-  const [reviewSlugs, setReviewSlugs] = useState<string[]>([]);
+  const [reviewTopics, setReviewTopics] = useState<{ id: string; slug: string; title: string }[]>([]);
 
   const submitMut = useMutation({
     mutationFn: () =>
