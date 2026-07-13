@@ -505,7 +505,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     // C) forceRefresh: pula leitura de cache; senão tenta cache antes.
     let suggestions: AiVideoSuggestion[] | null = null;
     if (!forceRefresh) {
-      const { data: cached } = await supabase
+      const { data: cached } = await supabaseAdmin
         .from("ai_response_cache")
         .select("response")
         .eq("cache_key", cacheKey)
