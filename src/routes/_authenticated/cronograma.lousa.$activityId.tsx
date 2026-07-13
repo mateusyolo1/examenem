@@ -66,7 +66,7 @@ function LousaHomework() {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
       } else {
         toast.error(`Reprovou: ${r.correctCount}/${r.total} (${r.pct}%). Geramos uma Lousa de reforço.`);
-        setReviewSlugs(r.reviewTopicSlugs ?? []);
+        setReviewTopics(r.reviewTopics ?? []);
         if (r.reforcoActivityId) {
           setTimeout(() => {
             genFn({ data: { activityId: r.reforcoActivityId!, reforco: true } }).then(() => {
