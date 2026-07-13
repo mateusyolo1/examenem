@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Sparkles, Heart } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/precos")({
   head: () => ({
@@ -24,6 +27,42 @@ export const Route = createFileRoute("/precos")({
 });
 
 function PrecosPage() {
+  const { openCheckout, loading } = usePaddleCheckout();
+  const [subscribing, setSubscribing] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (subscribing) return;
+    setSubscribing(true);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) {
+        const next = encodeURIComponent("/precos?checkout=1");
+        window.location.href = `/auth?next=${next}`;
+        return;
+      }
+      await openCheckout({
+        priceId: "ai_access_monthly",
+        customerEmail: user.email ?? undefined,
+        customData: { userId: user.id },
+        successUrl: `${window.location.origin}/?checkout=success`,
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("checkout") === "1") {
+      url.searchParams.delete("checkout");
+      window.history.replaceState({}, "", url.pathname + url.search);
+      handleSubscribe();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border">
@@ -86,8 +125,9 @@ function PrecosPage() {
             "Flashcards e quizzes gerados automaticamente",
             "Sugestões de vídeos personalizadas ao seu nível",
           ]}
-          ctaLabel="Assinar por R$ 25/mês"
-          ctaTo="/auth"
+          ctaLabel={subscribing || loading ? "Abrindo checkout..." : "Assinar por R$ 25/mês"}
+          onCtaClick={handleSubscribe}
+          ctaDisabled={subscribing || loading}
           note="Cobrança mensal recorrente processada pela Paddle. Cancele a qualquer momento."
         />
       </section>
@@ -157,6 +197,8 @@ function PlanCard({
   features,
   ctaLabel,
   ctaTo,
+  onCtaClick,
+  ctaDisabled,
   note,
   highlighted,
 }: {
@@ -167,10 +209,17 @@ function PlanCard({
   description: string;
   features: string[];
   ctaLabel: string;
-  ctaTo: string;
+  ctaTo?: string;
+  onCtaClick?: () => void;
+  ctaDisabled?: boolean;
   note?: string;
   highlighted?: boolean;
 }) {
+  const ctaClass =
+    "mt-6 inline-flex items-center justify-center min-h-11 px-6 rounded-md text-sm font-bold uppercase tracking-widest transition-opacity disabled:opacity-60 " +
+    (highlighted
+      ? "bg-primary text-primary-foreground hover:opacity-90"
+      : "bg-foreground text-background hover:opacity-90");
   return (
     <div
       className={
@@ -202,17 +251,20 @@ function PlanCard({
           </li>
         ))}
       </ul>
-      <Link
-        to={ctaTo}
-        className={
-          "mt-6 inline-flex items-center justify-center min-h-11 px-6 rounded-md text-sm font-bold uppercase tracking-widest transition-opacity " +
-          (highlighted
-            ? "bg-primary text-primary-foreground hover:opacity-90"
-            : "bg-foreground text-background hover:opacity-90")
-        }
-      >
-        {ctaLabel}
-      </Link>
+      {onCtaClick ? (
+        <button
+          type="button"
+          onClick={onCtaClick}
+          disabled={ctaDisabled}
+          className={ctaClass}
+        >
+          {ctaLabel}
+        </button>
+      ) : (
+        <Link to={ctaTo ?? "/auth"} className={ctaClass}>
+          {ctaLabel}
+        </Link>
+      )}
       {note ? (
         <p className="mt-3 text-[11px] text-center text-muted-foreground leading-relaxed">
           {note}

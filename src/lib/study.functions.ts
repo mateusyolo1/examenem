@@ -505,7 +505,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
     // C) forceRefresh: pula leitura de cache; senão tenta cache antes.
     let suggestions: AiVideoSuggestion[] | null = null;
     if (!forceRefresh) {
-      const { data: cached } = await supabase
+      const { data: cached } = await supabaseAdmin
         .from("ai_response_cache")
         .select("response")
         .eq("cache_key", cacheKey)
@@ -650,7 +650,7 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
       const verifyCacheKey = `video-verify:${topic.id}:${withTranscripts
         .map((c) => c.youtube_id).sort().join(",").slice(0, 200)}`;
       let verifyMap: Awaited<ReturnType<typeof verifyRelevanceBatch>> | null = null;
-      const { data: verifyCached } = await supabase
+      const { data: verifyCached } = await supabaseAdmin
         .from("ai_response_cache")
         .select("response")
         .eq("cache_key", verifyCacheKey)
@@ -1079,7 +1079,7 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
@@ -1136,9 +1136,10 @@ export const submitLessonAttempt = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => submitInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
@@ -1178,10 +1179,10 @@ const getEssayTaskInput = z.object({ topicId: z.string().uuid() });
 export const getLessonEssayTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => getEssayTaskInput.parse(data))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
+  .handler(async ({ data, context: _context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
@@ -1215,10 +1216,11 @@ export const submitLessonEssay = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => submitEssayInput.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Busca a essayTask do cache do quiz
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
-    const { data: cached } = await supabase
+    const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)

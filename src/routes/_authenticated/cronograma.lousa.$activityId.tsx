@@ -44,7 +44,7 @@ function LousaHomework() {
   const alreadyDone = data?.activity.status === "done";
   const alreadyFailed = data?.activity.status === "failed";
 
-  const [reviewSlugs, setReviewSlugs] = useState<string[]>([]);
+  const [reviewTopics, setReviewTopics] = useState<{ id: string; slug: string; title: string }[]>([]);
 
   const submitMut = useMutation({
     mutationFn: () =>
@@ -66,7 +66,7 @@ function LousaHomework() {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
       } else {
         toast.error(`Reprovou: ${r.correctCount}/${r.total} (${r.pct}%). Geramos uma Lousa de reforço.`);
-        setReviewSlugs(r.reviewTopicSlugs ?? []);
+        setReviewTopics(r.reviewTopics ?? []);
         if (r.reforcoActivityId) {
           setTimeout(() => {
             genFn({ data: { activityId: r.reforcoActivityId!, reforco: true } }).then(() => {
@@ -219,19 +219,19 @@ function LousaHomework() {
                     você errou entra no plano de amanhã automaticamente.
                   </div>
                 </div>
-                {reviewSlugs.length > 0 && (
+                {reviewTopics.length > 0 && (
                   <div className="border border-blue-500/40 bg-blue-500/5 rounded-xl p-5 flex flex-wrap items-center gap-3">
                     <div className="text-sm flex-1 min-w-[200px]">
                       Quer revisar agora antes de refazer? Abra a aula do assunto que travou.
                     </div>
-                    {reviewSlugs.slice(0, 3).map((slug) => (
+                    {reviewTopics.slice(0, 3).map((t) => (
                       <Link
-                        key={slug}
+                        key={t.id}
                         to="/aula/$topicId"
-                        params={{ topicId: slug }}
+                        params={{ topicId: t.id }}
                         className="px-4 py-2 rounded-lg bg-foreground text-background text-xs font-bold uppercase tracking-widest hover:bg-primary transition-all"
                       >
-                        Rever · {slug.split("-").slice(-2).join(" ")}
+                        Rever · {t.title || t.slug.split("-").slice(-2).join(" ")}
                       </Link>
                     ))}
                   </div>

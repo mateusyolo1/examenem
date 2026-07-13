@@ -791,8 +791,9 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       }
     }
 
-    // Etapa 5: expõe slugs revisáveis pro CTA "Rever com vídeo agora" na tela da Lousa.
+    // Etapa 5: expõe topics revisáveis pro CTA "Rever com vídeo agora" na tela da Lousa.
     // (a injeção do vídeo no dia seguinte acima já cuida do plano; isto é o CTA imediato)
+    const reviewTopics: { id: string; slug: string; title: string }[] = [];
     let reviewTopicSlugs: string[] = [];
     if (!passed && !isReforco) {
       const wrongTopics = qs
@@ -805,12 +806,18 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       if (wrongTopics.length) {
         const { data: matched } = await supabase
           .from("study_topics")
-          .select("slug, title")
+          .select("id, slug, title")
           .in("title", wrongTopics)
           .limit(10);
-        reviewTopicSlugs = Array.from(
-          new Set((matched ?? []).map((m) => m.slug as string).filter(Boolean)),
-        );
+        const seen = new Set<string>();
+        for (const m of matched ?? []) {
+          const id = m.id as string | null;
+          const slug = m.slug as string | null;
+          if (!id || !slug || seen.has(id)) continue;
+          seen.add(id);
+          reviewTopics.push({ id, slug, title: (m.title as string) ?? "" });
+        }
+        reviewTopicSlugs = reviewTopics.map((t) => t.slug);
       }
     }
 
@@ -821,6 +828,7 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
       correctCount,
       total: qs.length,
       reforcoActivityId,
+      reviewTopics,
       reviewTopicSlugs,
       corrections: qs.map((q) => {
         const c = corr.find((x) => x.id === q.id);
