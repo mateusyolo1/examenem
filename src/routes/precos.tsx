@@ -197,6 +197,8 @@ function PlanCard({
   features,
   ctaLabel,
   ctaTo,
+  onCtaClick,
+  ctaDisabled,
   note,
   highlighted,
 }: {
@@ -207,10 +209,17 @@ function PlanCard({
   description: string;
   features: string[];
   ctaLabel: string;
-  ctaTo: string;
+  ctaTo?: string;
+  onCtaClick?: () => void;
+  ctaDisabled?: boolean;
   note?: string;
   highlighted?: boolean;
 }) {
+  const ctaClass =
+    "mt-6 inline-flex items-center justify-center min-h-11 px-6 rounded-md text-sm font-bold uppercase tracking-widest transition-opacity disabled:opacity-60 " +
+    (highlighted
+      ? "bg-primary text-primary-foreground hover:opacity-90"
+      : "bg-foreground text-background hover:opacity-90");
   return (
     <div
       className={
@@ -242,17 +251,20 @@ function PlanCard({
           </li>
         ))}
       </ul>
-      <Link
-        to={ctaTo}
-        className={
-          "mt-6 inline-flex items-center justify-center min-h-11 px-6 rounded-md text-sm font-bold uppercase tracking-widest transition-opacity " +
-          (highlighted
-            ? "bg-primary text-primary-foreground hover:opacity-90"
-            : "bg-foreground text-background hover:opacity-90")
-        }
-      >
-        {ctaLabel}
-      </Link>
+      {onCtaClick ? (
+        <button
+          type="button"
+          onClick={onCtaClick}
+          disabled={ctaDisabled}
+          className={ctaClass}
+        >
+          {ctaLabel}
+        </button>
+      ) : (
+        <Link to={ctaTo ?? "/auth"} className={ctaClass}>
+          {ctaLabel}
+        </Link>
+      )}
       {note ? (
         <p className="mt-3 text-[11px] text-center text-muted-foreground leading-relaxed">
           {note}
