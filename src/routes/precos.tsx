@@ -27,6 +27,42 @@ export const Route = createFileRoute("/precos")({
 });
 
 function PrecosPage() {
+  const { openCheckout, loading } = usePaddleCheckout();
+  const [subscribing, setSubscribing] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (subscribing) return;
+    setSubscribing(true);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!user) {
+        const next = encodeURIComponent("/precos?checkout=1");
+        window.location.href = `/auth?next=${next}`;
+        return;
+      }
+      await openCheckout({
+        priceId: "ai_access_monthly",
+        customerEmail: user.email ?? undefined,
+        customData: { userId: user.id },
+        successUrl: `${window.location.origin}/?checkout=success`,
+      });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("checkout") === "1") {
+      url.searchParams.delete("checkout");
+      window.history.replaceState({}, "", url.pathname + url.search);
+      handleSubscribe();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border">
