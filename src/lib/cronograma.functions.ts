@@ -844,3 +844,120 @@ ${items.map((i, n) => `${n + 1}) [id=${i.id}] Enunciado: ${i.enunciado}\nGabarit
     };
   });
 
+/* =========================================================
+ * scheduleLousaReview — agenda uma Lousa de revisão em D+1
+ * com trava de 24h (payload.locked_until).
+ * Idempotente: se já existir Lousa com o mesmo originalTaskId,
+ * não duplica.
+ * ======================================================= */
+export const scheduleLousaReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        originalTaskId: z.string().uuid().optional(),
+        topicSlug: z.string().min(1),
+        topicArea: z.string().min(1).optional(),
+        topicTitle: z.string().min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+
+    // D+1 no fuso local do servidor (ISO YYYY-MM-DD).
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    const y = t.getFullYear();
+    const mm = String(t.getMonth() + 1).padStart(2, "0");
+    const dd = String(t.getDate()).padStart(2, "0");
+    const tISO = `${y}-${mm}-${dd}`;
+
+    // 1) Garante study_plan_days de amanhã.
+    let { data: tday } = await supabase
+      .from("study_plan_days")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("plan_date", tISO)
+      .eq("kind", "regular")
+      .maybeSingle();
+
+    if (!tday) {
+      const { data: ins, error: dErr } = await supabase
+        .from("study_plan_days")
+        .insert({
+          user_id: userId,
+          plan_date: tISO,
+          kind: "regular",
+          unlocked_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (dErr) throw new Error(dErr.message);
+      tday = ins;
+
+      // Semeia atividades regulares do dia se ainda não existirem.
+      const wd = new Date(tISO + "T00:00:00").getDay();
+      const kinds = WEEK_PATTERN[wd] ?? [];
+      if (kinds.length && tday) {
+        const rows = kinds.map((kind, i) => ({
+          day_id: tday!.id,
+          user_id: userId,
+          order_index: 100 + i,
+          kind,
+          status: "pending",
+          payload: {},
+        }));
+        await supabase.from("study_plan_activities").insert(rows);
+      }
+    }
+
+    if (!tday) throw new Error("Não foi possível preparar o dia de amanhã");
+
+    // 2) Idempotência: já existe revisão para essa tarefa?
+    const { data: existing } = await supabase
+      .from("study_plan_activities")
+      .select("id, payload")
+      .eq("user_id", userId)
+      .eq("day_id", tday.id)
+      .eq("kind", "lousa");
+    const dup = (existing ?? []).find((row) => {
+      const p = (row.payload ?? {}) as {
+        source?: string;
+        originalTaskId?: string;
+        topicSlug?: string;
+      };
+      if (p.source !== "video_lesson_review") return false;
+      if (data.originalTaskId && p.originalTaskId === data.originalTaskId) return true;
+      if (!data.originalTaskId && p.topicSlug === data.topicSlug) return true;
+      return false;
+    });
+    if (dup) return { ok: true, activityId: dup.id, duplicated: true };
+
+    // 3) Insere a atividade com trava de 24h.
+    const lockedUntil = new Date(Date.now() + LOUSA_LOCK_MS).toISOString();
+    const { data: inserted, error: iErr } = await supabase
+      .from("study_plan_activities")
+      .insert({
+        day_id: tday.id,
+        user_id: userId,
+        order_index: 500,
+        kind: "lousa",
+        status: "pending",
+        payload: {
+          source: "video_lesson_review",
+          originalTaskId: data.originalTaskId ?? null,
+          topicSlug: data.topicSlug,
+          topicArea: data.topicArea ?? null,
+          title: `Revisão: ${data.topicTitle}`,
+          locked_until: lockedUntil,
+        },
+      })
+      .select("id")
+      .single();
+    if (iErr) throw new Error(iErr.message);
+
+    return { ok: true, activityId: inserted.id, duplicated: false, lockedUntil };
+  });
+
+

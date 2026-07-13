@@ -52,6 +52,8 @@ import {
   suggestVideosForTopic,
   reportIrrelevantVideo,
 } from "@/lib/study.functions";
+import { generateLousaLesson } from "@/lib/lousa.functions";
+import { scheduleLousaReview } from "@/lib/cronograma.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
 import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
@@ -61,7 +63,14 @@ import { EnsinarComVideoButton } from "@/components/aula/EnsinarComVideoButton";
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
   validateSearch: (search: Record<string, unknown>) =>
-    z.object({ taskId: z.string().optional() }).parse(search),
+    z
+      .object({
+        taskId: z.string().optional(),
+        maxMinutes: z.coerce.number().int().min(5).max(240).optional(),
+        topicSlug: z.string().optional(),
+        topicArea: z.string().optional(),
+      })
+      .parse(search),
   component: LessonPage,
   errorComponent: ({ error, reset }) => {
     const router = useRouter();
@@ -94,13 +103,13 @@ type Phase = "watching" | "quiz" | "result";
 
 function LessonPage() {
   const { topicId } = Route.useParams();
-  const { taskId } = Route.useSearch();
+  const { taskId, maxMinutes } = Route.useSearch();
   const getPlaylist = useServerFn(getLessonPlaylist);
   const suggestVideos = useServerFn(suggestVideosForTopic);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["lesson-playlist", topicId],
-    queryFn: () => getPlaylist({ data: { topicId } }),
+    queryKey: ["lesson-playlist", topicId, maxMinutes ?? "default"],
+    queryFn: () => getPlaylist({ data: { topicId, taskId, maxMinutes } }),
   });
 
   const autoSuggest = useMutation({
@@ -234,6 +243,27 @@ function LessonPlayer({
   const savePos = useServerFn(saveVideoPosition);
   const markWatchedFn = useServerFn(markVideoWatched);
   const recordMastery = useServerFn(recordTopicMastery);
+  const genLousaLesson = useServerFn(generateLousaLesson);
+  const scheduleReview = useServerFn(scheduleLousaReview);
+
+  // Lousa como tutor: gera resumo/exercícios/desafio contextualizados no tópico
+  // atual para exibir como intro da aula.
+  const lousaQuery = useQuery({
+    queryKey: ["lousa-lesson", topicSlug],
+    queryFn: () =>
+      genLousaLesson({ data: { topicSlug, topicArea, tema: topicTitle } }),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  const lousaLesson =
+    (lousaQuery.data?.session?.content as
+      | {
+          resumo?: string[];
+          exercicios?: { enunciado: string; resposta: string; comentario: string }[];
+          desafioEnsinar?: { pergunta: string; respostaModelo: string };
+          tema?: string;
+        }
+      | undefined) ?? null;
 
 
   // Pré-geração da atividade em background: assim que o aluno conclui
@@ -299,6 +329,15 @@ function LessonPlayer({
       if (["linguagens", "humanas", "natureza", "matematica"].includes(area)) {
         recordMastery({ data: { topicSlug, area, score } }).catch(() => {});
       }
+      // Agenda revisão em D+1 (trava de 24h). Fire-and-forget.
+      scheduleReview({
+        data: {
+          originalTaskId: taskId,
+          topicSlug,
+          topicArea,
+          topicTitle,
+        },
+      }).catch((e) => console.error("[aula] scheduleLousaReview failed", e));
       setPhase("result");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -374,35 +413,44 @@ function LessonPlayer({
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {phase === "watching" && (
-          <WatchingView
-            video={video}
-            current={current}
-            total={total}
-            watched={watched}
-            onSelect={goSelect}
-            onMarkWatched={markCurrentWatched}
-            onNext={goNext}
-            onPrev={goPrev}
-            allWatched={allWatched}
-            onStartQuiz={() => quizMutation.mutate()}
-            quizLoading={quizMutation.isPending}
-            quizPrefetching={!!prefetchRef.current && !prefetchReady}
-            quizPrefetchReady={prefetchReady}
-            videos={videos}
-            autoplay={autoplay}
-            onSaveProgress={(seconds) =>
-              savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
-                () => {},
-              )
-            }
-            resumeAt={video.watch_seconds ?? 0}
-            topicId={topicId}
-            topicTitle={topicTitle}
-            topicArea={topicArea}
-          />
-
-
+          <>
+            <LousaIntroCard
+              loading={lousaQuery.isLoading}
+              lesson={lousaLesson}
+              topicTitle={topicTitle}
+            />
+            <WatchingView
+              video={video}
+              current={current}
+              total={total}
+              watched={watched}
+              onSelect={goSelect}
+              onMarkWatched={markCurrentWatched}
+              onNext={goNext}
+              onPrev={goPrev}
+              allWatched={allWatched}
+              onStartQuiz={() => quizMutation.mutate()}
+              quizLoading={quizMutation.isPending}
+              quizPrefetching={!!prefetchRef.current && !prefetchReady}
+              quizPrefetchReady={prefetchReady}
+              videos={videos}
+              autoplay={autoplay}
+              onSaveProgress={(seconds) =>
+                savePos({ data: { videoId: video.id, watchSeconds: Math.floor(seconds) } }).catch(
+                  () => {},
+                )
+              }
+              resumeAt={video.watch_seconds ?? 0}
+              topicId={topicId}
+              topicTitle={topicTitle}
+              topicArea={topicArea}
+            />
+            {allWatched && lousaLesson && (
+              <LousaActivityCard lesson={lousaLesson} />
+            )}
+          </>
         )}
+
 
         {phase === "quiz" && quizMutation.data && (
           <QuizView
@@ -1397,3 +1445,134 @@ function ResultView({
     </div>
   );
 }
+
+type LousaLessonShape = {
+  resumo?: string[];
+  exercicios?: { enunciado: string; resposta: string; comentario: string }[];
+  desafioEnsinar?: { pergunta: string; respostaModelo: string };
+  tema?: string;
+};
+
+function LousaIntroCard({
+  loading,
+  lesson,
+  topicTitle,
+}: {
+  loading: boolean;
+  lesson: LousaLessonShape | null;
+  topicTitle: string;
+}) {
+  const [open, setOpen] = useState(true);
+  if (loading) {
+    return (
+      <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4 text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+        <Sparkles size={14} className="animate-pulse" />
+        Preparando a Lousa da aula…
+      </div>
+    );
+  }
+  if (!lesson?.resumo?.length) return null;
+  return (
+    <div className="mb-4 rounded-xl border border-primary/30 bg-primary/[0.04]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Sparkles size={14} className="text-primary" />
+          <span className="text-xs font-mono uppercase tracking-widest text-primary">
+            Lousa · Antes de começar
+          </span>
+        </div>
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          {open ? "Recolher" : "Abrir"}
+        </span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="text-sm font-semibold">{lesson.tema || topicTitle}</div>
+          <ul className="space-y-1.5 text-sm leading-relaxed">
+            {lesson.resumo.map((b, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LousaActivityCard({ lesson }: { lesson: LousaLessonShape }) {
+  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [challengeOpen, setChallengeOpen] = useState(false);
+  const exercicios = lesson.exercicios ?? [];
+  const desafio = lesson.desafioEnsinar;
+  if (!exercicios.length && !desafio) return null;
+  return (
+    <div className="mt-6 rounded-xl border border-primary/30 bg-primary/[0.04] p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <PenLine size={14} className="text-primary" />
+        <span className="text-xs font-mono uppercase tracking-widest text-primary">
+          Lousa · Exercite antes da atividade
+        </span>
+      </div>
+      {exercicios.length > 0 && (
+        <ol className="space-y-3">
+          {exercicios.map((e, i) => (
+            <li key={i} className="rounded-lg border border-border bg-background p-4">
+              <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Exercício {i + 1}
+              </div>
+              <div className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">
+                {e.enunciado}
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevealed((r) => ({ ...r, [i]: !r[i] }))}
+                className="mt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                {revealed[i] ? "Esconder resposta" : "Ver resposta"}
+              </button>
+              {revealed[i] && (
+                <div className="mt-2 text-sm rounded border border-border bg-muted/40 p-3 whitespace-pre-wrap">
+                  <div className="font-semibold">Resposta esperada</div>
+                  <div className="mt-1">{e.resposta}</div>
+                  {e.comentario && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Dica: {e.comentario}
+                    </div>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {desafio && (
+        <div className="rounded-lg border border-border bg-background p-4">
+          <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            Desafio · Ensine com suas palavras
+          </div>
+          <div className="mt-1 text-sm leading-relaxed">{desafio.pergunta}</div>
+          <button
+            type="button"
+            onClick={() => setChallengeOpen((v) => !v)}
+            className="mt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground"
+          >
+            {challengeOpen ? "Esconder modelo" : "Ver resposta modelo"}
+          </button>
+          {challengeOpen && (
+            <div className="mt-2 text-sm rounded border border-border bg-muted/40 p-3 whitespace-pre-wrap">
+              {desafio.respostaModelo}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
