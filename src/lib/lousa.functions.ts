@@ -28,6 +28,7 @@ export type LousaContextSnapshot = {
   watchedVideos: { title: string; channel: string | null }[];
   planTaskTitle: string | null;
   planDate: string | null;
+  taskId?: string | null;
 };
 
 type PlanTask = {
