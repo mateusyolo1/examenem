@@ -226,6 +226,7 @@ export const generateLousaLesson = createServerFn({ method: "POST" })
       watchedVideos,
       planTaskTitle,
       planDate,
+      taskId: data.taskId ?? null,
     };
 
     const domainoDesc =
