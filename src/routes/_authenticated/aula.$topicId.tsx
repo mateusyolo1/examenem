@@ -249,9 +249,9 @@ function LessonPlayer({
   // Lousa como tutor: gera resumo/exercícios/desafio contextualizados no tópico
   // atual para exibir como intro da aula.
   const lousaQuery = useQuery({
-    queryKey: ["lousa-lesson", topicSlug],
+    queryKey: ["lousa-lesson", topicSlug, taskId ?? null],
     queryFn: () =>
-      genLousaLesson({ data: { topicSlug, topicArea, tema: topicTitle } }),
+      genLousaLesson({ data: { topicSlug, topicArea, tema: topicTitle, taskId } }),
     staleTime: 60 * 60 * 1000,
     retry: false,
   });

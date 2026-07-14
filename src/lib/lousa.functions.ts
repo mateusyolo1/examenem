@@ -28,6 +28,7 @@ export type LousaContextSnapshot = {
   watchedVideos: { title: string; channel: string | null }[];
   planTaskTitle: string | null;
   planDate: string | null;
+  taskId?: string | null;
 };
 
 type PlanTask = {
@@ -111,11 +112,26 @@ export const generateLousaLesson = createServerFn({ method: "POST" })
         topicSlug: z.string().optional(),
         topicArea: z.string().optional(),
         tema: z.string().optional(),
+        taskId: z.string().optional(),
       })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+
+    // ---- 0. persistência: se já existe sessão para este taskId, reaproveita ----
+    if (data.taskId) {
+      const { data: existing } = await supabase
+        .from("lousa_sessions")
+        .select("*")
+        .eq("user_id", userId)
+        .contains("context_snapshot", { taskId: data.taskId } as never)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) return { session: existing };
+    }
+
 
     // ---- 1. resolver tópico (parâmetro OU plano do dia) ----
     let topicSlug = data.topicSlug ?? null;
@@ -210,6 +226,7 @@ export const generateLousaLesson = createServerFn({ method: "POST" })
       watchedVideos,
       planTaskTitle,
       planDate,
+      taskId: data.taskId ?? null,
     };
 
     const domainoDesc =
