@@ -876,6 +876,34 @@ export function topTaskFor(plan: StudyPlan | null): StudyTask | null {
   return late[0] ?? null;
 }
 
+/**
+ * Retorna a próxima tarefa "aula" de hoje (videoaula/teoria com topicSlug),
+ * usada pela sidebar para mostrar dinamicamente o item "Sala de Aula".
+ * Retorna null se não houver aula ativa no dia.
+ */
+export function useActiveClassroomTask(): StudyTask | null {
+  const [plan, setPlan] = useState<StudyPlan | null>(() => read());
+  useEffect(() => {
+    const h = () => setPlan(read());
+    window.addEventListener("exame:study-plan", h);
+    window.addEventListener("storage", h);
+    return () => {
+      window.removeEventListener("exame:study-plan", h);
+      window.removeEventListener("storage", h);
+    };
+  }, []);
+  if (!plan) return null;
+  const today = todayIso();
+  const candidates = plan.tasks.filter(
+    (t) =>
+      t.date === today &&
+      t.status !== "concluida" &&
+      t.topicSlug &&
+      (t.type === "videoaula" || t.type === "teoria"),
+  );
+  return candidates[0] ?? null;
+}
+
 function priority(t: StudyTask): number {
   const order: Record<TaskType, number> = {
     simulado: 6,
