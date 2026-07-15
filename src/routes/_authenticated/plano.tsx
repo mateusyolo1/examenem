@@ -193,6 +193,15 @@ function Plano() {
   const [editing, setEditing] = useState(false);
   const [askClear, setAskClear] = useState(false);
 
+  // Stage/semana do contrato — usa para escalar a carga do plano
+  const stageInfoFn = useServerFn(getStageInfo);
+  const { data: stageInfo } = useQuery({
+    queryKey: ["stage-info"],
+    queryFn: () => stageInfoFn(),
+    staleTime: 60_000,
+  });
+  const stageLoadFactor = stageInfo?.loadFactor ?? 1;
+
   // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
   const listTopicsFn = useServerFn(listStudyTopics);
   const needsCatalog = !plan || editing;
