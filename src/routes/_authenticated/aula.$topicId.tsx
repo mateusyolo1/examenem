@@ -1480,35 +1480,43 @@ function LousaIntroCard({
     return (
       <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4 text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
         <Sparkles size={14} className="animate-pulse" />
-        Preparando a Lousa da aula…
+        Preparando o briefing da aula…
       </div>
     );
   }
   if (!lesson?.resumo?.length) return null;
   return (
-    <div className="mb-4 rounded-xl border border-primary/30 bg-primary/[0.04]">
+    <div className="mb-4 rounded-xl border border-primary/30 bg-primary/[0.04] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-primary/[0.06] transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-primary" />
-          <span className="text-xs font-mono uppercase tracking-widest text-primary">
-            Lousa · Antes de começar
-          </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles size={14} className="text-primary shrink-0" />
+          <div className="min-w-0">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-primary">
+              Briefing da IA · Antes de começar
+            </div>
+            <div className="text-sm font-semibold truncate mt-0.5">
+              {lesson.tema || topicTitle}
+            </div>
+          </div>
         </div>
-        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+        <span className="shrink-0 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           {open ? "Recolher" : "Abrir"}
         </span>
       </button>
       {open && (
-        <div className="px-4 pb-4 space-y-3">
-          <div className="text-sm font-semibold">{lesson.tema || topicTitle}</div>
+        <div className="px-4 pb-4 space-y-3 border-t border-primary/10">
+          <div className="pt-3 text-[11px] text-muted-foreground leading-relaxed">
+            A professora IA preparou os pontos-chave desta aula com base no seu
+            histórico. Fique atento(a) a estes tópicos enquanto assiste:
+          </div>
           <ul className="space-y-1.5 text-sm leading-relaxed">
             {lesson.resumo.map((b, i) => (
               <li key={i} className="flex items-start gap-2">
-                <span className="text-primary mt-1">•</span>
+                <span className="text-primary mt-1 font-bold">•</span>
                 <span>{b}</span>
               </li>
             ))}
