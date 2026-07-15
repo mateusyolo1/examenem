@@ -599,6 +599,44 @@ function TopicSearches({ topic }: { topic: Topic }) {
           )}
         </div>
         <h2 className="text-2xl md:text-3xl font-extrabold tracking-tighter">{topic.title}</h2>
+        {/* Tópico Unificado: atalhos rápidos para os formatos deste assunto. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            to="/aula/$topicId"
+            params={{ topicId: topic.id }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+          >
+            <GraduationCap size={14} /> Estudar este tópico
+          </Link>
+          <Link
+            to="/estudos"
+            search={{ tab: "mapas" }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors"
+          >
+            <Brain size={13} /> Mapa mental
+          </Link>
+          <Link
+            to="/estudos"
+            search={{ tab: "notas" }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors"
+          >
+            <StickyNote size={13} /> Notas
+          </Link>
+          <Link
+            to="/estudos"
+            search={{ tab: "flashcards" }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors"
+          >
+            <Layers size={13} /> Flashcards
+          </Link>
+          <Link
+            to="/estudos"
+            search={{ tab: "resumos" }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded hover:bg-accent transition-colors"
+          >
+            <FileText size={13} /> Resumos
+          </Link>
+        </div>
       </header>
 
       {/* Vídeos sugeridos (curados + IA) com player embutido */}
