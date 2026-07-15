@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useProgress } from "@/lib/storage";
+import { useActiveClassroomTask } from "@/lib/study-plan";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -24,6 +25,7 @@ import {
   CalendarDays,
   Settings as SettingsIcon,
   MoreHorizontal,
+  GraduationCap,
 } from "lucide-react";
 
 type NavItem = {
@@ -31,24 +33,43 @@ type NavItem = {
   label: string;
   shortLabel?: string;
   icon: React.ComponentType<{ size?: number }>;
+  search?: Record<string, unknown>;
+  params?: Record<string, string>;
+  badge?: string;
 };
 
-const PRIMARY: NavItem[] = [
+type NavSection = {
+  key: string;
+  label: string;
+  items: NavItem[];
+};
+
+// FOCO ATIVO — o que o aluno tem que fazer hoje.
+const FOCO_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/cronograma", label: "Cronograma", shortLabel: "Hoje", icon: Calendar },
+];
+
+// BIBLIOTECA — onde o aluno consulta e organiza conteúdo.
+const BIBLIOTECA_ITEMS: NavItem[] = [
   { to: "/estudos", label: "Hub de Estudos", shortLabel: "Estudar", icon: Youtube },
+  { to: "/materias", label: "Matérias", icon: BookOpen },
+  { to: "/temas", label: "Temas", icon: Lightbulb },
+];
+
+// TREINO — o que exige performance.
+const TREINO_ITEMS: NavItem[] = [
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
   { to: "/simulados-reais", label: "Provas Reais ENEM", shortLabel: "Reais", icon: FileCheck },
   { to: "/redacao", label: "Redação", icon: PenLine },
-  { to: "/tutor", label: "Tutor IA", icon: Bot },
 ];
 
-const SECONDARY: NavItem[] = [
+// SUPORTE — apoio e configurações.
+const SUPORTE_ITEMS: NavItem[] = [
+  { to: "/tutor", label: "Tutor IA", icon: Bot },
   { to: "/plano", label: "Agenda", icon: CalendarDays },
-  { to: "/materias", label: "Matérias", icon: BookOpen },
-  { to: "/temas", label: "Temas", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
   { to: "/perfil", label: "Perfil", icon: User },
   { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
@@ -56,13 +77,33 @@ const SECONDARY: NavItem[] = [
 
 const MOBILE_PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
+  { to: "/cronograma", label: "Hoje", icon: Calendar },
   { to: "/estudos", label: "Estudos", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/simulados-reais", label: "Reais", icon: FileCheck },
 ];
 
-const ALL: NavItem[] = [...PRIMARY, ...SECONDARY];
+function useNavSections(activeTask: ReturnType<typeof useActiveClassroomTask>): NavSection[] {
+  // Injeta "Sala de Aula" em FOCO ATIVO se há tarefa de aula pendente hoje.
+  const foco: NavItem[] = [...FOCO_ITEMS];
+  if (activeTask?.topicSlug) {
+    foco.push({
+      to: "/aula/$topicId",
+      label: "Sala de Aula",
+      shortLabel: "Aula",
+      icon: GraduationCap,
+      params: { topicId: activeTask.topicSlug },
+      search: { taskId: activeTask.id, maxMinutes: activeTask.minutes },
+      badge: "Agora",
+    });
+  }
+  return [
+    { key: "foco", label: "Foco ativo", items: foco },
+    { key: "biblioteca", label: "Biblioteca", items: BIBLIOTECA_ITEMS },
+    { key: "treino", label: "Treino", items: TREINO_ITEMS },
+    { key: "suporte", label: "Suporte", items: SUPORTE_ITEMS },
+  ];
+}
 
 export function Nav() {
   const { progress } = useProgress();
@@ -70,9 +111,14 @@ export function Nav() {
   const xp = computeXP(progress);
   const lvl = levelFor(xp.total);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const activeTask = useActiveClassroomTask();
+  const sections = useNavSections(activeTask);
+  const allItems = sections.flatMap((s) => s.items);
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
-  const moreActive = SECONDARY.some((m) => isActive(m.to));
+  // "Mais" (mobile) fica ativo quando estamos em qualquer rota fora do primário mobile.
+  const mobilePrimarySet = new Set(MOBILE_PRIMARY.map((m) => m.to));
+  const moreActive = allItems.some((m) => !mobilePrimarySet.has(m.to) && isActive(m.to));
 
   useEffect(() => {
     setSheetOpen(false);
@@ -83,14 +129,20 @@ export function Nav() {
     return () => document.body.classList.remove("has-sidebar");
   }, []);
 
-  const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
+  const renderLink = (l: NavItem, opts?: { compact?: boolean; onClick?: () => void }) => {
     const active = isActive(l.to);
     const Icon = l.icon;
     const tourId = l.to === "/" ? "nav-dashboard" : `nav${l.to.replace(/\//g, "-")}`;
+    // TanStack Link precisa de `params`/`search` tipados por rota. Usamos
+    // `as never` para acomodar ambos os casos (com/sem params) sem alargar
+    // o tipo do NavItem.
     return (
       <Link
-        key={l.to}
-        to={l.to}
+        key={l.to + (l.badge ?? "")}
+        to={l.to as never}
+        params={(l.params as never) ?? (undefined as never)}
+        search={(l.search as never) ?? (undefined as never)}
+        onClick={opts?.onClick}
         aria-current={active ? "page" : undefined}
         data-tour={tourId}
         className={
@@ -101,7 +153,12 @@ export function Nav() {
         }
       >
         <Icon size={opts?.compact ? 16 : 18} />
-        <span className="truncate">{l.label}</span>
+        <span className="truncate flex-1">{l.label}</span>
+        {l.badge && (
+          <span className="shrink-0 text-[9px] font-mono uppercase tracking-widest bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+            {l.badge}
+          </span>
+        )}
       </Link>
     );
   };
@@ -183,18 +240,14 @@ export function Nav() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
-          <div data-tour="nav-primary">
-            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Estudo
+          {sections.map((sec) => (
+            <div key={sec.key} data-tour={`nav-${sec.key}`}>
+              <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                {sec.label}
+              </div>
+              <div className="space-y-0.5">{sec.items.map((l) => renderLink(l))}</div>
             </div>
-            <div className="space-y-0.5">{PRIMARY.map((l) => renderLink(l))}</div>
-          </div>
-          <div data-tour="nav-secondary">
-            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Mais
-            </div>
-            <div className="space-y-0.5">{SECONDARY.map((l) => renderLink(l))}</div>
-          </div>
+          ))}
         </nav>
 
         <div className="px-3 pt-2 pb-4 border-t border-border">
@@ -271,28 +324,20 @@ export function Nav() {
                 <X size={16} />
               </button>
             </div>
-            <ul className="px-2 pb-4 max-h-[70vh] overflow-y-auto">
-              {ALL.map((l) => {
-                const active = isActive(l.to);
-                const Icon = l.icon;
-                return (
-                  <li key={l.to}>
-                    <Link
-                      to={l.to}
-                      onClick={() => setSheetOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className={
-                        "flex items-center gap-3 px-3 py-3 min-h-11 rounded-md text-sm font-medium transition-colors " +
-                        (active ? "bg-accent text-foreground" : "text-foreground hover:bg-accent")
-                      }
-                    >
-                      <Icon size={18} />
-                      {l.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="px-2 pb-4 max-h-[70vh] overflow-y-auto space-y-4">
+              {sections.map((sec) => (
+                <div key={sec.key}>
+                  <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                    {sec.label}
+                  </div>
+                  <ul className="space-y-0.5">
+                    {sec.items.map((l) =>
+                      renderLink(l, { onClick: () => setSheetOpen(false) }),
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
             <div className="px-3 pb-3 border-t border-border pt-3">
               <UserMenu />
             </div>
