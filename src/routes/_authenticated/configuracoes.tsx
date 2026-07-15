@@ -84,9 +84,10 @@ function ConfiguracoesPage() {
   }
 
   const updateSettingsFn = useServerFn(updateUserStudySettings);
+  const stageInfoFn = useServerFn(getStageInfo);
   const stageQuery = useQuery({
     queryKey: ["stage-info"],
-    queryFn: () => useServerFn(getStageInfo)(),
+    queryFn: () => stageInfoFn(),
   });
 
   function handleSave() {
