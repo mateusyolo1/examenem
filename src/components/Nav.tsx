@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useProgress, type Area } from "@/lib/storage";
+import { useProgress } from "@/lib/storage";
 import { useActiveClassroomTask } from "@/lib/study-plan";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
