@@ -882,8 +882,10 @@ export function topTaskFor(plan: StudyPlan | null): StudyTask | null {
  * Retorna null se não houver aula ativa no dia.
  */
 export function useActiveClassroomTask(): StudyTask | null {
-  const [plan, setPlan] = useState<StudyPlan | null>(() => read());
+  // Começa null para evitar hydration mismatch — sincroniza no effect.
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
   useEffect(() => {
+    setPlan(read());
     const h = () => setPlan(read());
     window.addEventListener("exame:study-plan", h);
     window.addEventListener("storage", h);
