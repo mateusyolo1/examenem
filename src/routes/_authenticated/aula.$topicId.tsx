@@ -59,6 +59,7 @@ import { markPlanTaskDone } from "@/lib/study-plan";
 import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
 import { VideoNotesLayer } from "@/components/VideoNotesLayer";
 import { EnsinarComVideoButton } from "@/components/aula/EnsinarComVideoButton";
+import { AulaSidePanel } from "@/components/aula/AulaSidePanel";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
