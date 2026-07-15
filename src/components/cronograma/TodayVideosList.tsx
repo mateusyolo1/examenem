@@ -23,6 +23,7 @@ import {
   summarizeJourney,
   type PedagogicalIntentKey,
 } from "@/lib/pedagogical-intent";
+import { EffortPrompt } from "@/components/EffortPrompt";
 
 const AREA_COLOR: Record<string, string> = {
   linguagens: "#8b5cf6",
@@ -39,6 +40,12 @@ export function TodayVideosList() {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
+  const [effortFor, setEffortFor] = useState<{
+    taskId: string;
+    topicSlug?: string;
+    topicArea?: string;
+    minutes: number;
+  } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["today-agenda"],
@@ -47,10 +54,25 @@ export function TodayVideosList() {
   });
 
   const mark = useMutation({
-    mutationFn: (taskId: string) => markFn({ data: { taskId, toggle: true } }),
-    onSuccess: () => {
+    mutationFn: (v: {
+      taskId: string;
+      topicSlug?: string;
+      topicArea?: string;
+      minutes: number;
+      wasDone: boolean;
+    }) => markFn({ data: { taskId: v.taskId, toggle: true } }).then(() => v),
+    onSuccess: (v) => {
       qc.invalidateQueries({ queryKey: ["today-agenda"] });
       qc.invalidateQueries({ queryKey: ["cron-today"] });
+      // Só pergunta esforço ao MARCAR como concluída (não ao desmarcar)
+      if (!v.wasDone) {
+        setEffortFor({
+          taskId: v.taskId,
+          topicSlug: v.topicSlug,
+          topicArea: v.topicArea,
+          minutes: v.minutes,
+        });
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -86,6 +108,21 @@ export function TodayVideosList() {
 
   return (
     <div className="mt-3 border-t border-border pt-3 w-full">
+      {effortFor && (
+        <div className="mb-3">
+          <EffortPrompt
+            activityKind="video"
+            activityRef={undefined}
+            topicSlug={effortFor.topicSlug}
+            topicArea={effortFor.topicArea}
+            durationMin={effortFor.minutes}
+            score={1}
+            inline
+            onDismiss={() => setEffortFor(null)}
+            onDone={() => setEffortFor(null)}
+          />
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2">
         <button
           onClick={() => setExpanded((v) => !v)}
@@ -127,7 +164,15 @@ export function TodayVideosList() {
                   {i + 1}
                 </span>
                 <button
-                  onClick={() => mark.mutate(v.id)}
+                  onClick={() =>
+                    mark.mutate({
+                      taskId: v.id,
+                      topicSlug: v.topicSlug,
+                      topicArea: v.topicArea ?? v.area,
+                      minutes: v.minutes,
+                      wasDone: isDone,
+                    })
+                  }
                   disabled={mark.isPending}
                   aria-label={isDone ? "Desmarcar" : "Marcar como concluída"}
                   className={

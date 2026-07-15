@@ -234,6 +234,45 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_telemetry: {
+        Row: {
+          activity_kind: string
+          activity_ref: string | null
+          created_at: string
+          duration_min: number | null
+          effort: string | null
+          id: string
+          score: number | null
+          topic_area: string | null
+          topic_slug: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_kind: string
+          activity_ref?: string | null
+          created_at?: string
+          duration_min?: number | null
+          effort?: string | null
+          id?: string
+          score?: number | null
+          topic_area?: string | null
+          topic_slug?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_kind?: string
+          activity_ref?: string | null
+          created_at?: string
+          duration_min?: number | null
+          effort?: string | null
+          id?: string
+          score?: number | null
+          topic_area?: string | null
+          topic_slug?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       lesson_attempts: {
         Row: {
           answers: Json
@@ -949,6 +988,7 @@ export type Database = {
           id: string
           last_score: number
           last_seen_at: string
+          level_reached: number
           mastered: boolean
           next_review_at: string
           topic_slug: string
@@ -962,6 +1002,7 @@ export type Database = {
           id?: string
           last_score: number
           last_seen_at?: string
+          level_reached?: number
           mastered?: boolean
           next_review_at?: string
           topic_slug: string
@@ -975,6 +1016,7 @@ export type Database = {
           id?: string
           last_score?: number
           last_seen_at?: string
+          level_reached?: number
           mastered?: boolean
           next_review_at?: string
           topic_slug?: string
@@ -1117,19 +1159,34 @@ export type Database = {
       }
       user_study_settings: {
         Row: {
+          hours_per_day: number
           lousa_pass_threshold: number
+          stage_level: number
+          stage_started_at: string
+          stage_week: number
+          target_score: number
           updated_at: string
           user_id: string
           weekly_pattern: Json
         }
         Insert: {
+          hours_per_day?: number
           lousa_pass_threshold?: number
+          stage_level?: number
+          stage_started_at?: string
+          stage_week?: number
+          target_score?: number
           updated_at?: string
           user_id: string
           weekly_pattern?: Json
         }
         Update: {
+          hours_per_day?: number
           lousa_pass_threshold?: number
+          stage_level?: number
+          stage_started_at?: string
+          stage_week?: number
+          target_score?: number
           updated_at?: string
           user_id?: string
           weekly_pattern?: Json

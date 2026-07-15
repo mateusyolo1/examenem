@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
 import { enrichStudyPlan, getPersonalizationSignals } from "@/lib/study-plan.functions";
+import { getStageInfo } from "@/lib/telemetry.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 
 import {
@@ -192,6 +193,15 @@ function Plano() {
   const [editing, setEditing] = useState(false);
   const [askClear, setAskClear] = useState(false);
 
+  // Stage/semana do contrato — usa para escalar a carga do plano
+  const stageInfoFn = useServerFn(getStageInfo);
+  const { data: stageInfo } = useQuery({
+    queryKey: ["stage-info"],
+    queryFn: () => stageInfoFn(),
+    staleTime: 60_000,
+  });
+  const stageLoadFactor = stageInfo?.loadFactor ?? 1;
+
   // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
   const listTopicsFn = useServerFn(listStudyTopics);
   const needsCatalog = !plan || editing;
@@ -248,8 +258,13 @@ function Plano() {
           defaultExamId={progress.examId}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
+            // Semana 1 = 70% da carga (motor de evolução gradual)
+            const scaledCfg = {
+              ...cfg,
+              hoursPerDay: Math.max(0.5, cfg.hoursPerDay * stageLoadFactor),
+            };
             savePlan(
-              cfg,
+              scaledCfg,
               topicCatalog.length ? topicCatalog : undefined,
               masteryList.length ? masteryList : undefined,
             );
@@ -294,6 +309,13 @@ function Shell({
   plan: ReturnType<typeof useStudyPlan>["plan"];
   children: React.ReactNode;
 }) {
+  const stageInfoFn = useServerFn(getStageInfo);
+  const stageQuery = useQuery({
+    queryKey: ["stage-info"],
+    queryFn: () => stageInfoFn(),
+    staleTime: 60_000,
+  });
+  const stage = stageQuery.data;
   const daysToExam = plan
     ? Math.max(
         0,
@@ -354,6 +376,19 @@ function Shell({
                   <Clock size={14} aria-hidden className="text-primary" />
                   <strong className="font-semibold">{daysToExam}</strong> dias
                   restantes
+                </span>
+              )}
+              {stage && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary"
+                  title="Nível de dificuldade adaptativo (motor de evolução gradual)"
+                >
+                  <Target size={14} aria-hidden />
+                  Nível <strong className="font-semibold">{stage.level}</strong> · Semana{" "}
+                  <strong className="font-semibold">{stage.week}</strong>
+                  <span className="text-primary/70">
+                    · carga {Math.round(stage.loadFactor * 100)}%
+                  </span>
                 </span>
               )}
             </div>

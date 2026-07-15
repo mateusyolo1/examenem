@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Loader2, Send, Clock, Sparkles } from
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { getLousa, submitLousaAnswers, generateLousa } from "@/lib/cronograma.functions";
+import { EffortPrompt } from "@/components/EffortPrompt";
 
 export const Route = createFileRoute("/_authenticated/cronograma/lousa/$activityId")({
   head: () => ({
@@ -45,6 +46,7 @@ function LousaHomework() {
   const alreadyFailed = data?.activity.status === "failed";
 
   const [reviewTopics, setReviewTopics] = useState<{ id: string; slug: string; title: string }[]>([]);
+  const [effortResult, setEffortResult] = useState<{ score: number } | null>(null);
 
   const submitMut = useMutation({
     mutationFn: () =>
@@ -61,6 +63,7 @@ function LousaHomework() {
       qc.invalidateQueries({ queryKey: ["lousa", activityId] });
       qc.invalidateQueries({ queryKey: ["cron-today"] });
       qc.invalidateQueries({ queryKey: ["today-agenda"] });
+      setEffortResult({ score: r.pct / 100 });
 
       if (r.passed) {
         toast.success(`Você passou! ${r.correctCount}/${r.total} (${r.pct}%)`);
@@ -142,6 +145,20 @@ function LousaHomework() {
                 </div>
               </div>
             )}
+
+            {effortResult && (
+              <div className="mb-6">
+                <EffortPrompt
+                  activityKind="lousa"
+                  activityRef={activityId}
+                  score={effortResult.score}
+                  inline
+                  onDone={() => setEffortResult(null)}
+                  onDismiss={() => setEffortResult(null)}
+                />
+              </div>
+            )}
+
 
             <div className="space-y-4">
               {data.questions.map((q, i) => (
