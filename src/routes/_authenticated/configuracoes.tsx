@@ -83,17 +83,32 @@ function ConfiguracoesPage() {
     if (t) setTimeout(() => setToast(null), 2200);
   }
 
+  const updateSettingsFn = useServerFn(updateUserStudySettings);
+  const stageQuery = useQuery({
+    queryKey: ["stage-info"],
+    queryFn: () => useServerFn(getStageInfo)(),
+  });
+
   function handleSave() {
     const selectedExam = getExamOption(examId);
+    const targetVal = Math.max(0, Math.min(1000, Number(target) || 0));
+    const dailyVal = Math.max(15, Math.min(720, Number(daily) || 60));
     update((prev) => ({
       ...prev,
-      targetScore: Math.max(0, Math.min(1000, Number(target) || 0)),
-      dailyMinutes: Math.max(15, Math.min(720, Number(daily) || 60)),
+      targetScore: targetVal,
+      dailyMinutes: dailyVal,
       dailyGoal: Math.max(1, Math.min(200, Number(dailyGoal) || 1)),
       examId,
       examName: selectedExam.label,
       examDate: examDate ? examDateToIso(examDate) : prev.examDate,
     }));
+    // Sincroniza com o motor de dificuldade (servidor)
+    updateSettingsFn({
+      data: {
+        hoursPerDay: Math.max(0.5, Math.min(16, dailyVal / 60)),
+        targetScore: Math.max(300, Math.min(1000, targetVal || 700)),
+      },
+    }).catch(() => {});
     flash({ kind: "ok", msg: "Configurações salvas." });
   }
 
