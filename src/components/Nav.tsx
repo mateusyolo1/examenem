@@ -240,18 +240,14 @@ export function Nav() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-4 space-y-4">
-          <div data-tour="nav-primary">
-            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Estudo
+          {sections.map((sec) => (
+            <div key={sec.key} data-tour={`nav-${sec.key}`}>
+              <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                {sec.label}
+              </div>
+              <div className="space-y-0.5">{sec.items.map((l) => renderLink(l))}</div>
             </div>
-            <div className="space-y-0.5">{PRIMARY.map((l) => renderLink(l))}</div>
-          </div>
-          <div data-tour="nav-secondary">
-            <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Mais
-            </div>
-            <div className="space-y-0.5">{SECONDARY.map((l) => renderLink(l))}</div>
-          </div>
+          ))}
         </nav>
 
         <div className="px-3 pt-2 pb-4 border-t border-border">
