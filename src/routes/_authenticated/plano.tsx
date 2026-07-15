@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { resolveStudyTopic, listStudyTopics, listTopicMastery } from "@/lib/study.functions";
 import { enrichStudyPlan, getPersonalizationSignals } from "@/lib/study-plan.functions";
+import { getStageInfo } from "@/lib/telemetry.functions";
 import { useLastEssayTasks } from "@/lib/lesson-essay-cache";
 
 import {
