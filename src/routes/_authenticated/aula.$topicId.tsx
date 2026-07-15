@@ -413,7 +413,7 @@ function LessonPlayer({
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {phase === "watching" && (
-          <>
+          <div className="animate-in fade-in duration-300">
             <LousaIntroCard
               loading={lousaQuery.isLoading}
               lesson={lousaLesson}
@@ -446,22 +446,35 @@ function LessonPlayer({
               topicArea={topicArea}
             />
             {allWatched && lousaLesson && (
-              <LousaActivityCard lesson={lousaLesson} />
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mt-8 mb-3 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                    A professora virou para o quadro
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <LousaActivityCard lesson={lousaLesson} />
+              </div>
             )}
-          </>
+          </div>
         )}
 
 
         {phase === "quiz" && quizMutation.data && (
-          <QuizView
-            payload={quizMutation.data}
-            onSubmit={(answers) => submitMutation.mutate(answers)}
-            submitting={submitMutation.isPending}
-          />
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <QuizView
+              payload={quizMutation.data}
+              onSubmit={(answers) => submitMutation.mutate(answers)}
+              submitting={submitMutation.isPending}
+            />
+          </div>
         )}
 
         {phase === "result" && submitMutation.data && (
-          <ResultView result={submitMutation.data} topicId={topicId} taskId={taskId} />
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <ResultView result={submitMutation.data} topicId={topicId} taskId={taskId} />
+          </div>
         )}
       </main>
     </div>
