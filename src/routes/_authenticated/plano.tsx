@@ -364,6 +364,19 @@ function Shell({
                   restantes
                 </span>
               )}
+              {stage && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary"
+                  title="Nível de dificuldade adaptativo (motor de evolução gradual)"
+                >
+                  <Target size={14} aria-hidden />
+                  Nível <strong className="font-semibold">{stage.level}</strong> · Semana{" "}
+                  <strong className="font-semibold">{stage.week}</strong>
+                  <span className="text-primary/70">
+                    · carga {Math.round(stage.loadFactor * 100)}%
+                  </span>
+                </span>
+              )}
             </div>
           )}
         </header>
