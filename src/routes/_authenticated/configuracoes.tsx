@@ -28,6 +28,9 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { COLOR_SCHEMES, useColorScheme } from "@/lib/color-scheme";
 import { DEFAULT_EXAM_ID, EXAM_OPTIONS, examDateToIso, getExamOption } from "@/lib/exams";
+import { useServerFn } from "@tanstack/react-start";
+import { updateUserStudySettings, getStageInfo } from "@/lib/telemetry.functions";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   head: () => ({
