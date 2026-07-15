@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useProgress } from "@/lib/storage";
+import { useProgress, type Area } from "@/lib/storage";
+import { useActiveClassroomTask } from "@/lib/study-plan";
 import { computeXP, levelFor } from "@/lib/gamification";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -24,6 +25,7 @@ import {
   CalendarDays,
   Settings as SettingsIcon,
   MoreHorizontal,
+  GraduationCap,
 } from "lucide-react";
 
 type NavItem = {
@@ -31,24 +33,43 @@ type NavItem = {
   label: string;
   shortLabel?: string;
   icon: React.ComponentType<{ size?: number }>;
+  search?: Record<string, unknown>;
+  params?: Record<string, string>;
+  badge?: string;
 };
 
-const PRIMARY: NavItem[] = [
+type NavSection = {
+  key: string;
+  label: string;
+  items: NavItem[];
+};
+
+// FOCO ATIVO — o que o aluno tem que fazer hoje.
+const FOCO_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
   { to: "/cronograma", label: "Cronograma", shortLabel: "Hoje", icon: Calendar },
+];
+
+// BIBLIOTECA — onde o aluno consulta e organiza conteúdo.
+const BIBLIOTECA_ITEMS: NavItem[] = [
   { to: "/estudos", label: "Hub de Estudos", shortLabel: "Estudar", icon: Youtube },
+  { to: "/materias", label: "Matérias", icon: BookOpen },
+  { to: "/temas", label: "Temas", icon: Lightbulb },
+];
+
+// TREINO — o que exige performance.
+const TREINO_ITEMS: NavItem[] = [
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/revisar", label: "Revisar Erros", shortLabel: "Revisar", icon: RotateCw },
   { to: "/simulados", label: "Simulados", icon: FileText },
   { to: "/simulados-reais", label: "Provas Reais ENEM", shortLabel: "Reais", icon: FileCheck },
   { to: "/redacao", label: "Redação", icon: PenLine },
-  { to: "/tutor", label: "Tutor IA", icon: Bot },
 ];
 
-const SECONDARY: NavItem[] = [
+// SUPORTE — apoio e configurações.
+const SUPORTE_ITEMS: NavItem[] = [
+  { to: "/tutor", label: "Tutor IA", icon: Bot },
   { to: "/plano", label: "Agenda", icon: CalendarDays },
-  { to: "/materias", label: "Matérias", icon: BookOpen },
-  { to: "/temas", label: "Temas", icon: Lightbulb },
   { to: "/conquistas", label: "Conquistas", icon: Trophy },
   { to: "/perfil", label: "Perfil", icon: User },
   { to: "/configuracoes", label: "Configurações", icon: SettingsIcon },
@@ -56,10 +77,10 @@ const SECONDARY: NavItem[] = [
 
 const MOBILE_PRIMARY: NavItem[] = [
   { to: "/", label: "Dashboard", shortLabel: "Início", icon: Home },
+  { to: "/cronograma", label: "Hoje", icon: Calendar },
   { to: "/estudos", label: "Estudos", icon: Youtube },
   { to: "/questoes", label: "Questões", icon: ListChecks },
   { to: "/simulados", label: "Simulados", icon: FileText },
-  { to: "/simulados-reais", label: "Reais", icon: FileCheck },
 ];
 
 const ALL: NavItem[] = [...PRIMARY, ...SECONDARY];
