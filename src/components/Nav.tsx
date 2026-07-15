@@ -83,7 +83,27 @@ const MOBILE_PRIMARY: NavItem[] = [
   { to: "/simulados", label: "Simulados", icon: FileText },
 ];
 
-const ALL: NavItem[] = [...PRIMARY, ...SECONDARY];
+function useNavSections(activeTask: ReturnType<typeof useActiveClassroomTask>): NavSection[] {
+  // Injeta "Sala de Aula" em FOCO ATIVO se há tarefa de aula pendente hoje.
+  const foco: NavItem[] = [...FOCO_ITEMS];
+  if (activeTask?.topicSlug) {
+    foco.push({
+      to: "/aula/$topicId",
+      label: "Sala de Aula",
+      shortLabel: "Aula",
+      icon: GraduationCap,
+      params: { topicId: activeTask.topicSlug },
+      search: { taskId: activeTask.id, maxMinutes: activeTask.minutes },
+      badge: "Agora",
+    });
+  }
+  return [
+    { key: "foco", label: "Foco ativo", items: foco },
+    { key: "biblioteca", label: "Biblioteca", items: BIBLIOTECA_ITEMS },
+    { key: "treino", label: "Treino", items: TREINO_ITEMS },
+    { key: "suporte", label: "Suporte", items: SUPORTE_ITEMS },
+  ];
+}
 
 export function Nav() {
   const { progress } = useProgress();
@@ -91,9 +111,14 @@ export function Nav() {
   const xp = computeXP(progress);
   const lvl = levelFor(xp.total);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const activeTask = useActiveClassroomTask();
+  const sections = useNavSections(activeTask);
+  const allItems = sections.flatMap((s) => s.items);
 
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
-  const moreActive = SECONDARY.some((m) => isActive(m.to));
+  // "Mais" (mobile) fica ativo quando estamos em qualquer rota fora do primário mobile.
+  const mobilePrimarySet = new Set(MOBILE_PRIMARY.map((m) => m.to));
+  const moreActive = allItems.some((m) => !mobilePrimarySet.has(m.to) && isActive(m.to));
 
   useEffect(() => {
     setSheetOpen(false);
@@ -104,14 +129,20 @@ export function Nav() {
     return () => document.body.classList.remove("has-sidebar");
   }, []);
 
-  const renderLink = (l: NavItem, opts?: { compact?: boolean }) => {
+  const renderLink = (l: NavItem, opts?: { compact?: boolean; onClick?: () => void }) => {
     const active = isActive(l.to);
     const Icon = l.icon;
     const tourId = l.to === "/" ? "nav-dashboard" : `nav${l.to.replace(/\//g, "-")}`;
+    // TanStack Link precisa de `params`/`search` tipados por rota. Usamos
+    // `as never` para acomodar ambos os casos (com/sem params) sem alargar
+    // o tipo do NavItem.
     return (
       <Link
-        key={l.to}
-        to={l.to}
+        key={l.to + (l.badge ?? "")}
+        to={l.to as never}
+        params={(l.params as never) ?? (undefined as never)}
+        search={(l.search as never) ?? (undefined as never)}
+        onClick={opts?.onClick}
         aria-current={active ? "page" : undefined}
         data-tour={tourId}
         className={
@@ -122,7 +153,12 @@ export function Nav() {
         }
       >
         <Icon size={opts?.compact ? 16 : 18} />
-        <span className="truncate">{l.label}</span>
+        <span className="truncate flex-1">{l.label}</span>
+        {l.badge && (
+          <span className="shrink-0 text-[9px] font-mono uppercase tracking-widest bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+            {l.badge}
+          </span>
+        )}
       </Link>
     );
   };
