@@ -931,6 +931,29 @@ function WatchingView({
               } catch {}
             }}
           />
+          <AulaSidePanel
+            videoId={video.id}
+            youtubeId={video.youtube_id}
+            videoTitle={video.title ?? ""}
+            topicTitle={topicTitle}
+            getCurrentTime={() => {
+              try {
+                const p = playerRef.current;
+                if (p && typeof p.getCurrentTime === "function") return p.getCurrentTime();
+              } catch {}
+              return 0;
+            }}
+            pausePlayer={() => {
+              try {
+                playerRef.current?.pauseVideo?.();
+              } catch {}
+            }}
+            playPlayer={() => {
+              try {
+                playerRef.current?.playVideo?.();
+              } catch {}
+            }}
+          />
         </div>
       </div>
 
