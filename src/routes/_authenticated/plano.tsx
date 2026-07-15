@@ -294,6 +294,13 @@ function Shell({
   plan: ReturnType<typeof useStudyPlan>["plan"];
   children: React.ReactNode;
 }) {
+  const stageInfoFn = useServerFn(getStageInfo);
+  const stageQuery = useQuery({
+    queryKey: ["stage-info"],
+    queryFn: () => stageInfoFn(),
+    staleTime: 60_000,
+  });
+  const stage = stageQuery.data;
   const daysToExam = plan
     ? Math.max(
         0,
