@@ -324,28 +324,20 @@ export function Nav() {
                 <X size={16} />
               </button>
             </div>
-            <ul className="px-2 pb-4 max-h-[70vh] overflow-y-auto">
-              {ALL.map((l) => {
-                const active = isActive(l.to);
-                const Icon = l.icon;
-                return (
-                  <li key={l.to}>
-                    <Link
-                      to={l.to}
-                      onClick={() => setSheetOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className={
-                        "flex items-center gap-3 px-3 py-3 min-h-11 rounded-md text-sm font-medium transition-colors " +
-                        (active ? "bg-accent text-foreground" : "text-foreground hover:bg-accent")
-                      }
-                    >
-                      <Icon size={18} />
-                      {l.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="px-2 pb-4 max-h-[70vh] overflow-y-auto space-y-4">
+              {sections.map((sec) => (
+                <div key={sec.key}>
+                  <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                    {sec.label}
+                  </div>
+                  <ul className="space-y-0.5">
+                    {sec.items.map((l) =>
+                      renderLink(l, { onClick: () => setSheetOpen(false) }),
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
             <div className="px-3 pb-3 border-t border-border pt-3">
               <UserMenu />
             </div>
