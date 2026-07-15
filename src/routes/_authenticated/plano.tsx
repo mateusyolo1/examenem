@@ -258,8 +258,13 @@ function Plano() {
           defaultExamId={progress.examId}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
+            // Semana 1 = 70% da carga (motor de evolução gradual)
+            const scaledCfg = {
+              ...cfg,
+              hoursPerDay: Math.max(0.5, cfg.hoursPerDay * stageLoadFactor),
+            };
             savePlan(
-              cfg,
+              scaledCfg,
               topicCatalog.length ? topicCatalog : undefined,
               masteryList.length ? masteryList : undefined,
             );
