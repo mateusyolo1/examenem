@@ -69,11 +69,13 @@ export const createBook = createServerFn({ method: "POST" })
         author: z.string().max(200).optional(),
         subject: z.string().max(120).optional(),
         pageCount: z.number().int().positive().optional(),
+        folder: z.string().max(200).optional(),
       })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const folder = data.folder?.trim().replace(/^\/+|\/+$/g, "") || null;
     const { data: row, error } = await supabase
       .from("library_books")
       .insert({
@@ -82,6 +84,7 @@ export const createBook = createServerFn({ method: "POST" })
         author: data.author ?? null,
         subject: data.subject ?? null,
         page_count: data.pageCount ?? null,
+        folder,
         status: "extracting",
       })
       .select()
