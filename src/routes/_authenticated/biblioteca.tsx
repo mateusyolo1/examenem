@@ -73,7 +73,7 @@ type UploadProgress = {
 
 const CHUNK_SIZE = 1100;
 const CHUNK_OVERLAP = 150;
-const EMBED_BATCH = 20;
+const EMBED_BATCH = 10;
 const UNFILED = "__unfiled__";
 
 function chunkText(text: string, page: number): { content: string; page: number }[] {
