@@ -361,6 +361,7 @@ export type Database = {
           chunk_count: number
           created_at: string
           error_message: string | null
+          folder: string | null
           id: string
           page_count: number | null
           status: string
@@ -375,6 +376,7 @@ export type Database = {
           chunk_count?: number
           created_at?: string
           error_message?: string | null
+          folder?: string | null
           id?: string
           page_count?: number | null
           status?: string
@@ -389,6 +391,7 @@ export type Database = {
           chunk_count?: number
           created_at?: string
           error_message?: string | null
+          folder?: string | null
           id?: string
           page_count?: number | null
           status?: string
