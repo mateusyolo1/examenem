@@ -67,8 +67,8 @@ async function extractPdfChunks(
   onPage: (page: number, total: number) => void,
 ): Promise<{ chunks: { index: number; content: string; metadata: Record<string, unknown> }[]; pageCount: number }> {
   const pdfjs = await import("pdfjs-dist");
-  // @ts-expect-error worker importado via URL
-  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string))
+    .default as string;
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
   const buf = await file.arrayBuffer();
