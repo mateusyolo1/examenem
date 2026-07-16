@@ -55,6 +55,7 @@ const BIBLIOTECA_ITEMS: NavItem[] = [
   { to: "/estudos", label: "Hub de Estudos", shortLabel: "Estudar", icon: Youtube },
   { to: "/materias", label: "Matérias", icon: BookOpen },
   { to: "/temas", label: "Temas", icon: Lightbulb },
+  { to: "/biblioteca", label: "Biblioteca IA", shortLabel: "Livros", icon: GraduationCap },
 ];
 
 // TREINO — o que exige performance.
