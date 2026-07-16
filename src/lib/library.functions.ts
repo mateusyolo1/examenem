@@ -301,3 +301,95 @@ export const searchLibrary = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { matches: matches ?? [] };
   });
+
+/* ================= moveBook (mudar pasta) ================= */
+export const moveBook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        bookId: z.string().uuid(),
+        folder: z.string().max(200).nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const folder =
+      data.folder?.trim().replace(/^\/+|\/+$/g, "") || null;
+    const { error } = await supabase
+      .from("library_books")
+      .update({ folder })
+      .eq("id", data.bookId)
+      .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, folder };
+  });
+
+/* ================= renameFolder ================= */
+export const renameFolder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        from: z.string().min(1).max(200),
+        to: z.string().max(200).nullable(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const to =
+      data.to?.trim().replace(/^\/+|\/+$/g, "") || null;
+    const { error } = await supabase
+      .from("library_books")
+      .update({ folder: to })
+      .eq("user_id", userId)
+      .eq("folder", data.from);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ================= toggleActiveFolder (ativar/desativar todos os livros de uma pasta) ================= */
+export const toggleActiveFolder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        folder: z.string().max(200).nullable(),
+        active: z.boolean(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    let q = supabase
+      .from("library_books")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "ready");
+    q = data.folder === null ? q.is("folder", null) : q.eq("folder", data.folder);
+    const { data: rows, error: selErr } = await q;
+    if (selErr) throw new Error(selErr.message);
+    const ids = (rows ?? []).map((r) => r.id);
+    if (ids.length === 0) return { activeBookIds: [] };
+
+    const { data: settings } = await supabase
+      .from("user_study_settings")
+      .select("rag_book_ids")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const current = (settings?.rag_book_ids as string[] | null) ?? [];
+    const next = data.active
+      ? Array.from(new Set([...current, ...ids]))
+      : current.filter((id) => !ids.includes(id));
+    const { error: upErr } = await supabase
+      .from("user_study_settings")
+      .upsert(
+        { user_id: userId, rag_book_ids: next },
+        { onConflict: "user_id" },
+      );
+    if (upErr) throw new Error(upErr.message);
+    return { activeBookIds: next };
+  });
+
