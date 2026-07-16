@@ -355,6 +355,92 @@ export type Database = {
           },
         ]
       }
+      library_books: {
+        Row: {
+          author: string | null
+          chunk_count: number
+          created_at: string
+          error_message: string | null
+          id: string
+          page_count: number | null
+          status: string
+          storage_path: string | null
+          subject: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author?: string | null
+          chunk_count?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          page_count?: number | null
+          status?: string
+          storage_path?: string | null
+          subject?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author?: string | null
+          chunk_count?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          page_count?: number | null
+          status?: string
+          storage_path?: string | null
+          subject?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      library_embeddings: {
+        Row: {
+          book_id: string
+          chunk_index: number
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          metadata: Json
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          chunk_index: number
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          metadata?: Json
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          metadata?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_embeddings_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "library_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lousa_questions: {
         Row: {
           activity_id: string
@@ -1161,6 +1247,7 @@ export type Database = {
         Row: {
           hours_per_day: number
           lousa_pass_threshold: number
+          rag_book_ids: string[]
           stage_level: number
           stage_started_at: string
           stage_week: number
@@ -1172,6 +1259,7 @@ export type Database = {
         Insert: {
           hours_per_day?: number
           lousa_pass_threshold?: number
+          rag_book_ids?: string[]
           stage_level?: number
           stage_started_at?: string
           stage_week?: number
@@ -1183,6 +1271,7 @@ export type Database = {
         Update: {
           hours_per_day?: number
           lousa_pass_threshold?: number
+          rag_book_ids?: string[]
           stage_level?: number
           stage_started_at?: string
           stage_week?: number
@@ -1368,6 +1457,22 @@ export type Database = {
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
         Returns: boolean
+      }
+      match_library_chunks: {
+        Args: {
+          active_book_ids: string[]
+          match_count?: number
+          query_embedding: string
+          target_user_id: string
+        }
+        Returns: {
+          book_id: string
+          chunk_index: number
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
       }
     }
     Enums: {
