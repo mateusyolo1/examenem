@@ -599,13 +599,16 @@ function RunningSimulado({
                 `mostrando o raciocínio e apontando a alternativa correta.\n\n` +
                 `Enunciado:\n${q.context ?? ""}\n\n${q.alternative_introduction ?? ""}\n\n` +
                 `Alternativas:\n${altsTxt}`;
-              const to = `/tutor?prompt=${encodeURIComponent(prompt)}&mode=resolver&autoSend=true${
-                allImgs.length ? `&imageUrls=${encodeURIComponent(JSON.stringify(allImgs))}` : ""
-              }`;
               return (
                 <div className="mt-4">
                   <Link
-                    to={to}
+                    to="/tutor"
+                    search={{
+                      prompt,
+                      mode: "resolver" as const,
+                      autoSend: true,
+                      imageUrls: allImgs.length ? JSON.stringify(allImgs) : undefined,
+                    }}
                     className="inline-flex items-center gap-2 px-4 py-2 border border-foreground text-xs font-mono uppercase tracking-widest hover:bg-foreground hover:text-background transition-all"
                   >
                     ✨ Explicar com IA (Tutor)
