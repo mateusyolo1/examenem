@@ -397,6 +397,7 @@ export const askTutor = createServerFn({ method: "POST" })
         stageInstr +
         memoryCtx +
         libraryCtx +
+        imagesInstr +
         ctx +
         stageCtx +
         closingInstr,
