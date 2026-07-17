@@ -413,7 +413,7 @@ Gere 3 exercícios. Não escreva NADA fora do JSON.`;
         bookId: f.bookId,
         bookTitle: f.bookTitle,
         page: f.page,
-        storagePath: (f as unknown as { storagePath?: string }).storagePath ?? "",
+        storagePath: f.storagePath,
         caption: captions[i] ?? undefined,
       }));
     }
