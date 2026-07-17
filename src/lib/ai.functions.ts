@@ -158,6 +158,9 @@ export const askTutor = createServerFn({ method: "POST" })
     const { z: zod } = await import("zod");
     const { createGateway } = await import("./ai-gateway.server");
     const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
+    const { retrieveLibraryContext, libraryMatchesToPrompt } = await import(
+      "./library-rag.server"
+    );
 
     const gateway = createGateway();
     const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
@@ -168,6 +171,19 @@ export const askTutor = createServerFn({ method: "POST" })
     // Carrega prontuário do banco
     const memory = await loadStudentMemory(context.supabase, context.userId);
     const memoryCtx = memoryToPromptContext(memory);
+
+    // RAG: trechos da biblioteca ativa do aluno (usa a última mensagem como query)
+    const lastUserMsg =
+      [...data.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const ragQuery = [data.context?.trim(), lastUserMsg]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 1500);
+    const libraryMatches = ragQuery
+      ? await retrieveLibraryContext(context.supabase, context.userId, ragQuery, 5)
+      : [];
+    const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+
 
     let stageInstr = "";
     let stageCtx = "";
