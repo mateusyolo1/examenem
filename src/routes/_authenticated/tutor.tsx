@@ -262,12 +262,17 @@ function Tutor() {
     return lines.join("\n");
   }, [progress, timeAvail]);
 
-  async function send(content?: string) {
+  async function send(content?: string, imagesOverride?: string[]) {
     const text = (content ?? input).trim();
     if (!text || loading) return;
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    const imagesToSend = imagesOverride ?? pendingImages;
+    const next: Msg[] = [
+      ...messages,
+      { role: "user", content: text, images: imagesToSend.length ? imagesToSend : undefined },
+    ];
     setMessages(next);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
     try {
       const stagePayload = activeLearning
