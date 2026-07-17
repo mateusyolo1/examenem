@@ -167,6 +167,56 @@ export const embedChunks = createServerFn({ method: "POST" })
     return { inserted: rows.length, total: count ?? 0 };
   });
 
+/* ================= saveFigures =================
+ * Registra páginas do PDF que já foram enviadas ao Storage como imagens
+ * (o upload é feito no cliente com o supabase-js). Isso permite que o RAG
+ * anexe essas páginas como figuras multimodais.
+ */
+export const saveFigures = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        bookId: z.string().uuid(),
+        figures: z
+          .array(
+            z.object({
+              page: z.number().int().positive(),
+              storagePath: z.string().min(3).max(500),
+              width: z.number().int().positive().optional(),
+              height: z.number().int().positive().optional(),
+            }),
+          )
+          .min(1)
+          .max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    // valida propriedade
+    const { data: book, error: bookErr } = await supabase
+      .from("library_books")
+      .select("id")
+      .eq("id", data.bookId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (bookErr) throw new Error(bookErr.message);
+    if (!book) throw new Error("Livro não encontrado");
+
+    const rows = data.figures.map((f) => ({
+      user_id: userId,
+      book_id: data.bookId,
+      page: f.page,
+      storage_path: f.storagePath,
+      width: f.width ?? null,
+      height: f.height ?? null,
+    }));
+    const { error } = await supabase.from("library_figures").insert(rows);
+    if (error) throw new Error(error.message);
+    return { inserted: rows.length };
+  });
+
 /* ================= finalizeBook ================= */
 export const finalizeBook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
