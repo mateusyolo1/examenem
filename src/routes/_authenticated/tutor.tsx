@@ -534,23 +534,50 @@ function Tutor() {
                 e.preventDefault();
                 send();
               }}
-              className="mt-3 flex gap-3 items-end"
+              className="mt-3 flex flex-col gap-2"
             >
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                rows={2}
-                placeholder={`Modo: ${MODES.find((m) => m.id === mode)?.label}. Digite sua mensagem... (Enter envia, Shift+Enter quebra linha)`}
-                disabled={loading}
-                className="flex-1 resize-none px-4 py-3 border border-border bg-card outline-none focus:border-foreground transition-all text-sm disabled:opacity-50"
-              />
+              {pendingImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-2 border border-border rounded bg-card">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground self-center mr-1">
+                    Imagens anexadas
+                  </span>
+                  {pendingImages.map((src, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-14 w-14 object-cover rounded border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingImages((prev) => prev.filter((_, j) => j !== i))
+                        }
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-foreground text-background text-[10px] font-bold leading-none grid place-items-center"
+                        aria-label="Remover imagem"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-3 items-end">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  rows={2}
+                  placeholder={`Modo: ${MODES.find((m) => m.id === mode)?.label}. Digite sua mensagem... (Enter envia, Shift+Enter quebra linha)`}
+                  disabled={loading}
+                  className="flex-1 resize-none px-4 py-3 border border-border bg-card outline-none focus:border-foreground transition-all text-sm disabled:opacity-50"
+                />
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
