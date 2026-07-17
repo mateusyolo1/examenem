@@ -161,9 +161,12 @@ export const askTutor = createServerFn({ method: "POST" })
     const { z: zod } = await import("zod");
     const { createGateway } = await import("./ai-gateway.server");
     const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
-    const { retrieveLibraryContext, libraryMatchesToPrompt } = await import(
-      "./library-rag.server"
-    );
+    const {
+      retrieveLibraryContextV2,
+      libraryMatchesToPrompt,
+      libraryStatusUiMessage,
+    } = await import("./library-rag.server");
+    const { detectTutorIntent } = await import("./rag-intent");
 
     const gateway = createGateway();
     const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
@@ -175,17 +178,36 @@ export const askTutor = createServerFn({ method: "POST" })
     const memory = await loadStudentMemory(context.supabase, context.userId);
     const memoryCtx = memoryToPromptContext(memory);
 
-    // RAG: trechos da biblioteca ativa do aluno (usa a última mensagem como query)
+    // Ressalva #3: intenção decidida ANTES do retrieval e independente do score.
     const lastUserMsg =
       [...data.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const intent = detectTutorIntent({
+      message: lastUserMsg,
+      mode: data.mode,
+    });
+    const isDocumental = intent === "documental";
+
+    // RAG: trechos da biblioteca ativa do aluno (usa a última mensagem como query)
     const ragQuery = [data.context?.trim(), lastUserMsg]
       .filter(Boolean)
       .join("\n")
       .slice(0, 1500);
-    const libraryMatches = ragQuery
-      ? await retrieveLibraryContext(context.supabase, context.userId, ragQuery, 5)
-      : [];
+    const libraryResult = ragQuery
+      ? await retrieveLibraryContextV2(context.supabase, context.userId, ragQuery, 5)
+      : null;
+    const libraryMatches = libraryResult?.matches ?? [];
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+    const libraryUiMessage = libraryResult
+      ? libraryStatusUiMessage(libraryResult.status)
+      : "";
+
+    // Admin-only diag payload (allowlist do requireAiAccess).
+    const ADMIN_EMAILS = new Set([
+      "mateusyolo@agenciaskills.com.br",
+      "mateusyolo1@gmail.com",
+    ]);
+    const claimsEmail = (context.claims as { email?: string } | undefined)?.email?.toLowerCase();
+    const isAdmin = !!(claimsEmail && ADMIN_EMAILS.has(claimsEmail));
 
     const imagesInstr = (data.imageUrls?.length ?? 0)
       ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
