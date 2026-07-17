@@ -168,17 +168,39 @@ function Tutor() {
   }, []);
 
   // Pré-preenche o input quando /tutor recebe ?prompt=... (usado pelo
-  // botão "Ensinar com vídeo" na página da aula).
+  // botão "Ensinar com vídeo" na página da aula) e anexa imagens do enunciado
+  // quando ?imageUrls=... vem de uma questão do simulado.
   const prefilledRef = useRef(false);
   useEffect(() => {
     if (prefilledRef.current) return;
+    let didFill = false;
     if (search.prompt && search.prompt.trim().length > 0) {
-      prefilledRef.current = true;
       setInput(search.prompt);
-      // foco automático; envio manual (deixa o aluno revisar antes)
-      setTimeout(() => inputRef.current?.focus(), 50);
+      didFill = true;
     }
-  }, [search.prompt]);
+    if (search.mode) setMode(search.mode as Mode);
+    let imgs: string[] = [];
+    if (search.imageUrls) {
+      try {
+        const parsed = JSON.parse(search.imageUrls);
+        if (Array.isArray(parsed)) {
+          imgs = parsed.filter((u): u is string => typeof u === "string").slice(0, 6);
+          setPendingImages(imgs);
+          didFill = true;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (didFill) {
+      prefilledRef.current = true;
+      setTimeout(() => inputRef.current?.focus(), 50);
+      if (search.autoSend && search.prompt && search.prompt.trim().length > 0) {
+        setTimeout(() => send(search.prompt, imgs), 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.prompt, search.imageUrls, search.mode, search.autoSend]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
