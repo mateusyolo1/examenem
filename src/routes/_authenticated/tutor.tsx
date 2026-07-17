@@ -52,6 +52,20 @@ export const Route = createFileRoute("/_authenticated/tutor")({
       .object({
         prompt: z.string().max(2000).optional(),
         autoSend: z.boolean().optional(),
+        // JSON-encoded array de URLs de imagens do enunciado (ex.: figura ENEM).
+        imageUrls: z.string().max(3000).optional(),
+        mode: z
+          .enum([
+            "livre",
+            "explicar",
+            "resolver",
+            "plano",
+            "redacao",
+            "revisao",
+            "questoes",
+            "erro",
+          ])
+          .optional(),
       })
       .parse(search),
   head: () => ({
