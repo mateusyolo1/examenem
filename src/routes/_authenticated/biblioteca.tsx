@@ -788,6 +788,23 @@ function BibliotecaPage() {
                                   >
                                     <FolderInput className="h-4 w-4 mr-2" /> Mover
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={b.status !== "ready" || reprocessing === b.id}
+                                    onClick={() => {
+                                      reprocessTargetRef.current = {
+                                        id: b.id,
+                                        title: b.title,
+                                      };
+                                      reprocessInputRef.current?.click();
+                                    }}
+                                  >
+                                    {reprocessing === b.id ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <ImagePlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    Reprocessar figuras
+                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-destructive"
