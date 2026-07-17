@@ -139,6 +139,7 @@ export async function retrieveLibraryFigures(
         bookTitle: p.bookTitle,
         page: p.page,
         url: signed.signedUrl,
+        storagePath: fig.storage_path,
         width: fig.width,
         height: fig.height,
         caption: fig.caption,
