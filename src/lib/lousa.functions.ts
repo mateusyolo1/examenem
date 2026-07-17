@@ -402,6 +402,22 @@ Gere 3 exercícios. Não escreva NADA fora do JSON.`;
         : [],
     };
 
+    // Anexa metadados das figuras (sem URL — regenerada a cada leitura)
+    if (libFigures.length > 0) {
+      const captions = Array.isArray(
+        (parsed as unknown as { figureCaptions?: unknown[] }).figureCaptions,
+      )
+        ? ((parsed as unknown as { figureCaptions: unknown[] }).figureCaptions.map(String))
+        : [];
+      lesson.figures = libFigures.map((f, i) => ({
+        bookId: f.bookId,
+        bookTitle: f.bookTitle,
+        page: f.page,
+        storagePath: (f as unknown as { storagePath?: string }).storagePath ?? "",
+        caption: captions[i] ?? undefined,
+      }));
+    }
+
     if (!lesson.resumo.length || !lesson.exercicios.length) {
       throw new Error("A IA gerou conteúdo incompleto. Tente novamente.");
     }
