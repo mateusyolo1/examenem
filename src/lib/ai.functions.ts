@@ -391,7 +391,25 @@ export const askTutor = createServerFn({ method: "POST" })
         ctx +
         stageCtx +
         closingInstr,
-      messages: data.messages,
+      messages: (() => {
+        // Anexa imagens (se houver) à ÚLTIMA mensagem do usuário como partes
+        // multimodais. Modelos de chat da Lovable AI (openai/*, google/*)
+        // aceitam blocos { type: 'image', image: <url> }.
+        const imgs = data.imageUrls ?? [];
+        if (imgs.length === 0) return data.messages;
+        const msgs = data.messages.map((m) => ({ ...m }));
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "user") {
+            const text = msgs[i].content;
+            (msgs[i] as unknown as { content: unknown }).content = [
+              { type: "text", text },
+              ...imgs.map((url) => ({ type: "image", image: url })),
+            ];
+            break;
+          }
+        }
+        return msgs as typeof data.messages;
+      })(),
     });
     return {
       text,
