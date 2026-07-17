@@ -177,6 +177,58 @@ async function extractPdfChunks(
   return { chunks, pageCount: total, figures };
 }
 
+/** Só extrai figuras de um PDF (para reprocessar livros antigos sem re-embeddar). */
+async function extractPdfFiguresOnly(
+  file: File,
+  onPage: (page: number, total: number) => void,
+): Promise<ExtractedFigure[]> {
+  const pdfjs = await import("pdfjs-dist");
+  const workerMod = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = (workerMod as { default: string }).default;
+  const OPS = (pdfjs as unknown as { OPS: Record<string, number> }).OPS;
+  const IMAGE_OPS = new Set<number>(
+    [OPS?.paintImageXObject, OPS?.paintJpegXObject, OPS?.paintImageMaskXObject].filter(
+      (v): v is number => typeof v === "number",
+    ),
+  );
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const figures: ExtractedFigure[] = [];
+  const total = doc.numPages;
+  const MAX_FIGURES = 40;
+  for (let p = 1; p <= total; p++) {
+    onPage(p, total);
+    if (figures.length >= MAX_FIGURES || IMAGE_OPS.size === 0) continue;
+    try {
+      const page = await doc.getPage(p);
+      const opList = await page.getOperatorList();
+      const hasImage = (opList.fnArray as number[]).some((fn) => IMAGE_OPS.has(fn));
+      if (!hasImage) continue;
+      const viewport = page.getViewport({ scale: 1.0 });
+      const targetW = Math.min(900, viewport.width);
+      const scale = targetW / viewport.width;
+      const vp = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(vp.width);
+      canvas.height = Math.ceil(vp.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({
+        canvasContext: ctx,
+        viewport: vp,
+        canvas,
+      } as unknown as Parameters<typeof page.render>[0]).promise;
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.78),
+      );
+      if (blob) figures.push({ page: p, blob, width: canvas.width, height: canvas.height });
+    } catch (e) {
+      console.warn(`[biblioteca] figura p.${p} falhou`, e);
+    }
+  }
+  return figures;
+}
+
 /** Deriva o "folder" a partir do webkitRelativePath (se veio de upload de pasta). */
 function folderFromFile(file: File, fallback: string | null): string | null {
   const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath;
