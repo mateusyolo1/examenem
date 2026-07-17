@@ -373,7 +373,14 @@ export const askTutor = createServerFn({ method: "POST" })
       "- Se for útil sugerir uma aula do plano: chame `sugerir_aula_fraca`.\n" +
       "- Se for tema de redação: chame `rascunho_redacao`.\n" +
       "Pode combinar 2-3 ferramentas em uma mesma resposta (ex.: nota_de_aula + mini_quiz).\n" +
-      "Depois de usar as ferramentas, escreva UM texto curto conectando os cards e propondo o próximo passo.";
+      "Depois de usar as ferramentas, escreva UM texto curto conectando os cards e propondo o próximo passo.\n\n" +
+      "CITAÇÃO DE FONTES (obrigatório quando houver bloco 'TRECHOS DA BIBLIOTECA DO ALUNO'):\n" +
+      "- Sempre que usar informação vinda dos trechos, cite inline no formato " +
+      "(trecho [N] — «Livro», p.X) logo após a afirmação.\n" +
+      "- Use apenas os trechos fornecidos; NÃO invente conteúdo fora deles.\n" +
+      "- Se houver figuras anexadas e você as referenciar, use (figura [N] — «Livro», p.X).\n" +
+      "- Se nenhum trecho for relevante, diga explicitamente: não encontrei referência " +
+      "na sua biblioteca sobre isso.";
 
     const { text } = await generateText({
       model: gateway("openai/gpt-5-mini"),
