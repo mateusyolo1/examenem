@@ -583,6 +583,40 @@ function RunningSimulado({
               )}
             </div>
 
+            {(() => {
+              const altFiles = (q.alternatives as unknown as Array<{ file: string | null }>)
+                .map((a) => a.file)
+                .filter((f): f is string => !!f);
+              const qFiles = Array.isArray(q.files) ? (q.files as unknown as string[]) : [];
+              const allImgs = [...qFiles, ...altFiles].slice(0, 6);
+              const altsTxt = (
+                q.alternatives as unknown as Array<{ letter: string; text: string | null }>
+              )
+                .map((a) => `${a.letter}) ${a.text ?? "[imagem]"}`)
+                .join("\n");
+              const prompt =
+                `Explique esta questão do ENEM ${q.year} (${q.discipline}) passo a passo, ` +
+                `mostrando o raciocínio e apontando a alternativa correta.\n\n` +
+                `Enunciado:\n${q.context ?? ""}\n\n${q.alternative_introduction ?? ""}\n\n` +
+                `Alternativas:\n${altsTxt}`;
+              return (
+                <div className="mt-4">
+                  <Link
+                    to="/tutor"
+                    search={{
+                      prompt,
+                      mode: "resolver" as const,
+                      autoSend: true,
+                      imageUrls: allImgs.length ? JSON.stringify(allImgs) : undefined,
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-foreground text-xs font-mono uppercase tracking-widest hover:bg-foreground hover:text-background transition-all"
+                  >
+                    ✨ Explicar com IA (Tutor)
+                  </Link>
+                </div>
+              );
+            })()}
+
             <div className="mt-6 flex justify-between">
               <button
                 onClick={() => setIndex((i) => Math.max(0, i - 1))}

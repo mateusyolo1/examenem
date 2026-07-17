@@ -25,6 +25,9 @@ const tutorInput = z.object({
     ])
     .optional(),
   context: z.string().max(2000).optional(),
+  // Anexos de imagem para a ÚLTIMA mensagem do usuário (ex.: enunciado ENEM
+  // com gráfico/figura). Enviados como partes multimodais ao modelo.
+  imageUrls: z.array(z.string().url()).max(6).optional(),
   stage: z
     .object({
       assunto: z.string().max(200),
@@ -183,6 +186,15 @@ export const askTutor = createServerFn({ method: "POST" })
       ? await retrieveLibraryContext(context.supabase, context.userId, ragQuery, 5)
       : [];
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+
+    const imagesInstr = (data.imageUrls?.length ?? 0)
+      ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
+        `${data.imageUrls!.length} imagem(ns) do enunciado (gráficos, figuras, tabelas). ` +
+        "Descreva brevemente o que vê, use os dados visuais para resolver a questão e cite " +
+        "elementos concretos da imagem (eixos, valores, legendas) no raciocínio."
+      : "";
+
+
 
 
     let stageInstr = "";
@@ -385,10 +397,29 @@ export const askTutor = createServerFn({ method: "POST" })
         stageInstr +
         memoryCtx +
         libraryCtx +
+        imagesInstr +
         ctx +
         stageCtx +
         closingInstr,
-      messages: data.messages,
+      messages: (() => {
+        // Anexa imagens (se houver) à ÚLTIMA mensagem do usuário como partes
+        // multimodais. Modelos de chat da Lovable AI (openai/*, google/*)
+        // aceitam blocos { type: 'image', image: <url> }.
+        const imgs = data.imageUrls ?? [];
+        if (imgs.length === 0) return data.messages;
+        const msgs = data.messages.map((m) => ({ ...m }));
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === "user") {
+            const text = msgs[i].content;
+            (msgs[i] as unknown as { content: unknown }).content = [
+              { type: "text", text },
+              ...imgs.map((url) => ({ type: "image", image: url })),
+            ];
+            break;
+          }
+        }
+        return msgs as typeof data.messages;
+      })(),
     });
     return {
       text,

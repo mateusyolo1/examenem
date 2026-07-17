@@ -21,6 +21,7 @@ import {
 type Msg = {
   role: "user" | "assistant";
   content: string;
+  images?: string[];
   toolResults?: TutorToolResult[];
 };
 type Mode =
@@ -51,6 +52,20 @@ export const Route = createFileRoute("/_authenticated/tutor")({
       .object({
         prompt: z.string().max(2000).optional(),
         autoSend: z.boolean().optional(),
+        // JSON-encoded array de URLs de imagens do enunciado (ex.: figura ENEM).
+        imageUrls: z.string().max(3000).optional(),
+        mode: z
+          .enum([
+            "livre",
+            "explicar",
+            "resolver",
+            "plano",
+            "redacao",
+            "revisao",
+            "questoes",
+            "erro",
+          ])
+          .optional(),
       })
       .parse(search),
   head: () => ({
@@ -137,6 +152,7 @@ function Tutor() {
   const search = Route.useSearch();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("livre");
   const [useContext, setUseContext] = useState(true);
@@ -152,17 +168,39 @@ function Tutor() {
   }, []);
 
   // Pré-preenche o input quando /tutor recebe ?prompt=... (usado pelo
-  // botão "Ensinar com vídeo" na página da aula).
+  // botão "Ensinar com vídeo" na página da aula) e anexa imagens do enunciado
+  // quando ?imageUrls=... vem de uma questão do simulado.
   const prefilledRef = useRef(false);
   useEffect(() => {
     if (prefilledRef.current) return;
+    let didFill = false;
     if (search.prompt && search.prompt.trim().length > 0) {
-      prefilledRef.current = true;
       setInput(search.prompt);
-      // foco automático; envio manual (deixa o aluno revisar antes)
-      setTimeout(() => inputRef.current?.focus(), 50);
+      didFill = true;
     }
-  }, [search.prompt]);
+    if (search.mode) setMode(search.mode as Mode);
+    let imgs: string[] = [];
+    if (search.imageUrls) {
+      try {
+        const parsed = JSON.parse(search.imageUrls);
+        if (Array.isArray(parsed)) {
+          imgs = parsed.filter((u): u is string => typeof u === "string").slice(0, 6);
+          setPendingImages(imgs);
+          didFill = true;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (didFill) {
+      prefilledRef.current = true;
+      setTimeout(() => inputRef.current?.focus(), 50);
+      if (search.autoSend && search.prompt && search.prompt.trim().length > 0) {
+        setTimeout(() => send(search.prompt, imgs), 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.prompt, search.imageUrls, search.mode, search.autoSend]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -224,12 +262,17 @@ function Tutor() {
     return lines.join("\n");
   }, [progress, timeAvail]);
 
-  async function send(content?: string) {
+  async function send(content?: string, imagesOverride?: string[]) {
     const text = (content ?? input).trim();
     if (!text || loading) return;
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    const imagesToSend = imagesOverride ?? pendingImages;
+    const next: Msg[] = [
+      ...messages,
+      { role: "user", content: text, images: imagesToSend.length ? imagesToSend : undefined },
+    ];
     setMessages(next);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
     try {
       const stagePayload = activeLearning
@@ -256,6 +299,7 @@ function Tutor() {
           mode,
           context: useContext ? studentContext : undefined,
           stage: stagePayload,
+          imageUrls: imagesToSend.length ? imagesToSend : undefined,
         },
       });
       setMessages([
@@ -430,7 +474,22 @@ function Tutor() {
                     }
                   >
                     {m.role === "user" ? (
-                      m.content
+                      <>
+                        {m.images?.length ? (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {m.images.map((src, ii) => (
+                              <img
+                                key={ii}
+                                src={src}
+                                alt="Imagem do enunciado"
+                                className="w-full rounded border border-background/20 bg-background/10"
+                                loading="lazy"
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+                        {m.content}
+                      </>
                     ) : (
                       <>
                         {m.toolResults?.map((tr, ti) => (
@@ -475,30 +534,58 @@ function Tutor() {
                 e.preventDefault();
                 send();
               }}
-              className="mt-3 flex gap-3 items-end"
+              className="mt-3 flex flex-col gap-2"
             >
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                rows={2}
-                placeholder={`Modo: ${MODES.find((m) => m.id === mode)?.label}. Digite sua mensagem... (Enter envia, Shift+Enter quebra linha)`}
-                disabled={loading}
-                className="flex-1 resize-none px-4 py-3 border border-border bg-card outline-none focus:border-foreground transition-all text-sm disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={loading || !input.trim()}
-                className="px-6 py-3 bg-foreground text-background font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-30"
-              >
-                Enviar
-              </button>
+              {pendingImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-2 border border-border rounded bg-card">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground self-center mr-1">
+                    Imagens anexadas
+                  </span>
+                  {pendingImages.map((src, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-14 w-14 object-cover rounded border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingImages((prev) => prev.filter((_, j) => j !== i))
+                        }
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-foreground text-background text-[10px] font-bold leading-none grid place-items-center"
+                        aria-label="Remover imagem"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-3 items-end">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  rows={2}
+                  placeholder={`Modo: ${MODES.find((m) => m.id === mode)?.label}. Digite sua mensagem... (Enter envia, Shift+Enter quebra linha)`}
+                  disabled={loading}
+                  className="flex-1 resize-none px-4 py-3 border border-border bg-card outline-none focus:border-foreground transition-all text-sm disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="px-6 py-3 bg-foreground text-background font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-30"
+                >
+                  Enviar
+                </button>
+              </div>
             </form>
           </section>
         </div>
