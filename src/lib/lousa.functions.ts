@@ -269,7 +269,9 @@ REGRAS DE AULA:
 - Se domínio MÉDIO → resumo + foco nos pontos que o aluno costuma errar.
 - Se domínio ALTO → aprofundamento, casos avançados, pegadinhas de prova.
 - Sempre que possível, REFERENCIE os vídeos assistidos ("como vimos no vídeo X…") para conectar com o histórico.
+- Se houver TRECHOS DA BIBLIOTECA DO ALUNO acima, use-os como fonte primária e cite o livro/página no campo "referencias".
 - Nível de linguagem: ENEM, direto, sem enrolação.
+
 
 FORMATO — retorne APENAS JSON válido:
 {
