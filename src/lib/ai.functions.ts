@@ -162,11 +162,14 @@ export const askTutor = createServerFn({ method: "POST" })
     const { createGateway } = await import("./ai-gateway.server");
     const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
     const {
-      retrieveLibraryContextV2,
+      retrieveLibraryContextDetailed,
       libraryMatchesToPrompt,
       libraryStatusUiMessage,
     } = await import("./library-rag.server");
     const { detectTutorIntent } = await import("./rag-intent");
+    const { selectTutorToolPolicy, buildDocumentalOverride } = await import(
+      "./tutor-rag-policy"
+    );
 
     const gateway = createGateway();
     const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
@@ -178,22 +181,22 @@ export const askTutor = createServerFn({ method: "POST" })
     const memory = await loadStudentMemory(context.supabase, context.userId);
     const memoryCtx = memoryToPromptContext(memory);
 
-    // Ressalva #3: intenção decidida ANTES do retrieval e independente do score.
+    // Intenção decidida ANTES do retrieval e independente do score.
     const lastUserMsg =
       [...data.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const intent = detectTutorIntent({
       message: lastUserMsg,
       mode: data.mode,
     });
-    const isDocumental = intent === "documental";
 
-    // RAG: trechos da biblioteca ativa do aluno (usa a última mensagem como query)
+    // RAG: trechos da biblioteca ativa do aluno. BLOCO 1: sem filtro por score;
+    // o consumo apenas injeta os matches puros do top-K devolvidos pela RPC.
     const ragQuery = [data.context?.trim(), lastUserMsg]
       .filter(Boolean)
       .join("\n")
       .slice(0, 1500);
     const libraryResult = ragQuery
-      ? await retrieveLibraryContextV2(context.supabase, context.userId, ragQuery, 5)
+      ? await retrieveLibraryContextDetailed(context.supabase, context.userId, ragQuery, 5)
       : null;
     const libraryMatches = libraryResult?.matches ?? [];
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
@@ -201,13 +204,12 @@ export const askTutor = createServerFn({ method: "POST" })
       ? libraryStatusUiMessage(libraryResult.status)
       : "";
 
-    // Admin-only diag payload (allowlist do requireAiAccess).
-    const ADMIN_EMAILS = new Set([
-      "mateusyolo@agenciaskills.com.br",
-      "mateusyolo1@gmail.com",
-    ]);
-    const claimsEmail = (context.claims as { email?: string } | undefined)?.email?.toLowerCase();
-    const isAdmin = !!(claimsEmail && ADMIN_EMAILS.has(claimsEmail));
+    const toolPolicy = selectTutorToolPolicy(
+      intent,
+      data.mode,
+      libraryResult?.status ?? null,
+    );
+    const isDocumental = intent === "documental";
 
     const imagesInstr = (data.imageUrls?.length ?? 0)
       ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
@@ -215,6 +217,8 @@ export const askTutor = createServerFn({ method: "POST" })
         "Descreva brevemente o que vê, use os dados visuais para resolver a questão e cite " +
         "elementos concretos da imagem (eixos, valores, legendas) no raciocínio."
       : "";
+
+
 
 
 
