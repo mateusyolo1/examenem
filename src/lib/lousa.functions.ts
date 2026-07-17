@@ -11,6 +11,15 @@ export type LousaExercise = {
   comentario: string;
 };
 
+export type LousaFigure = {
+  bookId: string;
+  bookTitle: string;
+  page: number;
+  storagePath: string;
+  caption?: string;
+  url?: string; // preenchido no read (signed URL 1h)
+};
+
 export type LousaLessonContent = {
   materia: string;
   tema: string;
@@ -18,6 +27,7 @@ export type LousaLessonContent = {
   exercicios: LousaExercise[];
   desafioEnsinar: { pergunta: string; respostaModelo: string };
   referencias?: string[];
+  figures?: LousaFigure[];
 };
 
 export type LousaContextSnapshot = {
