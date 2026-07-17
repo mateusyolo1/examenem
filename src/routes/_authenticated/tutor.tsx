@@ -578,13 +578,14 @@ function Tutor() {
                   disabled={loading}
                   className="flex-1 resize-none px-4 py-3 border border-border bg-card outline-none focus:border-foreground transition-all text-sm disabled:opacity-50"
                 />
-              <button
-                type="submit"
-                disabled={loading || !input.trim()}
-                className="px-6 py-3 bg-foreground text-background font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-30"
-              >
-                Enviar
-              </button>
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="px-6 py-3 bg-foreground text-background font-bold text-xs uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-30"
+                >
+                  Enviar
+                </button>
+              </div>
             </form>
           </section>
         </div>
