@@ -209,7 +209,7 @@ export const askTutor = createServerFn({ method: "POST" })
       data.mode,
       libraryResult?.status ?? null,
     );
-    const isDocumental = intent === "documental";
+    
 
     const imagesInstr = (data.imageUrls?.length ?? 0)
       ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
