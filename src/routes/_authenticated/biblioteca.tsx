@@ -12,7 +12,9 @@ import {
   moveBook,
   renameFolder,
   toggleActiveFolder,
+  saveFigures,
 } from "@/lib/library.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
