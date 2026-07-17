@@ -43,6 +43,7 @@ import {
   MoreVertical,
   FolderInput,
   Pencil,
+  ImagePlus,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
