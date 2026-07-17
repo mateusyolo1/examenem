@@ -241,6 +241,14 @@ export const generateLousaLesson = createServerFn({ method: "POST" })
     const temaHint = data.tema ?? topicSlug ?? planTaskTitle ?? "Revisão geral ENEM";
     const areaHint = topicArea ?? "Multidisciplinar";
 
+    // RAG: trechos da biblioteca ativa do aluno para embasar a aula
+    const { retrieveLibraryContext, libraryMatchesToPrompt } = await import(
+      "./library-rag.server"
+    );
+    const ragQuery = [temaHint, areaHint, ...recentErrors].filter(Boolean).join(" · ");
+    const libraryMatches = await retrieveLibraryContext(supabase, userId, ragQuery, 5);
+    const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+
     const prompt = `Você é um professor particular de ENEM montando uma AULA na Lousa Interativa personalizada para este aluno.
 
 CONTEXTO DO ALUNO:
@@ -253,14 +261,17 @@ CONTEXTO DO ALUNO:
       watchedVideos.length
         ? watchedVideos.map((v) => `"${v.title}"${v.channel ? ` (${v.channel})` : ""}`).join(" | ")
         : "nenhum recente"
-    }
+    }${libraryCtx}
+
 
 REGRAS DE AULA:
 - Se domínio BAIXO ou sem histórico → aula introdutória, resumo com conceitos-chave (4-5 bullets).
 - Se domínio MÉDIO → resumo + foco nos pontos que o aluno costuma errar.
 - Se domínio ALTO → aprofundamento, casos avançados, pegadinhas de prova.
 - Sempre que possível, REFERENCIE os vídeos assistidos ("como vimos no vídeo X…") para conectar com o histórico.
+- Se houver TRECHOS DA BIBLIOTECA DO ALUNO acima, use-os como fonte primária e cite o livro/página no campo "referencias".
 - Nível de linguagem: ENEM, direto, sem enrolação.
+
 
 FORMATO — retorne APENAS JSON válido:
 {
