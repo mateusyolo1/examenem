@@ -299,6 +299,7 @@ function Tutor() {
           mode,
           context: useContext ? studentContext : undefined,
           stage: stagePayload,
+          imageUrls: imagesToSend.length ? imagesToSend : undefined,
         },
       });
       setMessages([
