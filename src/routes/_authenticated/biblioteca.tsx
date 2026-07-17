@@ -554,6 +554,18 @@ function BibliotecaPage() {
               onChange={(e) => e.target.files && handleFiles(e.target.files)}
             />
           </div>
+          <input
+            ref={reprocessInputRef}
+            type="file"
+            accept="application/pdf"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void handleReprocessFigures(f);
+            }}
+          />
+          </div>
         </CardContent>
       </Card>
 
