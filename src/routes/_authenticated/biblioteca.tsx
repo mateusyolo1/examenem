@@ -565,7 +565,6 @@ function BibliotecaPage() {
               if (f) void handleReprocessFigures(f);
             }}
           />
-          </div>
         </CardContent>
       </Card>
 
