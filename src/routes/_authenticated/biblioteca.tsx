@@ -246,7 +246,7 @@ function BibliotecaPage() {
             },
           });
 
-          const { chunks, pageCount } = await extractPdfChunks(file, (p, total) => {
+          const { chunks, pageCount, figures } = await extractPdfChunks(file, (p, total) => {
             patchUpload(tempId, {
               message: `Lendo página ${p} de ${total}...`,
             });
@@ -265,8 +265,50 @@ function BibliotecaPage() {
             patchUpload(tempId, { doneChunks: Math.min(i + batch.length, chunks.length) });
           }
 
+          // Upload de figuras (páginas com imagens) para storage + registro
+          if (figures.length > 0) {
+            patchUpload(tempId, { message: `Enviando ${figures.length} figuras...` });
+            try {
+              const { data: userData } = await supabase.auth.getUser();
+              const uid = userData.user?.id;
+              if (uid) {
+                const uploaded: {
+                  page: number;
+                  storagePath: string;
+                  width: number;
+                  height: number;
+                }[] = [];
+                for (const fig of figures) {
+                  const path = `${uid}/${book.id}/p${fig.page}.jpg`;
+                  const { error: upErr } = await supabase.storage
+                    .from("books")
+                    .upload(path, fig.blob, {
+                      contentType: "image/jpeg",
+                      upsert: true,
+                    });
+                  if (!upErr) {
+                    uploaded.push({
+                      page: fig.page,
+                      storagePath: path,
+                      width: fig.width,
+                      height: fig.height,
+                    });
+                  }
+                }
+                if (uploaded.length > 0) {
+                  await saveFigures({ data: { bookId: book.id, figures: uploaded } });
+                }
+              }
+            } catch (e) {
+              console.warn("[biblioteca] falha ao salvar figuras", e);
+            }
+          }
+
           await finalizeFn({ data: { bookId: book.id, status: "ready" } });
-          patchUpload(tempId, { phase: "done", message: `${pageCount} páginas indexadas` });
+          patchUpload(tempId, {
+            phase: "done",
+            message: `${pageCount} páginas · ${figures.length} figuras`,
+          });
           toast.success(`"${file.name}" está pronto.`);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
