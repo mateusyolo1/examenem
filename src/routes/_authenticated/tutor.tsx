@@ -21,6 +21,7 @@ import {
 type Msg = {
   role: "user" | "assistant";
   content: string;
+  images?: string[];
   toolResults?: TutorToolResult[];
 };
 type Mode =
