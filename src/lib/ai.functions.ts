@@ -25,6 +25,9 @@ const tutorInput = z.object({
     ])
     .optional(),
   context: z.string().max(2000).optional(),
+  // Anexos de imagem para a ÚLTIMA mensagem do usuário (ex.: enunciado ENEM
+  // com gráfico/figura). Enviados como partes multimodais ao modelo.
+  imageUrls: z.array(z.string().url()).max(6).optional(),
   stage: z
     .object({
       assunto: z.string().max(200),
