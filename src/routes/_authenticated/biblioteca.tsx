@@ -92,19 +92,39 @@ function chunkText(text: string, page: number): { content: string; page: number 
   return out;
 }
 
+type ExtractedFigure = {
+  page: number;
+  blob: Blob;
+  width: number;
+  height: number;
+};
+
 async function extractPdfChunks(
   file: File,
   onPage: (page: number, total: number) => void,
-): Promise<{ chunks: { index: number; content: string; metadata: Record<string, unknown> }[]; pageCount: number }> {
+): Promise<{
+  chunks: { index: number; content: string; metadata: Record<string, unknown> }[];
+  pageCount: number;
+  figures: ExtractedFigure[];
+}> {
   const pdfjs = await import("pdfjs-dist");
   const workerMod = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = (workerMod as { default: string }).default;
 
+  const OPS = (pdfjs as unknown as { OPS: Record<string, number> }).OPS;
+  const IMAGE_OPS = new Set<number>(
+    [OPS?.paintImageXObject, OPS?.paintJpegXObject, OPS?.paintImageMaskXObject].filter(
+      (v): v is number => typeof v === "number",
+    ),
+  );
+
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buf }).promise;
   const chunks: { index: number; content: string; metadata: Record<string, unknown> }[] = [];
+  const figures: ExtractedFigure[] = [];
   let idx = 0;
   const total = doc.numPages;
+  const MAX_FIGURES = 40; // limite prático por livro
   for (let p = 1; p <= total; p++) {
     onPage(p, total);
     const page = await doc.getPage(p);
@@ -119,8 +139,41 @@ async function extractPdfChunks(
         metadata: { page: c.page, bookTitle: file.name.replace(/\.pdf$/i, "") },
       });
     }
+
+    // Página tem figura? Renderiza para JPEG e guarda.
+    if (figures.length < MAX_FIGURES && IMAGE_OPS.size > 0) {
+      try {
+        const opList = await page.getOperatorList();
+        const hasImage = (opList.fnArray as number[]).some((fn) => IMAGE_OPS.has(fn));
+        if (hasImage) {
+          const viewport = page.getViewport({ scale: 1.0 });
+          const targetW = Math.min(900, viewport.width);
+          const scale = targetW / viewport.width;
+          const vp = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.ceil(vp.width);
+          canvas.height = Math.ceil(vp.height);
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            await page.render({
+              canvasContext: ctx,
+              viewport: vp,
+              canvas,
+            } as unknown as Parameters<typeof page.render>[0]).promise;
+            const blob = await new Promise<Blob | null>((resolve) =>
+              canvas.toBlob((b) => resolve(b), "image/jpeg", 0.78),
+            );
+            if (blob) {
+              figures.push({ page: p, blob, width: canvas.width, height: canvas.height });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[biblioteca] figura p.${p} falhou`, e);
+      }
+    }
   }
-  return { chunks, pageCount: total };
+  return { chunks, pageCount: total, figures };
 }
 
 /** Deriva o "folder" a partir do webkitRelativePath (se veio de upload de pasta). */
