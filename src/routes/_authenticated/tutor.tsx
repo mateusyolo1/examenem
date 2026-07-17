@@ -152,6 +152,7 @@ function Tutor() {
   const search = Route.useSearch();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>("livre");
   const [useContext, setUseContext] = useState(true);
