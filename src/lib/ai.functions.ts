@@ -187,6 +187,15 @@ export const askTutor = createServerFn({ method: "POST" })
       : [];
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
 
+    const imagesInstr = (data.imageUrls?.length ?? 0)
+      ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
+        `${data.imageUrls!.length} imagem(ns) do enunciado (gráficos, figuras, tabelas). ` +
+        "Descreva brevemente o que vê, use os dados visuais para resolver a questão e cite " +
+        "elementos concretos da imagem (eixos, valores, legendas) no raciocínio."
+      : "";
+
+
+
 
     let stageInstr = "";
     let stageCtx = "";
