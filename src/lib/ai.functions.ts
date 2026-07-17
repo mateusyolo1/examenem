@@ -162,11 +162,14 @@ export const askTutor = createServerFn({ method: "POST" })
     const { createGateway } = await import("./ai-gateway.server");
     const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
     const {
-      retrieveLibraryContextV2,
+      retrieveLibraryContextDetailed,
       libraryMatchesToPrompt,
       libraryStatusUiMessage,
     } = await import("./library-rag.server");
     const { detectTutorIntent } = await import("./rag-intent");
+    const { selectTutorToolPolicy, buildDocumentalOverride } = await import(
+      "./tutor-rag-policy"
+    );
 
     const gateway = createGateway();
     const modeInstr = MODE_SYSTEM[data.mode ?? "livre"] ?? MODE_SYSTEM.livre;
@@ -178,22 +181,22 @@ export const askTutor = createServerFn({ method: "POST" })
     const memory = await loadStudentMemory(context.supabase, context.userId);
     const memoryCtx = memoryToPromptContext(memory);
 
-    // Ressalva #3: intenção decidida ANTES do retrieval e independente do score.
+    // Intenção decidida ANTES do retrieval e independente do score.
     const lastUserMsg =
       [...data.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const intent = detectTutorIntent({
       message: lastUserMsg,
       mode: data.mode,
     });
-    const isDocumental = intent === "documental";
 
-    // RAG: trechos da biblioteca ativa do aluno (usa a última mensagem como query)
+    // RAG: trechos da biblioteca ativa do aluno. BLOCO 1: sem filtro por score;
+    // o consumo apenas injeta os matches puros do top-K devolvidos pela RPC.
     const ragQuery = [data.context?.trim(), lastUserMsg]
       .filter(Boolean)
       .join("\n")
       .slice(0, 1500);
     const libraryResult = ragQuery
-      ? await retrieveLibraryContextV2(context.supabase, context.userId, ragQuery, 5)
+      ? await retrieveLibraryContextDetailed(context.supabase, context.userId, ragQuery, 5)
       : null;
     const libraryMatches = libraryResult?.matches ?? [];
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
@@ -201,13 +204,12 @@ export const askTutor = createServerFn({ method: "POST" })
       ? libraryStatusUiMessage(libraryResult.status)
       : "";
 
-    // Admin-only diag payload (allowlist do requireAiAccess).
-    const ADMIN_EMAILS = new Set([
-      "mateusyolo@agenciaskills.com.br",
-      "mateusyolo1@gmail.com",
-    ]);
-    const claimsEmail = (context.claims as { email?: string } | undefined)?.email?.toLowerCase();
-    const isAdmin = !!(claimsEmail && ADMIN_EMAILS.has(claimsEmail));
+    const toolPolicy = selectTutorToolPolicy(
+      intent,
+      data.mode,
+      libraryResult?.status ?? null,
+    );
+    
 
     const imagesInstr = (data.imageUrls?.length ?? 0)
       ? "\n\nIMAGENS ANEXADAS: a mensagem do(a) aluno(a) inclui " +
@@ -215,6 +217,8 @@ export const askTutor = createServerFn({ method: "POST" })
         "Descreva brevemente o que vê, use os dados visuais para resolver a questão e cite " +
         "elementos concretos da imagem (eixos, valores, legendas) no raciocínio."
       : "";
+
+
 
 
 
@@ -404,22 +408,17 @@ export const askTutor = createServerFn({ method: "POST" })
       "- Se nenhum trecho for relevante, diga explicitamente: não encontrei referência " +
       "na sua biblioteca sobre isso.";
 
-    // Ressalva: em intenção DOCUMENTAL, desativamos as ferramentas de ensino
-    // e obrigamos citação estrita a trechos da biblioteca.
-    const documentalOverride = isDocumental
-      ? "\n\nMODO CONSULTA DOCUMENTAL (obrigatório):\n" +
-        "- Responda APENAS com base nos trechos citados da biblioteca.\n" +
-        "- Se não houver trecho relevante, responda literalmente: " +
-        '"Não encontrei referência na sua biblioteca sobre isso." e pare.\n' +
-        "- NÃO use ferramentas (nota_de_aula, mini_quiz, flashcards etc.) neste modo.\n" +
-        "- Cite cada afirmação no formato (trecho [N] — «Livro», p.X)."
-      : "";
+    // Override documental (função pura em tutor-rag-policy).
+    const documentalOverride = buildDocumentalOverride(
+      intent,
+      libraryResult?.status ?? null,
+    );
 
     const { text } = await generateText({
       model: gateway("openai/gpt-5-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
-      tools: isDocumental ? undefined : tools,
-      stopWhen: isDocumental ? undefined : stepCountIs(50),
+      tools: toolPolicy === "none" ? undefined : tools,
+      stopWhen: toolPolicy === "none" ? undefined : stepCountIs(50),
       system:
         "Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM, " +
         "paciente e didático(a). Age como um HUMANO ensinando: usa ferramentas visuais " +
@@ -443,9 +442,6 @@ export const askTutor = createServerFn({ method: "POST" })
         documentalOverride +
         closingInstr,
       messages: (() => {
-        // Anexa imagens (se houver) à ÚLTIMA mensagem do usuário como partes
-        // multimodais. Modelos de chat da Lovable AI (openai/*, google/*)
-        // aceitam blocos { type: 'image', image: <url> }.
         const imgs = data.imageUrls ?? [];
         if (imgs.length === 0) return data.messages;
         const msgs = data.messages.map((m) => ({ ...m }));
@@ -462,6 +458,9 @@ export const askTutor = createServerFn({ method: "POST" })
         return msgs as typeof data.messages;
       })(),
     });
+
+    // Retorno enxuto: sem threshold, traceId, timings, scores nem sourcesDiag.
+    // Diagnóstico técnico fica apenas nos logs backend (library-rag.server.ts).
     return {
       text,
       toolResults: collectedResults,
@@ -470,30 +469,16 @@ export const askTutor = createServerFn({ method: "POST" })
         n: i + 1,
         bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
         page: (m.metadata?.page as number | undefined) ?? null,
-        similarity: Number(m.similarity.toFixed(3)),
       })),
       library: libraryResult
         ? {
             status: libraryResult.status,
             uiMessage: libraryUiMessage,
-            threshold: libraryResult.threshold,
-            traceId: libraryResult.traceId,
             intent,
           }
-        : { status: "no_active_books" as const, uiMessage: "", threshold: 0, traceId: "", intent },
-      // Diagnóstico só devolvido para admins (allowlist backend).
-      sourcesDiag: isAdmin && libraryResult
-        ? {
-            traceId: libraryResult.traceId,
-            timings: libraryResult.timings,
-            threshold: libraryResult.threshold,
-            rawCount: libraryResult.rawMatches.length,
-            filteredCount: libraryResult.matches.length,
-            rawSimilarities: libraryResult.rawMatches.map((m) => Number(m.similarity.toFixed(3))),
-            detail: libraryResult.detail ?? null,
-          }
-        : null,
+        : { status: "no_active_books" as const, uiMessage: "", intent },
     };
+
   });
 
 
