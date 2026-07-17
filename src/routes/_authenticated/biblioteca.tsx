@@ -472,6 +472,11 @@ function BibliotecaPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
       <header className="space-y-2">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 h-8 gap-1 text-muted-foreground">
+          <Link to="/estudos">
+            <ArrowLeft className="h-4 w-4" /> Voltar
+          </Link>
+        </Button>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BookOpen className="h-6 w-6" /> Minha Biblioteca IA
         </h1>
