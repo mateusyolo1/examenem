@@ -1,28 +1,17 @@
 // Helper server-only: recupera contexto da biblioteca do aluno para injetar
 // em prompts (Lousa, Tutor, Redação, HintCoach).
 //
-// GATE A (Fase 0) — novo contrato estruturado:
-//   { status, matches[], timings, traceId }
-//
-// Compatibilidade: mantém a assinatura antiga `retrieveLibraryContext` que
-// retorna `LibraryMatch[]` (usada pela Lousa e pelo Tutor existentes) e
-// expõe `retrieveLibraryContextV2` com o contrato novo.
-//
-// Ressalva #3: substitui o antigo status "unauthorized" por
-//   "embedding_auth_error" (falha no upstream de embeddings), separado de
-//   "no_active_books", "no_embedding", "rpc_error" e "no_relevant_matches".
-//
-// A RPC vigente (`match_library_chunks`) ainda não aceita threshold. Até o
-// Gate B aplicar `match_library_chunks_v2`, aplicamos o filtro
-// `similarity >= RAG_MIN_SIMILARITY` no cliente (interim).
+// BLOCO 1 (neutralização):
+//   - Threshold provisório NÃO é aplicado. Enquanto RAG_IS_CALIBRATED=false o
+//     comportamento é o LEGADO da RPC v1: top-K puro, sem filtro cliente.
+//   - Nenhum status `no_relevant_matches` é produzido.
+//   - Log interno marca `[uncalibrated]` para rastreio.
+//   - API pública renomeada: `retrieveLibraryContextDetailed` (contrato, não versão).
+//   - `retrieveLibraryContext` legado é mantido como wrapper com JSDoc @deprecated.
+//     Call sites legados: src/lib/lousa.functions.ts (não migrar nesta rodada).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  assertValidThreshold,
-  clampMatchCount,
-  getRagMinSimilarity,
-  RAG_EMBEDDING_DIMS,
-} from "./rag-config";
+import { clampMatchCount, getRagMinSimilarity, RAG_EMBEDDING_DIMS, RAG_IS_CALIBRATED } from "./rag-config";
 
 const EMBED_MODEL = "google/gemini-embedding-2";
 const EMBED_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
@@ -39,7 +28,7 @@ export interface LibraryFigure {
   bookId: string;
   bookTitle: string;
   page: number;
-  url: string; // signed URL (1h)
+  url: string;
   storagePath: string;
   width?: number | null;
   height?: number | null;
@@ -53,7 +42,6 @@ export type LibraryRetrievalStatus =
   | "embedding_upstream_error"
   | "no_embedding"
   | "rpc_error"
-  | "no_relevant_matches"
   | "unknown_error";
 
 export interface LibraryRetrievalTimings {
@@ -65,9 +53,8 @@ export interface LibraryRetrievalTimings {
 export interface LibraryRetrievalResult {
   status: LibraryRetrievalStatus;
   matches: LibraryMatch[];
-  /** Matches devolvidos pela RPC ANTES do filtro de threshold. Útil p/ debug. */
-  rawMatches: LibraryMatch[];
-  threshold: number;
+  /** true enquanto RAG_IS_CALIBRATED=false; consumidores não devem filtrar por score. */
+  uncalibrated: boolean;
   timings: LibraryRetrievalTimings;
   traceId: string;
   /** Mensagem curta para logs internos (nunca exibir cru ao usuário). */
@@ -139,9 +126,11 @@ async function embedQuery(query: string): Promise<EmbedOk | EmbedErr> {
 }
 
 /**
- * Contrato Fase 0. Sempre retorna objeto estruturado, nunca lança.
+ * Contrato Fase 0 — retorna objeto estruturado; nunca lança.
+ * Comportamento neutralizado: preserva top-K puro da RPC v1 enquanto
+ * RAG_IS_CALIBRATED=false. Não aplica threshold nem envia threshold à RPC.
  */
-export async function retrieveLibraryContextV2(
+export async function retrieveLibraryContextDetailed(
   supabase: SupabaseClient,
   userId: string,
   query: string,
@@ -149,9 +138,8 @@ export async function retrieveLibraryContextV2(
 ): Promise<LibraryRetrievalResult> {
   const traceId = newTraceId();
   const t0 = Date.now();
-  const threshold = getRagMinSimilarity();
-  assertValidThreshold(threshold);
   const k = clampMatchCount(matchCount);
+  const uncalibrated = getRagMinSimilarity() === null;
 
   const empty = (
     status: LibraryRetrievalStatus,
@@ -161,8 +149,7 @@ export async function retrieveLibraryContextV2(
   ): LibraryRetrievalResult => ({
     status,
     matches: [],
-    rawMatches: [],
-    threshold,
+    uncalibrated,
     timings: { embedMs, rpcMs, totalMs: Date.now() - t0 },
     traceId,
     detail,
@@ -195,25 +182,19 @@ export async function retrieveLibraryContextV2(
       return empty("rpc_error", embed.ms, rpcMs, error.message);
     }
     const raw = (data ?? []) as LibraryMatch[];
-    // INTERIM: filtro cliente até Gate B aplicar match_library_chunks_v2.
-    const filtered = raw.filter((m) => Number(m.similarity ?? 0) >= threshold);
 
-    if (filtered.length === 0) {
-      return {
-        status: "no_relevant_matches",
-        matches: [],
-        rawMatches: raw,
-        threshold,
-        timings: { embedMs: embed.ms, rpcMs, totalMs: Date.now() - t0 },
-        traceId,
-        detail: `nenhum chunk >= ${threshold}`,
-      };
+    // BLOCO 1: sem filtro cliente. Devolve o top-K puro.
+    if (uncalibrated && raw.length > 0) {
+      const scores = raw.map((m) => Number(m.similarity ?? 0).toFixed(3)).join(",");
+      console.info(
+        `[library-rag ${traceId}] uncalibrated top-K=${raw.length} scores=${scores} embedMs=${embed.ms} rpcMs=${rpcMs}`,
+      );
     }
+
     return {
       status: "ok",
-      matches: filtered,
-      rawMatches: raw,
-      threshold,
+      matches: raw,
+      uncalibrated,
       timings: { embedMs: embed.ms, rpcMs, totalMs: Date.now() - t0 },
       traceId,
     };
@@ -228,9 +209,15 @@ export async function retrieveLibraryContextV2(
 }
 
 /**
- * Compat: mantém a assinatura antiga usada por Lousa/Tutor existentes.
- * Retorna apenas os matches após threshold. Callers que precisam do status
- * devem migrar para `retrieveLibraryContextV2`.
+ * @deprecated Use `retrieveLibraryContextDetailed` para obter status,
+ * matches e diagnóstico. Este wrapper é mantido apenas por compatibilidade
+ * com callers legados.
+ *
+ * Call sites legados (não migrar no Bloco 1):
+ *   - src/lib/lousa.functions.ts (`retrieveLibraryContext(...)`)
+ *
+ * `src/lib/library.functions.ts::searchLibrary` NÃO usa este helper; ela
+ * chama a RPC diretamente para busca exploratória e não é migrada.
  */
 export async function retrieveLibraryContext(
   supabase: SupabaseClient,
@@ -238,7 +225,7 @@ export async function retrieveLibraryContext(
   query: string,
   matchCount = 5,
 ): Promise<LibraryMatch[]> {
-  const r = await retrieveLibraryContextV2(supabase, userId, query, matchCount);
+  const r = await retrieveLibraryContextDetailed(supabase, userId, query, matchCount);
   return r.matches;
 }
 
@@ -311,6 +298,7 @@ export async function retrieveLibraryFigures(
 
 /**
  * Converte matches em bloco de texto para injetar em prompts.
+ * Mantém título, página e índice — score NÃO é exposto no prompt.
  */
 export function libraryMatchesToPrompt(matches: LibraryMatch[]): string {
   if (matches.length === 0) return "";
@@ -324,9 +312,8 @@ export function libraryMatchesToPrompt(matches: LibraryMatch[]): string {
   matches.forEach((m, i) => {
     const page = (m.metadata?.page as number | undefined) ?? null;
     const bookTitle = (m.metadata?.bookTitle as string | undefined) ?? "livro";
-    const sim = Number(m.similarity ?? 0).toFixed(2);
     lines.push(
-      `[${i + 1}] «${bookTitle}»${page ? ` — p.${page}` : ""} (similaridade ${sim}):`,
+      `[${i + 1}] «${bookTitle}»${page ? ` — p.${page}` : ""}:`,
       m.content.slice(0, 800),
       "",
     );
@@ -354,6 +341,7 @@ export function libraryFiguresToPrompt(figures: LibraryFigure[]): string {
 
 /**
  * Mensagem UI amigável (curta) para cada status. Nunca vaza detail interno.
+ * Não expõe threshold nem "no_relevant_matches" enquanto uncalibrated.
  */
 export function libraryStatusUiMessage(status: LibraryRetrievalStatus): string {
   switch (status) {
@@ -361,8 +349,6 @@ export function libraryStatusUiMessage(status: LibraryRetrievalStatus): string {
       return "";
     case "no_active_books":
       return "Nenhum livro ativo na sua biblioteca. Ative um livro em «Minha Biblioteca IA» para receber respostas baseadas nele.";
-    case "no_relevant_matches":
-      return "Nenhum trecho da sua biblioteca ficou acima do limiar de relevância para esta pergunta.";
     case "embedding_auth_error":
     case "embedding_upstream_error":
     case "no_embedding":
@@ -373,3 +359,8 @@ export function libraryStatusUiMessage(status: LibraryRetrievalStatus): string {
       return "Não consegui consultar a sua biblioteca agora.";
   }
 }
+
+// Exportação nomeada de compatibilidade para código que ainda referencia o
+// nome antigo dentro deste módulo. Novos callers DEVEM usar
+// `retrieveLibraryContextDetailed`.
+export { RAG_IS_CALIBRATED };
