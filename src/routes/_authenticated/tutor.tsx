@@ -474,7 +474,22 @@ function Tutor() {
                     }
                   >
                     {m.role === "user" ? (
-                      m.content
+                      <>
+                        {m.images?.length ? (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {m.images.map((src, ii) => (
+                              <img
+                                key={ii}
+                                src={src}
+                                alt="Imagem do enunciado"
+                                className="w-full rounded border border-background/20 bg-background/10"
+                                loading="lazy"
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+                        {m.content}
+                      </>
                     ) : (
                       <>
                         {m.toolResults?.map((tr, ti) => (
