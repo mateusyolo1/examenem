@@ -404,11 +404,22 @@ export const askTutor = createServerFn({ method: "POST" })
       "- Se nenhum trecho for relevante, diga explicitamente: não encontrei referência " +
       "na sua biblioteca sobre isso.";
 
+    // Ressalva: em intenção DOCUMENTAL, desativamos as ferramentas de ensino
+    // e obrigamos citação estrita a trechos da biblioteca.
+    const documentalOverride = isDocumental
+      ? "\n\nMODO CONSULTA DOCUMENTAL (obrigatório):\n" +
+        "- Responda APENAS com base nos trechos citados da biblioteca.\n" +
+        "- Se não houver trecho relevante, responda literalmente: " +
+        '"Não encontrei referência na sua biblioteca sobre isso." e pare.\n' +
+        "- NÃO use ferramentas (nota_de_aula, mini_quiz, flashcards etc.) neste modo.\n" +
+        "- Cite cada afirmação no formato (trecho [N] — «Livro», p.X)."
+      : "";
+
     const { text } = await generateText({
       model: gateway("openai/gpt-5-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
-      tools,
-      stopWhen: stepCountIs(50),
+      tools: isDocumental ? undefined : tools,
+      stopWhen: isDocumental ? undefined : stepCountIs(50),
       system:
         "Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM, " +
         "paciente e didático(a). Age como um HUMANO ensinando: usa ferramentas visuais " +
@@ -429,6 +440,7 @@ export const askTutor = createServerFn({ method: "POST" })
         imagesInstr +
         ctx +
         stageCtx +
+        documentalOverride +
         closingInstr,
       messages: (() => {
         // Anexa imagens (se houver) à ÚLTIMA mensagem do usuário como partes
@@ -460,6 +472,27 @@ export const askTutor = createServerFn({ method: "POST" })
         page: (m.metadata?.page as number | undefined) ?? null,
         similarity: Number(m.similarity.toFixed(3)),
       })),
+      library: libraryResult
+        ? {
+            status: libraryResult.status,
+            uiMessage: libraryUiMessage,
+            threshold: libraryResult.threshold,
+            traceId: libraryResult.traceId,
+            intent,
+          }
+        : { status: "no_active_books" as const, uiMessage: "", threshold: 0, traceId: "", intent },
+      // Diagnóstico só devolvido para admins (allowlist backend).
+      sourcesDiag: isAdmin && libraryResult
+        ? {
+            traceId: libraryResult.traceId,
+            timings: libraryResult.timings,
+            threshold: libraryResult.threshold,
+            rawCount: libraryResult.rawMatches.length,
+            filteredCount: libraryResult.matches.length,
+            rawSimilarities: libraryResult.rawMatches.map((m) => Number(m.similarity.toFixed(3))),
+            detail: libraryResult.detail ?? null,
+          }
+        : null,
     };
   });
 
