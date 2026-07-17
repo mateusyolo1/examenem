@@ -43,6 +43,7 @@ import {
   MoreVertical,
   FolderInput,
   Pencil,
+  ImagePlus,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
@@ -176,6 +177,58 @@ async function extractPdfChunks(
   return { chunks, pageCount: total, figures };
 }
 
+/** Só extrai figuras de um PDF (para reprocessar livros antigos sem re-embeddar). */
+async function extractPdfFiguresOnly(
+  file: File,
+  onPage: (page: number, total: number) => void,
+): Promise<ExtractedFigure[]> {
+  const pdfjs = await import("pdfjs-dist");
+  const workerMod = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = (workerMod as { default: string }).default;
+  const OPS = (pdfjs as unknown as { OPS: Record<string, number> }).OPS;
+  const IMAGE_OPS = new Set<number>(
+    [OPS?.paintImageXObject, OPS?.paintJpegXObject, OPS?.paintImageMaskXObject].filter(
+      (v): v is number => typeof v === "number",
+    ),
+  );
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const figures: ExtractedFigure[] = [];
+  const total = doc.numPages;
+  const MAX_FIGURES = 40;
+  for (let p = 1; p <= total; p++) {
+    onPage(p, total);
+    if (figures.length >= MAX_FIGURES || IMAGE_OPS.size === 0) continue;
+    try {
+      const page = await doc.getPage(p);
+      const opList = await page.getOperatorList();
+      const hasImage = (opList.fnArray as number[]).some((fn) => IMAGE_OPS.has(fn));
+      if (!hasImage) continue;
+      const viewport = page.getViewport({ scale: 1.0 });
+      const targetW = Math.min(900, viewport.width);
+      const scale = targetW / viewport.width;
+      const vp = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(vp.width);
+      canvas.height = Math.ceil(vp.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({
+        canvasContext: ctx,
+        viewport: vp,
+        canvas,
+      } as unknown as Parameters<typeof page.render>[0]).promise;
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.78),
+      );
+      if (blob) figures.push({ page: p, blob, width: canvas.width, height: canvas.height });
+    } catch (e) {
+      console.warn(`[biblioteca] figura p.${p} falhou`, e);
+    }
+  }
+  return figures;
+}
+
 /** Deriva o "folder" a partir do webkitRelativePath (se veio de upload de pasta). */
 function folderFromFile(file: File, fallback: string | null): string | null {
   const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath;
@@ -201,8 +254,11 @@ function BibliotecaPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploadFolder, setUploadFolder] = useState<string>("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [reprocessing, setReprocessing] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirInputRef = useRef<HTMLInputElement>(null);
+  const reprocessInputRef = useRef<HTMLInputElement>(null);
+  const reprocessTargetRef = useRef<{ id: string; title: string } | null>(null);
 
   const query = useQuery({
     queryKey: ["library-books"],
@@ -322,6 +378,65 @@ function BibliotecaPage() {
     [createFn, embedFn, finalizeFn, query, router, uploadFolder],
   );
 
+  const handleReprocessFigures = useCallback(
+    async (file: File) => {
+      const target = reprocessTargetRef.current;
+      reprocessTargetRef.current = null;
+      if (!target) return;
+      if (!(file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+        toast.error("Envie o mesmo PDF do livro em formato .pdf");
+        return;
+      }
+      setReprocessing(target.id);
+      const toastId = toast.loading(`Extraindo figuras de "${target.title}"...`);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) throw new Error("Sessão expirada.");
+        const figures = await extractPdfFiguresOnly(file, (p, total) => {
+          toast.loading(`Lendo página ${p} de ${total}...`, { id: toastId });
+        });
+        if (figures.length === 0) {
+          toast.info("Nenhuma página com figura detectada neste PDF.", { id: toastId });
+          return;
+        }
+        toast.loading(`Enviando ${figures.length} figuras...`, { id: toastId });
+        const uploaded: {
+          page: number;
+          storagePath: string;
+          width: number;
+          height: number;
+        }[] = [];
+        for (const fig of figures) {
+          const path = `${uid}/${target.id}/p${fig.page}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from("books")
+            .upload(path, fig.blob, { contentType: "image/jpeg", upsert: true });
+          if (!upErr) {
+            uploaded.push({
+              page: fig.page,
+              storagePath: path,
+              width: fig.width,
+              height: fig.height,
+            });
+          }
+        }
+        if (uploaded.length > 0) {
+          await saveFigures({ data: { bookId: target.id, figures: uploaded } });
+        }
+        toast.success(`${uploaded.length} figuras salvas em "${target.title}".`, {
+          id: toastId,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg, { id: toastId });
+      } finally {
+        setReprocessing(null);
+      }
+    },
+    [],
+  );
+
   const books = query.data?.books ?? [];
   const activeIds = new Set(query.data?.activeBookIds ?? []);
 
@@ -439,6 +554,17 @@ function BibliotecaPage() {
               onChange={(e) => e.target.files && handleFiles(e.target.files)}
             />
           </div>
+          <input
+            ref={reprocessInputRef}
+            type="file"
+            accept="application/pdf"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void handleReprocessFigures(f);
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -661,6 +787,23 @@ function BibliotecaPage() {
                                     }}
                                   >
                                     <FolderInput className="h-4 w-4 mr-2" /> Mover
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    disabled={b.status !== "ready" || reprocessing === b.id}
+                                    onClick={() => {
+                                      reprocessTargetRef.current = {
+                                        id: b.id,
+                                        title: b.title,
+                                      };
+                                      reprocessInputRef.current?.click();
+                                    }}
+                                  >
+                                    {reprocessing === b.id ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <ImagePlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    Reprocessar figuras
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem

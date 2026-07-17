@@ -204,6 +204,13 @@ export const saveFigures = createServerFn({ method: "POST" })
     if (bookErr) throw new Error(bookErr.message);
     if (!book) throw new Error("Livro não encontrado");
 
+    // Substitui figuras existentes deste livro (idempotente para reprocessamento)
+    await supabase
+      .from("library_figures")
+      .delete()
+      .eq("book_id", data.bookId)
+      .eq("user_id", userId);
+
     const rows = data.figures.map((f) => ({
       user_id: userId,
       book_id: data.bookId,
