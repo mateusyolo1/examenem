@@ -378,6 +378,65 @@ function BibliotecaPage() {
     [createFn, embedFn, finalizeFn, query, router, uploadFolder],
   );
 
+  const handleReprocessFigures = useCallback(
+    async (file: File) => {
+      const target = reprocessTargetRef.current;
+      reprocessTargetRef.current = null;
+      if (!target) return;
+      if (!(file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+        toast.error("Envie o mesmo PDF do livro em formato .pdf");
+        return;
+      }
+      setReprocessing(target.id);
+      const toastId = toast.loading(`Extraindo figuras de "${target.title}"...`);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) throw new Error("Sessão expirada.");
+        const figures = await extractPdfFiguresOnly(file, (p, total) => {
+          toast.loading(`Lendo página ${p} de ${total}...`, { id: toastId });
+        });
+        if (figures.length === 0) {
+          toast.info("Nenhuma página com figura detectada neste PDF.", { id: toastId });
+          return;
+        }
+        toast.loading(`Enviando ${figures.length} figuras...`, { id: toastId });
+        const uploaded: {
+          page: number;
+          storagePath: string;
+          width: number;
+          height: number;
+        }[] = [];
+        for (const fig of figures) {
+          const path = `${uid}/${target.id}/p${fig.page}.jpg`;
+          const { error: upErr } = await supabase.storage
+            .from("books")
+            .upload(path, fig.blob, { contentType: "image/jpeg", upsert: true });
+          if (!upErr) {
+            uploaded.push({
+              page: fig.page,
+              storagePath: path,
+              width: fig.width,
+              height: fig.height,
+            });
+          }
+        }
+        if (uploaded.length > 0) {
+          await saveFigures({ data: { bookId: target.id, figures: uploaded } });
+        }
+        toast.success(`${uploaded.length} figuras salvas em "${target.title}".`, {
+          id: toastId,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg, { id: toastId });
+      } finally {
+        setReprocessing(null);
+      }
+    },
+    [],
+  );
+
   const books = query.data?.books ?? [];
   const activeIds = new Set(query.data?.activeBookIds ?? []);
 
