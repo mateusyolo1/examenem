@@ -15,6 +15,16 @@ export interface LibraryMatch {
   similarity: number;
 }
 
+export interface LibraryFigure {
+  bookId: string;
+  bookTitle: string;
+  page: number;
+  url: string; // signed URL (1h)
+  width?: number | null;
+  height?: number | null;
+  caption?: string | null;
+}
+
 async function embedQuery(query: string): Promise<number[]> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
