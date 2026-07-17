@@ -68,6 +68,27 @@ function extractJSON(text: string): string {
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
 }
 
+async function refreshSessionFigures(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  row: { content: unknown } | null,
+): Promise<void> {
+  if (!row) return;
+  const content = row.content as LousaLessonContent | null;
+  const figs = content?.figures;
+  if (!figs || figs.length === 0) return;
+  for (const f of figs) {
+    if (!f.storagePath) continue;
+    try {
+      const { data } = await supabase.storage
+        .from("books")
+        .createSignedUrl(f.storagePath, 60 * 60);
+      if (data?.signedUrl) f.url = data.signedUrl;
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /* =========================================================
  * getLatestLousaSession — última aula ativa do usuário
  * ======================================================= */
@@ -83,6 +104,7 @@ export const getLatestLousaSession = createServerFn({ method: "GET" })
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
+    await refreshSessionFigures(supabase, data);
     return { session: data ?? null };
   });
 
@@ -102,6 +124,7 @@ export const getLousaSession = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Sessão não encontrada");
+    await refreshSessionFigures(supabase, row);
     return { session: row };
   });
 
