@@ -408,22 +408,17 @@ export const askTutor = createServerFn({ method: "POST" })
       "- Se nenhum trecho for relevante, diga explicitamente: não encontrei referência " +
       "na sua biblioteca sobre isso.";
 
-    // Ressalva: em intenção DOCUMENTAL, desativamos as ferramentas de ensino
-    // e obrigamos citação estrita a trechos da biblioteca.
-    const documentalOverride = isDocumental
-      ? "\n\nMODO CONSULTA DOCUMENTAL (obrigatório):\n" +
-        "- Responda APENAS com base nos trechos citados da biblioteca.\n" +
-        "- Se não houver trecho relevante, responda literalmente: " +
-        '"Não encontrei referência na sua biblioteca sobre isso." e pare.\n' +
-        "- NÃO use ferramentas (nota_de_aula, mini_quiz, flashcards etc.) neste modo.\n" +
-        "- Cite cada afirmação no formato (trecho [N] — «Livro», p.X)."
-      : "";
+    // Override documental (função pura em tutor-rag-policy).
+    const documentalOverride = buildDocumentalOverride(
+      intent,
+      libraryResult?.status ?? null,
+    );
 
     const { text } = await generateText({
       model: gateway("openai/gpt-5-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
-      tools: isDocumental ? undefined : tools,
-      stopWhen: isDocumental ? undefined : stepCountIs(50),
+      tools: toolPolicy === "none" ? undefined : tools,
+      stopWhen: toolPolicy === "none" ? undefined : stepCountIs(50),
       system:
         "Você é um(a) professor(a) particular brasileiro(a), especialista em ENEM, " +
         "paciente e didático(a). Age como um HUMANO ensinando: usa ferramentas visuais " +
@@ -447,9 +442,6 @@ export const askTutor = createServerFn({ method: "POST" })
         documentalOverride +
         closingInstr,
       messages: (() => {
-        // Anexa imagens (se houver) à ÚLTIMA mensagem do usuário como partes
-        // multimodais. Modelos de chat da Lovable AI (openai/*, google/*)
-        // aceitam blocos { type: 'image', image: <url> }.
         const imgs = data.imageUrls ?? [];
         if (imgs.length === 0) return data.messages;
         const msgs = data.messages.map((m) => ({ ...m }));
@@ -466,6 +458,9 @@ export const askTutor = createServerFn({ method: "POST" })
         return msgs as typeof data.messages;
       })(),
     });
+
+    // Retorno enxuto: sem threshold, traceId, timings, scores nem sourcesDiag.
+    // Diagnóstico técnico fica apenas nos logs backend (library-rag.server.ts).
     return {
       text,
       toolResults: collectedResults,
@@ -474,30 +469,16 @@ export const askTutor = createServerFn({ method: "POST" })
         n: i + 1,
         bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
         page: (m.metadata?.page as number | undefined) ?? null,
-        similarity: Number(m.similarity.toFixed(3)),
       })),
       library: libraryResult
         ? {
             status: libraryResult.status,
             uiMessage: libraryUiMessage,
-            threshold: libraryResult.threshold,
-            traceId: libraryResult.traceId,
             intent,
           }
-        : { status: "no_active_books" as const, uiMessage: "", threshold: 0, traceId: "", intent },
-      // Diagnóstico só devolvido para admins (allowlist backend).
-      sourcesDiag: isAdmin && libraryResult
-        ? {
-            traceId: libraryResult.traceId,
-            timings: libraryResult.timings,
-            threshold: libraryResult.threshold,
-            rawCount: libraryResult.rawMatches.length,
-            filteredCount: libraryResult.matches.length,
-            rawSimilarities: libraryResult.rawMatches.map((m) => Number(m.similarity.toFixed(3))),
-            detail: libraryResult.detail ?? null,
-          }
-        : null,
+        : { status: "no_active_books" as const, uiMessage: "", intent },
     };
+
   });
 
 
