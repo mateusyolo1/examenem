@@ -384,13 +384,25 @@ export const askTutor = createServerFn({ method: "POST" })
         teachingInstr +
         stageInstr +
         memoryCtx +
+        libraryCtx +
         ctx +
         stageCtx +
         closingInstr,
       messages: data.messages,
     });
-    return { text, toolResults: collectedResults, memorySummary: memory.topicSummary };
+    return {
+      text,
+      toolResults: collectedResults,
+      memorySummary: memory.topicSummary,
+      libraryCitations: libraryMatches.map((m, i) => ({
+        n: i + 1,
+        bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
+        page: (m.metadata?.page as number | undefined) ?? null,
+        similarity: Number(m.similarity.toFixed(3)),
+      })),
+    };
   });
+
 
 const essayInput = z.object({
   theme: z.string().min(5).max(300),
