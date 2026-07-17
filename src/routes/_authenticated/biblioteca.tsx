@@ -254,8 +254,11 @@ function BibliotecaPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploadFolder, setUploadFolder] = useState<string>("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [reprocessing, setReprocessing] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirInputRef = useRef<HTMLInputElement>(null);
+  const reprocessInputRef = useRef<HTMLInputElement>(null);
+  const reprocessTargetRef = useRef<{ id: string; title: string } | null>(null);
 
   const query = useQuery({
     queryKey: ["library-books"],
