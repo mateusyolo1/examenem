@@ -11,6 +11,15 @@ export type LousaExercise = {
   comentario: string;
 };
 
+export type LousaFigure = {
+  bookId: string;
+  bookTitle: string;
+  page: number;
+  storagePath: string;
+  caption?: string;
+  url?: string; // preenchido no read (signed URL 1h)
+};
+
 export type LousaLessonContent = {
   materia: string;
   tema: string;
@@ -18,6 +27,7 @@ export type LousaLessonContent = {
   exercicios: LousaExercise[];
   desafioEnsinar: { pergunta: string; respostaModelo: string };
   referencias?: string[];
+  figures?: LousaFigure[];
 };
 
 export type LousaContextSnapshot = {
@@ -58,6 +68,27 @@ function extractJSON(text: string): string {
   return start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
 }
 
+async function refreshSessionFigures(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  row: { content: unknown } | null,
+): Promise<void> {
+  if (!row) return;
+  const content = row.content as LousaLessonContent | null;
+  const figs = content?.figures;
+  if (!figs || figs.length === 0) return;
+  for (const f of figs) {
+    if (!f.storagePath) continue;
+    try {
+      const { data } = await supabase.storage
+        .from("books")
+        .createSignedUrl(f.storagePath, 60 * 60);
+      if (data?.signedUrl) f.url = data.signedUrl;
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /* =========================================================
  * getLatestLousaSession — última aula ativa do usuário
  * ======================================================= */
@@ -73,6 +104,7 @@ export const getLatestLousaSession = createServerFn({ method: "GET" })
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
+    await refreshSessionFigures(supabase, data);
     return { session: data ?? null };
   });
 
@@ -92,6 +124,7 @@ export const getLousaSession = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Sessão não encontrada");
+    await refreshSessionFigures(supabase, row);
     return { session: row };
   });
 
@@ -241,13 +274,18 @@ export const generateLousaLesson = createServerFn({ method: "POST" })
     const temaHint = data.tema ?? topicSlug ?? planTaskTitle ?? "Revisão geral ENEM";
     const areaHint = topicArea ?? "Multidisciplinar";
 
-    // RAG: trechos da biblioteca ativa do aluno para embasar a aula
-    const { retrieveLibraryContext, libraryMatchesToPrompt } = await import(
-      "./library-rag.server"
-    );
+    // RAG: trechos + figuras da biblioteca ativa do aluno para embasar a aula
+    const {
+      retrieveLibraryContext,
+      libraryMatchesToPrompt,
+      retrieveLibraryFigures,
+      libraryFiguresToPrompt,
+    } = await import("./library-rag.server");
     const ragQuery = [temaHint, areaHint, ...recentErrors].filter(Boolean).join(" · ");
     const libraryMatches = await retrieveLibraryContext(supabase, userId, ragQuery, 5);
     const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+    const libFigures = await retrieveLibraryFigures(supabase, userId, libraryMatches, 3);
+    const figuresCtx = libraryFiguresToPrompt(libFigures);
 
     const prompt = `Você é um professor particular de ENEM montando uma AULA na Lousa Interativa personalizada para este aluno.
 
@@ -261,7 +299,7 @@ CONTEXTO DO ALUNO:
       watchedVideos.length
         ? watchedVideos.map((v) => `"${v.title}"${v.channel ? ` (${v.channel})` : ""}`).join(" | ")
         : "nenhum recente"
-    }${libraryCtx}
+    }${libraryCtx}${figuresCtx}
 
 
 REGRAS DE AULA:
@@ -270,6 +308,7 @@ REGRAS DE AULA:
 - Se domínio ALTO → aprofundamento, casos avançados, pegadinhas de prova.
 - Sempre que possível, REFERENCIE os vídeos assistidos ("como vimos no vídeo X…") para conectar com o histórico.
 - Se houver TRECHOS DA BIBLIOTECA DO ALUNO acima, use-os como fonte primária e cite o livro/página no campo "referencias".
+- Se houver IMAGENS ANEXADAS DA BIBLIOTECA, incorpore-as pedagogicamente: mencione "veja a figura X do seu livro" em pelo menos 1 exercício ou no resumo, e devolva descrições curtas em "figureCaptions" (uma por figura, mesma ordem).
 - Nível de linguagem: ENEM, direto, sem enrolação.
 
 
@@ -285,7 +324,8 @@ FORMATO — retorne APENAS JSON válido:
     "pergunta": "peça para o aluno explicar o conceito com as próprias palavras",
     "respostaModelo": "resposta ideal do professor"
   },
-  "referencias": ["opcional: título de vídeo ou material que o aluno consultou"]
+  "referencias": ["opcional: título de vídeo ou material que o aluno consultou"],
+  "figureCaptions": ["descrição curta da figura 1", "descrição curta da figura 2"]
 }
 
 Gere 3 exercícios. Não escreva NADA fora do JSON.`;
@@ -297,10 +337,31 @@ Gere 3 exercícios. Não escreva NADA fora do JSON.`;
     const models = ["google/gemini-2.5-flash", CHAT_MODEL, "google/gemini-2.5-flash-lite"];
     let lessonRaw = "";
     let lastErr: unknown = null;
+
+    // Se temos figuras, envia como mensagem multimodal
+    const userContent: Array<
+      { type: "text"; text: string } | { type: "image"; image: URL }
+    > = [{ type: "text", text: prompt }];
+    for (const f of libFigures) {
+      try {
+        userContent.push({ type: "image", image: new URL(f.url) });
+      } catch {
+        /* skip invalid url */
+      }
+    }
+
     for (const m of models) {
       try {
-        const { text } = await generateText({ model: gateway(m), prompt });
-        lessonRaw = text;
+        if (libFigures.length > 0) {
+          const { text } = await generateText({
+            model: gateway(m),
+            messages: [{ role: "user", content: userContent as never }],
+          });
+          lessonRaw = text;
+        } else {
+          const { text } = await generateText({ model: gateway(m), prompt });
+          lessonRaw = text;
+        }
         break;
       } catch (e) {
         console.error(`[lousa] modelo ${m} falhou`, e);
@@ -340,6 +401,22 @@ Gere 3 exercícios. Não escreva NADA fora do JSON.`;
         ? parsed.referencias.slice(0, 5).map(String)
         : [],
     };
+
+    // Anexa metadados das figuras (sem URL — regenerada a cada leitura)
+    if (libFigures.length > 0) {
+      const captions = Array.isArray(
+        (parsed as unknown as { figureCaptions?: unknown[] }).figureCaptions,
+      )
+        ? ((parsed as unknown as { figureCaptions: unknown[] }).figureCaptions.map(String))
+        : [];
+      lesson.figures = libFigures.map((f, i) => ({
+        bookId: f.bookId,
+        bookTitle: f.bookTitle,
+        page: f.page,
+        storagePath: f.storagePath,
+        caption: captions[i] ?? undefined,
+      }));
+    }
 
     if (!lesson.resumo.length || !lesson.exercicios.length) {
       throw new Error("A IA gerou conteúdo incompleto. Tente novamente.");

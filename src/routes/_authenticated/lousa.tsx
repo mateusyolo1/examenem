@@ -392,6 +392,43 @@ function LousaPage() {
           </div>
         )}
 
+        {/* FIGURAS DO LIVRO */}
+        {content.figures && content.figures.length > 0 && (
+          <section className="mb-8">
+            <h2
+              className="mb-3 flex items-center gap-2 text-lg"
+              style={{ fontFamily: fontTitle, color: cText }}
+            >
+              <BookOpen size={18} /> Do seu livro
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {content.figures.map((f, i) =>
+                f.url ? (
+                  <figure
+                    key={i}
+                    className="rounded-md overflow-hidden border"
+                    style={{ borderColor: cBorder }}
+                  >
+                    <img
+                      src={f.url}
+                      alt={f.caption ?? `Figura de ${f.bookTitle}, p. ${f.page}`}
+                      className="w-full h-auto block bg-white"
+                      loading="lazy"
+                    />
+                    <figcaption
+                      className="p-2 text-xs"
+                      style={{ color: cMuted, fontFamily: fontWrite }}
+                    >
+                      <strong style={{ color: cText }}>{f.bookTitle}</strong> · p.{f.page}
+                      {f.caption ? ` — ${f.caption}` : ""}
+                    </figcaption>
+                  </figure>
+                ) : null,
+              )}
+            </div>
+          </section>
+        )}
+
         {/* LER */}
         <StreamSection
           onVisible={() => markDone("Ler")}

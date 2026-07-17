@@ -444,6 +444,50 @@ export type Database = {
           },
         ]
       }
+      library_figures: {
+        Row: {
+          book_id: string
+          caption: string | null
+          created_at: string
+          height: number | null
+          id: string
+          page: number
+          storage_path: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          book_id: string
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          page: number
+          storage_path: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          book_id?: string
+          caption?: string | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          page?: number
+          storage_path?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_figures_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "library_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lousa_questions: {
         Row: {
           activity_id: string
