@@ -20,6 +20,7 @@ export interface LibraryFigure {
   bookTitle: string;
   page: number;
   url: string; // signed URL (1h)
+  storagePath: string;
   width?: number | null;
   height?: number | null;
   caption?: string | null;
