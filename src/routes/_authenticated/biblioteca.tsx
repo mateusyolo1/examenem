@@ -44,7 +44,9 @@ import {
   FolderInput,
   Pencil,
   ImagePlus,
+  ArrowLeft,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
   head: () => ({
