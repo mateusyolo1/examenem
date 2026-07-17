@@ -307,9 +307,16 @@ REGRAS DE AULA:
 - Se domínio MÉDIO → resumo + foco nos pontos que o aluno costuma errar.
 - Se domínio ALTO → aprofundamento, casos avançados, pegadinhas de prova.
 - Sempre que possível, REFERENCIE os vídeos assistidos ("como vimos no vídeo X…") para conectar com o histórico.
-- Se houver TRECHOS DA BIBLIOTECA DO ALUNO acima, use-os como fonte primária e cite o livro/página no campo "referencias".
 - Se houver IMAGENS ANEXADAS DA BIBLIOTECA, incorpore-as pedagogicamente: mencione "veja a figura X do seu livro" em pelo menos 1 exercício ou no resumo, e devolva descrições curtas em "figureCaptions" (uma por figura, mesma ordem).
 - Nível de linguagem: ENEM, direto, sem enrolação.
+
+CITAÇÃO DE FONTES DA BIBLIOTECA (obrigatório quando houver bloco 'TRECHOS DA BIBLIOTECA DO ALUNO' acima):
+- Use os trechos como FONTE PRIMÁRIA do resumo e dos exercícios.
+- Preencha o campo "referencias" do JSON com uma string por trecho usado, no formato exato:
+  "trecho [N] — «Livro», p.X" (ex.: "trecho [1] — «Física Vol.1», p.42").
+- Se referenciar uma figura no resumo/exercícios, adicione também: "figura [N] — «Livro», p.X".
+- NÃO invente páginas nem títulos — use exatamente os que aparecem nos blocos acima.
+- Se nenhum trecho for relevante, deixe "referencias": [].
 
 
 FORMATO — retorne APENAS JSON válido:

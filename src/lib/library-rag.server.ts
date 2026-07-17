@@ -159,13 +159,19 @@ export function libraryMatchesToPrompt(matches: LibraryMatch[]): string {
   if (matches.length === 0) return "";
   const lines: string[] = [
     "",
-    "TRECHOS DA BIBLIOTECA DO ALUNO (use como fonte primária; cite página quando referenciar):",
+    "═══ TRECHOS DA BIBLIOTECA DO ALUNO ═══",
+    "Use como FONTE PRIMÁRIA. Quando usar um trecho, cite-o explicitamente no",
+    'formato: "(trecho [N] — «Livro», p.X)". NÃO invente conteúdo fora desses trechos.',
+    "",
   ];
   matches.forEach((m, i) => {
     const page = (m.metadata?.page as number | undefined) ?? null;
     const bookTitle = (m.metadata?.bookTitle as string | undefined) ?? "livro";
+    const sim = Number(m.similarity ?? 0).toFixed(2);
     lines.push(
-      `[${i + 1}] "${bookTitle}"${page ? ` — p.${page}` : ""}: ${m.content.slice(0, 800)}`,
+      `[${i + 1}] «${bookTitle}»${page ? ` — p.${page}` : ""} (similaridade ${sim}):`,
+      m.content.slice(0, 800),
+      "",
     );
   });
   return lines.join("\n");
@@ -178,10 +184,13 @@ export function libraryFiguresToPrompt(figures: LibraryFigure[]): string {
   if (figures.length === 0) return "";
   const lines: string[] = [
     "",
-    `IMAGENS ANEXADAS DA BIBLIOTECA DO ALUNO (${figures.length}): são páginas dos livros ativos que contêm figuras/gráficos relevantes ao tema. Descreva brevemente o que vê e, quando fizer sentido pedagógico, cite o livro e página no campo "referencias".`,
+    `═══ IMAGENS ANEXADAS DA BIBLIOTECA (${figures.length}) ═══`,
+    "São páginas dos livros ativos com figuras/gráficos relevantes.",
+    'Ao referenciar uma figura, cite no formato: "(figura [N] — «Livro», p.X)".',
+    "",
   ];
   figures.forEach((f, i) => {
-    lines.push(`[fig ${i + 1}] "${f.bookTitle}" — p.${f.page}`);
+    lines.push(`[figura ${i + 1}] «${f.bookTitle}» — p.${f.page}`);
   });
   return lines.join("\n");
 }
