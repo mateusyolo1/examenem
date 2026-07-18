@@ -86,10 +86,24 @@ interface GoogleGenerateContentResponse {
 async function callGemini(
   apiKey: string,
   parts: Array<Record<string, unknown>>,
-  { retries = 2, timeoutMs = 60_000 }: { retries?: number; timeoutMs?: number } = {},
+  {
+    retries = 2,
+    timeoutMs = 60_000,
+    trace,
+    step,
+    youtubeId,
+  }: {
+    retries?: number;
+    timeoutMs?: number;
+    trace?: TraceCounters;
+    step?: string;
+    youtubeId?: string;
+  } = {},
 ): Promise<string> {
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (trace && attempt > 0) trace.totalRetries += 1;
+    const attemptStart = performance.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let res: Response;
@@ -109,8 +123,33 @@ async function callGemini(
     } catch (err) {
       clearTimeout(timer);
       if (err instanceof Error && err.name === "AbortError") {
+        const timeoutErr = new Error(`google_timeout_${timeoutMs}ms`);
+        if (trace && step) {
+          logStep({
+            traceId: trace.traceId,
+            step,
+            status: "error",
+            durationMs: performance.now() - attemptStart,
+            model: GOOGLE_MODEL,
+            attempt,
+            errorType: classifyErrorType(timeoutErr),
+            youtubeId: maskYoutubeId(youtubeId),
+          });
+        }
         // Timeout: não tenta de novo (evita multiplicar o tempo pendurado).
-        throw new Error(`google_timeout_${timeoutMs}ms`);
+        throw timeoutErr;
+      }
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: GOOGLE_MODEL,
+          attempt,
+          errorType: "network",
+          youtubeId: maskYoutubeId(youtubeId),
+        });
       }
       throw err;
     }
@@ -128,6 +167,18 @@ async function callGemini(
       const msg = body.error?.message ?? raw.slice(0, 200);
       if (res.status === 429 || res.status === 503) {
         lastErr = new Error("rate_limit");
+        if (trace && step) {
+          logStep({
+            traceId: trace.traceId,
+            step,
+            status: "error",
+            durationMs: performance.now() - attemptStart,
+            model: GOOGLE_MODEL,
+            attempt,
+            errorType: "rate_limit",
+            youtubeId: maskYoutubeId(youtubeId),
+          });
+        }
         if (attempt < retries) {
           const wait = 1500 * (attempt + 1) + Math.random() * 500;
           await new Promise((r) => setTimeout(r, wait));
@@ -135,19 +186,72 @@ async function callGemini(
         }
         throw lastErr;
       }
-      if (res.status === 403) throw new Error(`google_forbidden: ${msg}`);
-      if (res.status === 400) throw new Error(`google_bad_request: ${msg}`);
-      throw new Error(`google_${res.status}: ${msg}`);
+      const httpErr =
+        res.status === 403
+          ? new Error(`google_forbidden: ${msg}`)
+          : res.status === 400
+            ? new Error(`google_bad_request: ${msg}`)
+            : new Error(`google_${res.status}: ${msg}`);
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: GOOGLE_MODEL,
+          attempt,
+          errorType: classifyErrorType(httpErr),
+          youtubeId: maskYoutubeId(youtubeId),
+        });
+      }
+      throw httpErr;
     }
 
     if (body.promptFeedback?.blockReason) {
-      throw new Error(`google_blocked: ${body.promptFeedback.blockReason}`);
+      const blockedErr = new Error(`google_blocked: ${body.promptFeedback.blockReason}`);
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: GOOGLE_MODEL,
+          attempt,
+          errorType: "google_blocked",
+          youtubeId: maskYoutubeId(youtubeId),
+        });
+      }
+      throw blockedErr;
     }
 
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
     if (!text.trim()) {
       const reason = body.candidates?.[0]?.finishReason ?? "sem retorno";
-      throw new Error(`google_empty: ${reason}`);
+      const emptyErr = new Error(`google_empty: ${reason}`);
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: GOOGLE_MODEL,
+          attempt,
+          errorType: "google_empty",
+          youtubeId: maskYoutubeId(youtubeId),
+        });
+      }
+      throw emptyErr;
+    }
+    if (trace && step) {
+      logStep({
+        traceId: trace.traceId,
+        step,
+        status: "ok",
+        durationMs: performance.now() - attemptStart,
+        model: GOOGLE_MODEL,
+        attempt,
+        youtubeId: maskYoutubeId(youtubeId),
+      });
     }
     return text;
   }
