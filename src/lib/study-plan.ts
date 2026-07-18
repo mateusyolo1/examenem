@@ -352,10 +352,14 @@ function slotFrom(
   const carryTopic = type === "teoria" || type === "videoaula" ||
     type === "mapa_mental" || type === "resumo" || type === "revisao" ||
     type === "flashcards" || type === "projeto";
+  const effectiveMinutes =
+    type === "videoaula" && p.videoDurationSeconds
+      ? videoMinutesFromDuration(p.videoDurationSeconds, minutes)
+      : minutes;
   return {
     type,
     area: p.area,
-    minutes,
+    minutes: effectiveMinutes,
     title,
     topicArea: carryTopic ? p.topicArea : undefined,
     topicSlug: carryTopic ? p.topicSlug : undefined,
