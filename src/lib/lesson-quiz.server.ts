@@ -267,10 +267,22 @@ async function callDeepSeek(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  { retries = 2, temperature = 0.5 }: { retries?: number; temperature?: number } = {},
+  {
+    retries = 2,
+    temperature = 0.5,
+    trace,
+    step,
+  }: {
+    retries?: number;
+    temperature?: number;
+    trace?: TraceCounters;
+    step?: string;
+  } = {},
 ): Promise<string> {
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (trace && attempt > 0) trace.totalRetries += 1;
+    const attemptStart = performance.now();
     let res: Response;
     try {
       res = await fetch(DEEPSEEK_ENDPOINT, {
@@ -293,6 +305,17 @@ async function callDeepSeek(
       lastErr = new Error(
         `deepseek_network: ${error instanceof Error ? error.message : "erro"}`,
       );
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: DEEPSEEK_MODEL,
+          attempt,
+          errorType: "deepseek_network",
+        });
+      }
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
         continue;
@@ -312,24 +335,68 @@ async function callDeepSeek(
       const msg = body.error?.message ?? raw.slice(0, 200);
       if (res.status === 429 || res.status === 503) {
         lastErr = new Error("deepseek_rate_limit");
+        if (trace && step) {
+          logStep({
+            traceId: trace.traceId,
+            step,
+            status: "error",
+            durationMs: performance.now() - attemptStart,
+            model: DEEPSEEK_MODEL,
+            attempt,
+            errorType: "deepseek_rate_limit",
+          });
+        }
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
           continue;
         }
         throw lastErr;
       }
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(`deepseek_forbidden: ${msg}`);
+      const httpErr =
+        res.status === 401 || res.status === 403
+          ? new Error(`deepseek_forbidden: ${msg}`)
+          : res.status === 402
+            ? new Error("deepseek_insufficient_balance: DeepSeek sem créditos")
+            : new Error(`deepseek_${res.status}: ${msg}`);
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: DEEPSEEK_MODEL,
+          attempt,
+          errorType: classifyErrorType(httpErr),
+        });
       }
-      if (res.status === 402) {
-        throw new Error("deepseek_insufficient_balance: DeepSeek sem créditos");
-      }
-      throw new Error(`deepseek_${res.status}: ${msg}`);
+      throw httpErr;
     }
 
     const text = body.choices?.[0]?.message?.content ?? "";
     if (!text.trim()) {
-      throw new Error("deepseek_empty");
+      const emptyErr = new Error("deepseek_empty");
+      if (trace && step) {
+        logStep({
+          traceId: trace.traceId,
+          step,
+          status: "error",
+          durationMs: performance.now() - attemptStart,
+          model: DEEPSEEK_MODEL,
+          attempt,
+          errorType: "deepseek_empty",
+        });
+      }
+      throw emptyErr;
+    }
+    if (trace && step) {
+      logStep({
+        traceId: trace.traceId,
+        step,
+        status: "ok",
+        durationMs: performance.now() - attemptStart,
+        model: DEEPSEEK_MODEL,
+        attempt,
+      });
     }
     return text;
   }
