@@ -1153,22 +1153,39 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { newTrace, logStep } = await import("./lesson-quiz-trace.server");
+    const trace = newTrace();
 
     const cacheKey = `lesson-quiz:v6-essay:${data.topicId}`;
+    const cacheLookupStart = performance.now();
     const { data: cached } = await supabaseAdmin
       .from("ai_response_cache")
       .select("response")
       .eq("cache_key", cacheKey)
       .gt("expires_at", new Date().toISOString())
       .maybeSingle();
+    logStep({
+      traceId: trace.traceId,
+      step: "cache-lookup:lesson-quiz",
+      status: cached ? "hit" : "miss",
+      durationMs: performance.now() - cacheLookupStart,
+    });
     if (cached) return cached.response as unknown as LessonQuizPayload;
 
+    const topicQueryStart = performance.now();
     const { data: topic } = await supabase
       .from("study_topics")
       .select("title, subject, area")
       .eq("id", data.topicId)
       .single();
+    logStep({
+      traceId: trace.traceId,
+      step: "topic-query",
+      status: topic ? "ok" : "miss",
+      durationMs: performance.now() - topicQueryStart,
+    });
 
+    const videosQueryStart = performance.now();
     const { data: videos, error } = await supabase
       .from("study_videos")
       .select("id, youtube_id, title")
@@ -1176,6 +1193,13 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       .eq("source", "ai")
       .order("sort_order", { ascending: true })
       .limit(6);
+    logStep({
+      traceId: trace.traceId,
+      step: "videos-query",
+      status: error ? "error" : "ok",
+      durationMs: performance.now() - videosQueryStart,
+      errorType: error ? "db" : undefined,
+    });
     if (error) throw new Error(error.message);
     if (!videos || videos.length === 0) {
       throw new Error("Nenhum vídeo encontrado para gerar a atividade.");
@@ -1186,12 +1210,19 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       : "ENEM";
 
     const { buildLessonQuizPayload } = await import("./lesson-quiz.server");
-    const payload = await buildLessonQuizPayload({ topicCtx, videos, supabaseAdmin });
+    const payload = await buildLessonQuizPayload({ topicCtx, videos, supabaseAdmin, trace });
 
+    const cacheInsertStart = performance.now();
     await supabaseAdmin.from("ai_response_cache").insert({
       cache_key: cacheKey,
       prompt_type: "lesson-quiz",
       response: JSON.parse(JSON.stringify(payload)),
+    });
+    logStep({
+      traceId: trace.traceId,
+      step: "cache-insert:lesson-quiz",
+      status: "ok",
+      durationMs: performance.now() - cacheInsertStart,
     });
 
     return payload;
