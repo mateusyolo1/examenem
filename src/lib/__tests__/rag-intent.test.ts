@@ -2,15 +2,16 @@ import { describe, it, expect } from "bun:test";
 import { detectTutorIntent } from "../rag-intent";
 
 describe("detectTutorIntent", () => {
-  it("consulta explícita a livro → documental", () => {
+  it("consulta explícita a livro/biblioteca → documental", () => {
     expect(detectTutorIntent({ message: "Segundo o livro, o que é entropia?" })).toBe("documental");
-    expect(detectTutorIntent({ message: "no livro do professor" })).toBe("documental");
-    expect(detectTutorIntent({ message: "conforme o material que subi" })).toBe("documental");
+    expect(detectTutorIntent({ message: "no meu pdf de física" })).toBe("documental");
+    expect(detectTutorIntent({ message: "conforme o material que eu subi" })).toBe("documental");
+    expect(detectTutorIntent({ message: "cite algo da minha biblioteca" })).toBe("documental");
   });
 
-  it("pedido de página/citação → documental", () => {
-    expect(detectTutorIntent({ message: "cite a fonte com a página" })).toBe("documental");
-    expect(detectTutorIntent({ message: "qual a página desse capítulo?" })).toBe("documental");
+  it("menções casuais a 'livro' ou 'página' NÃO ativam documental", () => {
+    expect(detectTutorIntent({ message: "explica essa questão da página 15" })).not.toBe("documental");
+    expect(detectTutorIntent({ message: "o texto fala sobre um livro do autor" })).not.toBe("documental");
   });
 
   it("toggle explícito força documental mesmo sem lexema", () => {
