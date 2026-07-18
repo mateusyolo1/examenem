@@ -455,24 +455,46 @@ async function summarizeVideo(
   videoTitle: string,
   topicCtx: string,
   supabaseAdmin: SupabaseAdmin,
+  trace?: TraceCounters,
 ): Promise<{ summary: VideoSummary; source: "gemini-yt" | "supadata" }> {
+  const maskedYt = maskYoutubeId(youtubeId);
   // 1) Try Gemini with direct YouTube URL (cheapest, best quality when it works)
   const cacheKeyYt = `video-summary:gemini-yt:v1:${youtubeId}`;
+  const cacheYtStart = performance.now();
   const { data: cachedYt } = await supabaseAdmin
     .from("ai_response_cache")
     .select("response")
     .eq("cache_key", cacheKeyYt)
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
+  if (trace) {
+    logStep({
+      traceId: trace.traceId,
+      step: "cache-lookup:video-summary:gemini-yt",
+      status: cachedYt ? "hit" : "miss",
+      durationMs: performance.now() - cacheYtStart,
+      youtubeId: maskedYt,
+    });
+  }
   if (cachedYt) return { summary: cachedYt.response as unknown as VideoSummary, source: "gemini-yt" };
 
   const cacheKeySd = `video-summary:supadata:v1:${youtubeId}`;
+  const cacheSdStart = performance.now();
   const { data: cachedSd } = await supabaseAdmin
     .from("ai_response_cache")
     .select("response")
     .eq("cache_key", cacheKeySd)
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
+  if (trace) {
+    logStep({
+      traceId: trace.traceId,
+      step: "cache-lookup:video-summary:supadata",
+      status: cachedSd ? "hit" : "miss",
+      durationMs: performance.now() - cacheSdStart,
+      youtubeId: maskedYt,
+    });
+  }
   if (cachedSd) return { summary: cachedSd.response as unknown as VideoSummary, source: "supadata" };
 
   const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
@@ -505,7 +527,7 @@ Regras:
         { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
         { text: geminiPrompt },
       ],
-      { retries: 0, timeoutMs: 8_000 },
+      { retries: 0, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
     );
     const parsed = parseJsonLoose<VideoSummary>(text);
     const summary: VideoSummary = {
@@ -515,11 +537,21 @@ Regras:
       timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
     };
     if (summary.keyConcepts.length > 0) {
+      const insStart = performance.now();
       await supabaseAdmin.from("ai_response_cache").insert({
         cache_key: cacheKeyYt,
         prompt_type: "video-summary",
         response: JSON.parse(JSON.stringify(summary)),
       });
+      if (trace) {
+        logStep({
+          traceId: trace.traceId,
+          step: "cache-insert:video-summary:gemini-yt",
+          status: "ok",
+          durationMs: performance.now() - insStart,
+          youtubeId: maskedYt,
+        });
+      }
       return { summary, source: "gemini-yt" };
     }
     firstError = new Error("gemini_no_content");
@@ -538,23 +570,60 @@ Regras:
   }
 
   // 2) Fallback: Supadata → Gemini resume o texto
-  const transcript = await fetchSupadataTranscript(youtubeId);
+  if (trace) trace.fallbacks += 1;
+  const supadataStart = performance.now();
+  let transcript;
+  try {
+    transcript = await fetchSupadataTranscript(youtubeId);
+    if (trace) {
+      logStep({
+        traceId: trace.traceId,
+        step: "supadata",
+        status: "ok",
+        durationMs: performance.now() - supadataStart,
+        youtubeId: maskedYt,
+      });
+    }
+  } catch (err) {
+    if (trace) {
+      logStep({
+        traceId: trace.traceId,
+        step: "supadata",
+        status: "error",
+        durationMs: performance.now() - supadataStart,
+        errorType: classifyErrorType(err),
+        youtubeId: maskedYt,
+      });
+    }
+    throw err;
+  }
   const summary = await summarizeVideoFromTranscript(
     apiKey,
     transcript.text,
     topicCtx,
     videoTitle,
+    { trace, youtubeId },
   );
 
   if (summary.keyConcepts.length === 0) {
     throw firstError ?? new Error("sem conteúdo útil no vídeo");
   }
 
+  const insSdStart = performance.now();
   await supabaseAdmin.from("ai_response_cache").insert({
     cache_key: cacheKeySd,
     prompt_type: "video-summary",
     response: JSON.parse(JSON.stringify(summary)),
   });
+  if (trace) {
+    logStep({
+      traceId: trace.traceId,
+      step: "cache-insert:video-summary:supadata",
+      status: "ok",
+      durationMs: performance.now() - insSdStart,
+      youtubeId: maskedYt,
+    });
+  }
 
   return { summary, source: "supadata" };
 }
