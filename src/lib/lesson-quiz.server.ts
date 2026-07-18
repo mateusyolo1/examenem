@@ -315,10 +315,14 @@ Regras:
 
   let firstError: Error | null = null;
   try {
-    const text = await callGemini(apiKey, [
-      { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
-      { text: geminiPrompt },
-    ]);
+    const text = await callGemini(
+      apiKey,
+      [
+        { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
+        { text: geminiPrompt },
+      ],
+      { retries: 0, timeoutMs: 8_000 },
+    );
     const parsed = parseJsonLoose<VideoSummary>(text);
     const summary: VideoSummary = {
       keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
@@ -337,9 +341,16 @@ Regras:
     firstError = new Error("gemini_no_content");
   } catch (error) {
     firstError = error instanceof Error ? error : new Error("gemini_failed");
-    // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
-    if (firstError.message === "rate_limit") throw firstError;
-    if (firstError.message.startsWith("google_forbidden")) throw firstError;
+    if (firstError.message.startsWith("google_timeout_")) {
+      console.warn(
+        `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback Supadata`,
+      );
+      // segue pra Supadata
+    } else {
+      // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
+      if (firstError.message === "rate_limit") throw firstError;
+      if (firstError.message.startsWith("google_forbidden")) throw firstError;
+    }
   }
 
   // 2) Fallback: Supadata → Gemini resume o texto
