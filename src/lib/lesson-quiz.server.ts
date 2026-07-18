@@ -682,246 +682,295 @@ export async function buildLessonQuizPayload({
   topicCtx,
   videos,
   supabaseAdmin,
+  trace: providedTrace,
 }: {
   topicCtx: string;
   videos: LessonVideo[];
   supabaseAdmin: SupabaseAdmin;
+  trace?: TraceCounters;
 }): Promise<LessonQuizPayload> {
-  const googleKey = process.env.GOOGLE_AI_API_KEY;
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!googleKey) {
-    throw new Error(
-      "Chave do Google AI Studio não configurada. Adicione o secret GOOGLE_AI_API_KEY.",
-    );
-  }
-  if (!deepseekKey) {
-    throw new Error("DEEPSEEK_API_KEY não configurado.");
-  }
+  const trace = providedTrace ?? newTrace();
+  trace.videosRequested = videos.length;
+  let outcome: "ok" | "error" = "ok";
+  let errorType: string | undefined;
 
-  const summaryResults = await Promise.allSettled(
-    videos.map((v) =>
-      summarizeVideo(googleKey, v.youtube_id, v.title ?? "Vídeo", topicCtx, supabaseAdmin).then(
-        ({ summary }) => ({ video: v, summary }),
+  try {
+    const googleKey = process.env.GOOGLE_AI_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    if (!googleKey) {
+      throw new Error(
+        "Chave do Google AI Studio não configurada. Adicione o secret GOOGLE_AI_API_KEY.",
+      );
+    }
+    if (!deepseekKey) {
+      throw new Error("DEEPSEEK_API_KEY não configurado.");
+    }
+
+    const summaryResults = await Promise.allSettled(
+      videos.map((v) =>
+        summarizeVideo(
+          googleKey,
+          v.youtube_id,
+          v.title ?? "Vídeo",
+          topicCtx,
+          supabaseAdmin,
+          trace,
+        ).then(({ summary, source }) => ({ video: v, summary, source })),
       ),
-    ),
-  );
-
-  const successfulSummaries: { video: LessonVideo; summary: VideoSummary }[] = [];
-  const skipped: LessonQuizPayload["skipped"] = [];
-
-  for (let i = 0; i < summaryResults.length; i++) {
-    const result = summaryResults[i];
-    const video = videos[i];
-    if (result.status === "fulfilled" && result.value.summary.keyConcepts.length > 0) {
-      successfulSummaries.push(result.value);
-      continue;
-    }
-
-    const rawReason =
-      result.status === "rejected"
-        ? result.reason instanceof Error
-          ? result.reason.message
-          : "erro"
-        : "vídeo sem conteúdo analisável";
-
-    if (rawReason.startsWith("google_forbidden")) {
-      throw new Error(
-        "Chave do Google AI Studio inválida ou sem permissão. Verifique a GOOGLE_AI_API_KEY.",
-      );
-    }
-    if (rawReason.startsWith("supadata_forbidden")) {
-      throw new Error(
-        "Chave do Supadata inválida ou sem permissão. Verifique a SUPADATA_API_KEY.",
-      );
-    }
-
-    const friendly =
-      rawReason === "rate_limit"
-        ? "Gemini sobrecarregado — tente de novo em instantes"
-        : rawReason === "supadata_rate_limit"
-          ? "Supadata sobrecarregado — tente de novo em instantes"
-          : rawReason.startsWith("supadata_not_found")
-            ? "Sem transcrição disponível para esse vídeo"
-            : rawReason.startsWith("supadata_empty")
-              ? "Vídeo sem legenda utilizável"
-              : rawReason.startsWith("supadata_network")
-                ? "Falha de rede ao buscar transcrição"
-                : rawReason.startsWith("supadata_")
-                  ? "Erro no serviço de transcrição"
-                  : rawReason.startsWith("google_bad_request")
-                    ? "Gemini recusou o vídeo (formato não suportado)"
-                    : rawReason.startsWith("google_blocked")
-                      ? "Vídeo bloqueado por política de segurança"
-                      : rawReason.startsWith("google_empty")
-                        ? "Gemini não conseguiu processar o vídeo"
-                        : rawReason.startsWith("google_")
-                          ? "Erro temporário no Gemini"
-                          : rawReason;
-
-    skipped.push({
-      youtubeId: video.youtube_id,
-      title: video.title ?? "Vídeo",
-      reason: friendly,
-    });
-  }
-
-  if (successfulSummaries.length === 0) {
-    throw new Error(
-      "Nenhum vídeo da aula pôde ser analisado. Sugira novos vídeos e tente novamente.",
     );
-  }
 
-  const buildCombined = (
-    summaries: { video: LessonVideo; summary: VideoSummary }[],
-  ): string =>
-    summaries
-      .map(
-        ({ video, summary }, idx) =>
-          `[Vídeo ${idx + 1}] "${video.title ?? "Vídeo"}" (id: ${video.id}, youtube: ${video.youtube_id})
+    const successfulSummaries: { video: LessonVideo; summary: VideoSummary }[] = [];
+    const skipped: LessonQuizPayload["skipped"] = [];
+
+    for (let i = 0; i < summaryResults.length; i++) {
+      const result = summaryResults[i];
+      const video = videos[i];
+      if (result.status === "fulfilled" && result.value.summary.keyConcepts.length > 0) {
+        successfulSummaries.push({ video: result.value.video, summary: result.value.summary });
+        const src = result.value.source;
+        trace.sourceCounts[src] = (trace.sourceCounts[src] ?? 0) + 1;
+        continue;
+      }
+
+      const rawReason =
+        result.status === "rejected"
+          ? result.reason instanceof Error
+            ? result.reason.message
+            : "erro"
+          : "vídeo sem conteúdo analisável";
+
+      if (rawReason.startsWith("google_forbidden")) {
+        throw new Error(
+          "Chave do Google AI Studio inválida ou sem permissão. Verifique a GOOGLE_AI_API_KEY.",
+        );
+      }
+      if (rawReason.startsWith("supadata_forbidden")) {
+        throw new Error(
+          "Chave do Supadata inválida ou sem permissão. Verifique a SUPADATA_API_KEY.",
+        );
+      }
+
+      const friendly =
+        rawReason === "rate_limit"
+          ? "Gemini sobrecarregado — tente de novo em instantes"
+          : rawReason === "supadata_rate_limit"
+            ? "Supadata sobrecarregado — tente de novo em instantes"
+            : rawReason.startsWith("supadata_not_found")
+              ? "Sem transcrição disponível para esse vídeo"
+              : rawReason.startsWith("supadata_empty")
+                ? "Vídeo sem legenda utilizável"
+                : rawReason.startsWith("supadata_network")
+                  ? "Falha de rede ao buscar transcrição"
+                  : rawReason.startsWith("supadata_")
+                    ? "Erro no serviço de transcrição"
+                    : rawReason.startsWith("google_bad_request")
+                      ? "Gemini recusou o vídeo (formato não suportado)"
+                      : rawReason.startsWith("google_blocked")
+                        ? "Vídeo bloqueado por política de segurança"
+                        : rawReason.startsWith("google_empty")
+                          ? "Gemini não conseguiu processar o vídeo"
+                          : rawReason.startsWith("google_")
+                            ? "Erro temporário no Gemini"
+                            : rawReason;
+
+      skipped.push({
+        youtubeId: video.youtube_id,
+        title: video.title ?? "Vídeo",
+        reason: friendly,
+      });
+    }
+
+    trace.videosProcessed = successfulSummaries.length;
+    trace.videosSkipped = skipped.length;
+
+    if (successfulSummaries.length === 0) {
+      throw new Error(
+        "Nenhum vídeo da aula pôde ser analisado. Sugira novos vídeos e tente novamente.",
+      );
+    }
+
+    const buildCombined = (
+      summaries: { video: LessonVideo; summary: VideoSummary }[],
+    ): string =>
+      summaries
+        .map(
+          ({ video, summary }, idx) =>
+            `[Vídeo ${idx + 1}] "${video.title ?? "Vídeo"}" (id: ${video.id}, youtube: ${video.youtube_id})
 Conceitos-chave: ${summary.keyConcepts.join("; ")}
 Definições: ${summary.definitions.join("; ")}
 Exemplos: ${summary.examples.join("; ")}
 Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`,
-      )
-      .join("\n\n");
+        )
+        .join("\n\n");
 
-  const targetCount = successfulSummaries.length;
-  const combined = buildCombined(successfulSummaries);
+    const targetCount = successfulSummaries.length;
+    const combined = buildCombined(successfulSummaries);
 
-  // Chamada principal — DeepSeek gera todas as questões + essayTask
-  let quizJson: QuizJson = {};
-  try {
-    const systemPrompt = buildQuizSystemPrompt(topicCtx, targetCount);
-    const userPrompt = `RESUMOS DOS VÍDEOS:\n${combined}`;
-    const text = await callDeepSeek(deepseekKey, systemPrompt, userPrompt);
-    quizJson = parseJsonLoose(text);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "erro";
-    const friendly =
-      msg === "deepseek_rate_limit"
-        ? "DeepSeek está sobrecarregado. Aguarde alguns segundos e tente de novo."
-        : msg.startsWith("deepseek_insufficient_balance")
-          ? "DeepSeek sem créditos. Recarregue sua conta."
-          : msg.startsWith("deepseek_forbidden")
-            ? "DEEPSEEK_API_KEY inválida. Verifique a chave."
-            : `Falha ao gerar questões: ${msg}`;
-    throw new Error(friendly);
-  }
-
-  const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
-  const questions: QuizQuestion[] = [];
-  const usedVideoIds = new Set<string>();
-
-  for (const q of rawQuestions) {
-    if (
-      typeof q.question !== "string" ||
-      !Array.isArray(q.options) ||
-      q.options.length !== 4 ||
-      typeof q.correctIndex !== "number" ||
-      q.correctIndex < 0 ||
-      q.correctIndex > 3 ||
-      typeof q.explanation !== "string"
-    ) {
-      continue;
-    }
-    const matched =
-      successfulSummaries.find((s) => s.video.id === q.videoId) ??
-      successfulSummaries.find((s) => !usedVideoIds.has(s.video.id)) ??
-      successfulSummaries[questions.length % successfulSummaries.length];
-    usedVideoIds.add(matched.video.id);
-    questions.push({
-      id: `q${questions.length + 1}`,
-      question: q.question,
-      options: q.options,
-      correctIndex: q.correctIndex,
-      explanation: q.explanation,
-      videoRef: {
-        videoId: matched.video.id,
-        youtubeId: matched.video.youtube_id,
-        videoTitle: matched.video.title ?? "Vídeo",
-        timestamp: typeof q.timestamp === "string" ? q.timestamp : undefined,
-      },
-    });
-    if (questions.length >= targetCount) break;
-  }
-
-  // Reforço: se DeepSeek entregou menos questões que vídeos, gera 1 questão
-  // extra por vídeo órfão em chamada secundária.
-  const orphanSummaries = successfulSummaries.filter((s) => !usedVideoIds.has(s.video.id));
-  if (orphanSummaries.length > 0) {
+    // Chamada principal — DeepSeek gera todas as questões + essayTask
+    let quizJson: QuizJson = {};
+    const deepseekMainStart = performance.now();
     try {
-      const systemPrompt = buildQuizSystemPrompt(topicCtx, orphanSummaries.length);
-      const userPrompt = `RESUMOS DOS VÍDEOS (gere UMA questão por vídeo, use o id exato no campo videoId; não inclua essayTask):\n${buildCombined(orphanSummaries)}`;
+      const systemPrompt = buildQuizSystemPrompt(topicCtx, targetCount);
+      const userPrompt = `RESUMOS DOS VÍDEOS:\n${combined}`;
       const text = await callDeepSeek(deepseekKey, systemPrompt, userPrompt, {
-        temperature: 0.6,
+        trace,
+        step: "deepseek-main",
       });
-      const extra = parseJsonLoose<QuizJson>(text);
-      const rawExtra = Array.isArray(extra.questions) ? extra.questions : [];
-      for (const q of rawExtra) {
-        if (
-          typeof q.question !== "string" ||
-          !Array.isArray(q.options) ||
-          q.options.length !== 4 ||
-          typeof q.correctIndex !== "number" ||
-          q.correctIndex < 0 ||
-          q.correctIndex > 3 ||
-          typeof q.explanation !== "string"
-        ) {
-          continue;
-        }
-        const matched =
-          orphanSummaries.find((s) => s.video.id === q.videoId && !usedVideoIds.has(s.video.id)) ??
-          orphanSummaries.find((s) => !usedVideoIds.has(s.video.id));
-        if (!matched) break;
-        usedVideoIds.add(matched.video.id);
-        questions.push({
-          id: `q${questions.length + 1}`,
-          question: q.question,
-          options: q.options,
-          correctIndex: q.correctIndex,
-          explanation: q.explanation,
-          videoRef: {
-            videoId: matched.video.id,
-            youtubeId: matched.video.youtube_id,
-            videoTitle: matched.video.title ?? "Vídeo",
-            timestamp: typeof q.timestamp === "string" ? q.timestamp : undefined,
-          },
-        });
-      }
-    } catch {
-      // se a chamada de reforço falhar, seguimos com o que temos
+      quizJson = parseJsonLoose(text);
+      trace.deepseekMainMs = performance.now() - deepseekMainStart;
+    } catch (error) {
+      trace.deepseekMainMs = performance.now() - deepseekMainStart;
+      const msg = error instanceof Error ? error.message : "erro";
+      const friendly =
+        msg === "deepseek_rate_limit"
+          ? "DeepSeek está sobrecarregado. Aguarde alguns segundos e tente de novo."
+          : msg.startsWith("deepseek_insufficient_balance")
+            ? "DeepSeek sem créditos. Recarregue sua conta."
+            : msg.startsWith("deepseek_forbidden")
+              ? "DEEPSEEK_API_KEY inválida. Verifique a chave."
+              : `Falha ao gerar questões: ${msg}`;
+      throw new Error(friendly);
     }
-  }
 
-  if (questions.length === 0) {
-    throw new Error("O DeepSeek não gerou questões válidas. Tente novamente em instantes.");
-  }
+    const rawQuestions = Array.isArray(quizJson.questions) ? quizJson.questions : [];
+    const questions: QuizQuestion[] = [];
+    const usedVideoIds = new Set<string>();
 
-  // Valida e normaliza essayTask
-  let essayTask: EssayTask | null = null;
-  const et = quizJson.essayTask;
-  if (
-    et &&
-    typeof et.title === "string" &&
-    typeof et.prompt === "string" &&
-    typeof et.focusSkill === "string" &&
-    Array.isArray(et.rubric) &&
-    et.rubric.every((r) => typeof r === "string" && r.trim().length > 0) &&
-    et.rubric.length >= 2 &&
-    et.rubric.length <= 6
-  ) {
-    const min = typeof et.minWords === "number" && et.minWords > 0 ? Math.floor(et.minWords) : 60;
-    const max =
-      typeof et.maxWords === "number" && et.maxWords > min ? Math.floor(et.maxWords) : 180;
-    essayTask = {
-      title: et.title.trim(),
-      prompt: et.prompt.trim(),
-      focusSkill: et.focusSkill.trim(),
-      rubric: (et.rubric as string[]).map((r) => r.trim()),
-      minWords: min,
-      maxWords: max,
-    };
-  }
+    for (const q of rawQuestions) {
+      if (
+        typeof q.question !== "string" ||
+        !Array.isArray(q.options) ||
+        q.options.length !== 4 ||
+        typeof q.correctIndex !== "number" ||
+        q.correctIndex < 0 ||
+        q.correctIndex > 3 ||
+        typeof q.explanation !== "string"
+      ) {
+        continue;
+      }
+      const matched =
+        successfulSummaries.find((s) => s.video.id === q.videoId) ??
+        successfulSummaries.find((s) => !usedVideoIds.has(s.video.id)) ??
+        successfulSummaries[questions.length % successfulSummaries.length];
+      usedVideoIds.add(matched.video.id);
+      questions.push({
+        id: `q${questions.length + 1}`,
+        question: q.question,
+        options: q.options,
+        correctIndex: q.correctIndex,
+        explanation: q.explanation,
+        videoRef: {
+          videoId: matched.video.id,
+          youtubeId: matched.video.youtube_id,
+          videoTitle: matched.video.title ?? "Vídeo",
+          timestamp: typeof q.timestamp === "string" ? q.timestamp : undefined,
+        },
+      });
+      if (questions.length >= targetCount) break;
+    }
 
-  return { questions, skipped, essayTask };
+    // Reforço: se DeepSeek entregou menos questões que vídeos, gera 1 questão
+    // extra por vídeo órfão em chamada secundária.
+    const orphanSummaries = successfulSummaries.filter((s) => !usedVideoIds.has(s.video.id));
+    if (orphanSummaries.length > 0) {
+      const deepseekReinforceStart = performance.now();
+      try {
+        const systemPrompt = buildQuizSystemPrompt(topicCtx, orphanSummaries.length);
+        const userPrompt = `RESUMOS DOS VÍDEOS (gere UMA questão por vídeo, use o id exato no campo videoId; não inclua essayTask):\n${buildCombined(orphanSummaries)}`;
+        const text = await callDeepSeek(deepseekKey, systemPrompt, userPrompt, {
+          temperature: 0.6,
+          trace,
+          step: "deepseek-reinforce",
+        });
+        trace.deepseekReinforceMs = performance.now() - deepseekReinforceStart;
+        const extra = parseJsonLoose<QuizJson>(text);
+        const rawExtra = Array.isArray(extra.questions) ? extra.questions : [];
+        for (const q of rawExtra) {
+          if (
+            typeof q.question !== "string" ||
+            !Array.isArray(q.options) ||
+            q.options.length !== 4 ||
+            typeof q.correctIndex !== "number" ||
+            q.correctIndex < 0 ||
+            q.correctIndex > 3 ||
+            typeof q.explanation !== "string"
+          ) {
+            continue;
+          }
+          const matched =
+            orphanSummaries.find((s) => s.video.id === q.videoId && !usedVideoIds.has(s.video.id)) ??
+            orphanSummaries.find((s) => !usedVideoIds.has(s.video.id));
+          if (!matched) break;
+          usedVideoIds.add(matched.video.id);
+          questions.push({
+            id: `q${questions.length + 1}`,
+            question: q.question,
+            options: q.options,
+            correctIndex: q.correctIndex,
+            explanation: q.explanation,
+            videoRef: {
+              videoId: matched.video.id,
+              youtubeId: matched.video.youtube_id,
+              videoTitle: matched.video.title ?? "Vídeo",
+              timestamp: typeof q.timestamp === "string" ? q.timestamp : undefined,
+            },
+          });
+        }
+      } catch {
+        trace.deepseekReinforceMs = performance.now() - deepseekReinforceStart;
+        // se a chamada de reforço falhar, seguimos com o que temos
+      }
+    }
+
+    if (questions.length === 0) {
+      throw new Error("O DeepSeek não gerou questões válidas. Tente novamente em instantes.");
+    }
+
+    // Valida e normaliza essayTask
+    let essayTask: EssayTask | null = null;
+    const et = quizJson.essayTask;
+    if (
+      et &&
+      typeof et.title === "string" &&
+      typeof et.prompt === "string" &&
+      typeof et.focusSkill === "string" &&
+      Array.isArray(et.rubric) &&
+      et.rubric.every((r) => typeof r === "string" && r.trim().length > 0) &&
+      et.rubric.length >= 2 &&
+      et.rubric.length <= 6
+    ) {
+      const min = typeof et.minWords === "number" && et.minWords > 0 ? Math.floor(et.minWords) : 60;
+      const max =
+        typeof et.maxWords === "number" && et.maxWords > min ? Math.floor(et.maxWords) : 180;
+      essayTask = {
+        title: et.title.trim(),
+        prompt: et.prompt.trim(),
+        focusSkill: et.focusSkill.trim(),
+        rubric: (et.rubric as string[]).map((r) => r.trim()),
+        minWords: min,
+        maxWords: max,
+      };
+    }
+
+    return { questions, skipped, essayTask };
+  } catch (err) {
+    outcome = "error";
+    errorType = classifyErrorType(err);
+    throw err;
+  } finally {
+    logSummary({
+      traceId: trace.traceId,
+      totalMs: performance.now() - trace.startedAt,
+      videosRequested: trace.videosRequested,
+      videosProcessed: trace.videosProcessed,
+      videosSkipped: trace.videosSkipped,
+      sourceCounts: trace.sourceCounts,
+      deepseekMainMs: trace.deepseekMainMs,
+      deepseekReinforceMs: trace.deepseekReinforceMs,
+      totalRetries: trace.totalRetries,
+      fallbacks: trace.fallbacks,
+      outcome,
+      errorType,
+    });
+  }
 }
