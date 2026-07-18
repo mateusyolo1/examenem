@@ -316,6 +316,7 @@ function makePicker(
         topicSlug: topic?.slug,
         topicTitle: topic?.title,
         topicArea: area,
+        videoDurationSeconds: topic?.video_duration_seconds,
       };
     };
   }
