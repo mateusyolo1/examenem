@@ -200,7 +200,7 @@ function Plano() {
     queryFn: () => stageInfoFn(),
     staleTime: 60_000,
   });
-  const stageLoadFactor = stageInfo?.loadFactor ?? 1;
+  void stageInfo; // loadFactor NÃO é aplicado ao salvar; ver onSubmit abaixo.
 
   // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
   const listTopicsFn = useServerFn(listStudyTopics);
@@ -260,13 +260,12 @@ function Plano() {
           defaultExamId={progress.examId}
           onCancel={plan ? () => setEditing(false) : undefined}
           onSubmit={(cfg) => {
-            // Semana 1 = 70% da carga (motor de evolução gradual)
-            const scaledCfg = {
-              ...cfg,
-              hoursPerDay: Math.max(0.5, cfg.hoursPerDay * stageLoadFactor),
-            };
+            // Persistimos as horas escolhidas pelo aluno SEM escala.
+            // A escala de carga por semana (stageLoadFactor) deve ser aplicada
+            // somente em tempo de geração/exibição, nunca gravada no plano —
+            // caso contrário, cada salvar reduziria as horas de forma composta.
             savePlan(
-              scaledCfg,
+              cfg,
               topicCatalog.length ? topicCatalog : undefined,
               masteryList.length ? masteryList : undefined,
             );
