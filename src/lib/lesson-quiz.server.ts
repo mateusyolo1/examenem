@@ -4,6 +4,14 @@
 // 2) Geração das questões e da tarefa de escrita — DeepSeek chat completions.
 
 import { fetchSupadataTranscript } from "./youtube-transcripts.server";
+import {
+  classifyErrorType,
+  logStep,
+  logSummary,
+  maskYoutubeId,
+  newTrace,
+  type TraceCounters,
+} from "./lesson-quiz-trace.server";
 
 const GOOGLE_MODEL = "gemini-2.5-flash";
 const GOOGLE_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
