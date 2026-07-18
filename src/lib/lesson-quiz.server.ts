@@ -408,6 +408,7 @@ async function summarizeVideoFromTranscript(
   transcript: string,
   topicCtx: string,
   videoTitle: string,
+  opts?: { trace?: TraceCounters; youtubeId?: string },
 ): Promise<VideoSummary> {
   const prompt = `Você é um assistente que analisa vídeos-aula para gerar atividades de estudo.
 
@@ -434,7 +435,11 @@ Regras:
 TRANSCRIÇÃO:
 ${transcript}`;
 
-  const text = await callGemini(apiKey, [{ text: prompt }]);
+  const text = await callGemini(apiKey, [{ text: prompt }], {
+    trace: opts?.trace,
+    step: "gemini-text",
+    youtubeId: opts?.youtubeId,
+  });
   const parsed = parseJsonLoose<VideoSummary>(text);
   return {
     keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
