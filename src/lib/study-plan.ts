@@ -67,6 +67,19 @@ export interface TopicCatalogEntry {
   title: string;
   subject: string | null;
   sort_order: number;
+  video_duration_seconds?: number;
+}
+
+// Estimativa calibrada de minutos para uma tarefa de videoaula, a partir da
+// duração real do vídeo mais curto do tópico. Formula: ceil(dur/60) + 5 min
+// de processamento/anotação, com clamp [8, 60]. Sem duração, retorna fallback.
+export function videoMinutesFromDuration(
+  durationSec?: number,
+  fallback = 30,
+): number {
+  if (!durationSec || durationSec <= 0) return fallback;
+  const m = Math.ceil(durationSec / 60) + 5;
+  return Math.max(8, Math.min(60, m));
 }
 
 export interface TopicMastery {
