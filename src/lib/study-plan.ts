@@ -230,6 +230,7 @@ type Pick = {
   topicSlug?: string;
   topicTitle?: string;
   topicArea?: Area;
+  videoDurationSeconds?: number;
 };
 
 function buildTopicQueuesByArea(
