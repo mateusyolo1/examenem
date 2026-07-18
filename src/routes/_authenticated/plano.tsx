@@ -200,7 +200,7 @@ function Plano() {
     queryFn: () => stageInfoFn(),
     staleTime: 60_000,
   });
-  const stageLoadFactor = stageInfo?.loadFactor ?? 1;
+  void stageInfo; // loadFactor NÃO é aplicado ao salvar; ver onSubmit abaixo.
 
   // Catálogo de tópicos (só busca quando o form está aberto ou não há plano).
   const listTopicsFn = useServerFn(listStudyTopics);
