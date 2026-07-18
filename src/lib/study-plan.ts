@@ -332,6 +332,7 @@ function makePicker(
       topicSlug: topic?.slug,
       topicTitle: topic?.title,
       topicArea: a,
+      videoDurationSeconds: topic?.video_duration_seconds,
     };
   };
 }
