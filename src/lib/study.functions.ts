@@ -13,7 +13,32 @@ export const listStudyTopics = createServerFn({ method: "GET" })
       .select("id, parent_id, slug, title, area, subject, description, sort_order")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
-    return { topics: data ?? [] };
+    const topics = data ?? [];
+
+    // Anexa duração do menor vídeo (heurístico: introdutório) por tópico,
+    // usado pelo gerador de plano para calibrar `minutes` de videoaula.
+    const topicIds = topics.map((t) => t.id);
+    const durationByTopic = new Map<string, number>();
+    if (topicIds.length > 0) {
+      const { data: vids } = await context.supabase
+        .from("study_videos")
+        .select("topic_id, duration_seconds")
+        .in("topic_id", topicIds)
+        .not("duration_seconds", "is", null)
+        .order("duration_seconds", { ascending: true });
+      for (const v of vids ?? []) {
+        if (v.topic_id && typeof v.duration_seconds === "number" && v.duration_seconds > 0) {
+          if (!durationByTopic.has(v.topic_id)) {
+            durationByTopic.set(v.topic_id, v.duration_seconds);
+          }
+        }
+      }
+    }
+    const enriched = topics.map((t) => ({
+      ...t,
+      video_duration_seconds: durationByTopic.get(t.id) ?? null,
+    }));
+    return { topics: enriched };
   });
 
 // ============================================================
