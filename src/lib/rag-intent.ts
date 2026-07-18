@@ -20,17 +20,19 @@ export interface DetectIntentInput {
   explicitDocumental?: boolean;
 }
 
+// Padrões estritos: só ativa modo documental quando o usuário pede
+// EXPLICITAMENTE consulta à biblioteca dele. Menções casuais a "livro"
+// ou "página" (comuns em enunciados do ENEM) NÃO devem trancar o Tutor.
 const DOCUMENTAL_PATTERNS: RegExp[] = [
-  /\bsegundo o livro\b/i,
-  /\bde acordo com o livro\b/i,
-  /\bno livro\b/i,
-  /\bnos livros\b/i,
-  /\bcit(e|ar|a)\b.*\b(fonte|livro|p[aá]gina|refer[eê]ncia)\b/i,
-  /\bp[aá]gina\b/i,
-  /\bda biblioteca\b/i,
-  /\bmateri(al|ais) (que|do) subi\b/i,
+  /\bsegundo o (meu )?livro\b/i,
+  /\bde acordo com o (meu )?livro\b/i,
+  /\bconforme o (meu )?(livro|material|pdf|apostila)\b/i,
+  /\bno meu (livro|pdf|material|apostila)\b/i,
+  /\bnos meus (livros|pdfs|materiais|apostilas)\b/i,
+  /\bda (minha )?biblioteca\b/i,
+  /\bmateri(al|ais) (que|do) (eu )?subi\b/i,
   /\bmeu pdf\b/i,
-  /\bconforme o (livro|material|pdf)\b/i,
+  /\bcit(e|ar|a)\b.*\bda (minha )?biblioteca\b/i,
 ];
 
 const MODE_TO_INTENT: Record<string, TutorIntent> = {
