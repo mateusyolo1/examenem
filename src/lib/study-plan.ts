@@ -67,6 +67,19 @@ export interface TopicCatalogEntry {
   title: string;
   subject: string | null;
   sort_order: number;
+  video_duration_seconds?: number;
+}
+
+// Estimativa calibrada de minutos para uma tarefa de videoaula, a partir da
+// duração real do vídeo mais curto do tópico. Formula: ceil(dur/60) + 5 min
+// de processamento/anotação, com clamp [8, 60]. Sem duração, retorna fallback.
+export function videoMinutesFromDuration(
+  durationSec?: number,
+  fallback = 30,
+): number {
+  if (!durationSec || durationSec <= 0) return fallback;
+  const m = Math.ceil(durationSec / 60) + 5;
+  return Math.max(8, Math.min(60, m));
 }
 
 export interface TopicMastery {
@@ -217,6 +230,7 @@ type Pick = {
   topicSlug?: string;
   topicTitle?: string;
   topicArea?: Area;
+  videoDurationSeconds?: number;
 };
 
 function buildTopicQueuesByArea(
@@ -302,6 +316,7 @@ function makePicker(
         topicSlug: topic?.slug,
         topicTitle: topic?.title,
         topicArea: area,
+        videoDurationSeconds: topic?.video_duration_seconds,
       };
     };
   }
@@ -317,6 +332,7 @@ function makePicker(
       topicSlug: topic?.slug,
       topicTitle: topic?.title,
       topicArea: a,
+      videoDurationSeconds: topic?.video_duration_seconds,
     };
   };
 }
@@ -336,10 +352,14 @@ function slotFrom(
   const carryTopic = type === "teoria" || type === "videoaula" ||
     type === "mapa_mental" || type === "resumo" || type === "revisao" ||
     type === "flashcards" || type === "projeto";
+  const effectiveMinutes =
+    type === "videoaula" && p.videoDurationSeconds
+      ? videoMinutesFromDuration(p.videoDurationSeconds, minutes)
+      : minutes;
   return {
     type,
     area: p.area,
-    minutes,
+    minutes: effectiveMinutes,
     title,
     topicArea: carryTopic ? p.topicArea : undefined,
     topicSlug: carryTopic ? p.topicSlug : undefined,

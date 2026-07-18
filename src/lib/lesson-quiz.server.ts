@@ -78,21 +78,35 @@ interface GoogleGenerateContentResponse {
 async function callGemini(
   apiKey: string,
   parts: Array<Record<string, unknown>>,
-  { retries = 2 }: { retries?: number } = {},
+  { retries = 2, timeoutMs = 60_000 }: { retries?: number; timeoutMs?: number } = {},
 ): Promise<string> {
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(`${GOOGLE_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.4,
-        },
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let res: Response;
+    try {
+      res = await fetch(`${GOOGLE_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.4,
+          },
+        }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      if (err instanceof Error && err.name === "AbortError") {
+        // Timeout: não tenta de novo (evita multiplicar o tempo pendurado).
+        throw new Error(`google_timeout_${timeoutMs}ms`);
+      }
+      throw err;
+    }
+    clearTimeout(timer);
 
     const raw = await res.text();
     let body: GoogleGenerateContentResponse = {};
@@ -301,10 +315,14 @@ Regras:
 
   let firstError: Error | null = null;
   try {
-    const text = await callGemini(apiKey, [
-      { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
-      { text: geminiPrompt },
-    ]);
+    const text = await callGemini(
+      apiKey,
+      [
+        { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
+        { text: geminiPrompt },
+      ],
+      { retries: 0, timeoutMs: 8_000 },
+    );
     const parsed = parseJsonLoose<VideoSummary>(text);
     const summary: VideoSummary = {
       keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
@@ -323,9 +341,16 @@ Regras:
     firstError = new Error("gemini_no_content");
   } catch (error) {
     firstError = error instanceof Error ? error : new Error("gemini_failed");
-    // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
-    if (firstError.message === "rate_limit") throw firstError;
-    if (firstError.message.startsWith("google_forbidden")) throw firstError;
+    if (firstError.message.startsWith("google_timeout_")) {
+      console.warn(
+        `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback Supadata`,
+      );
+      // segue pra Supadata
+    } else {
+      // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
+      if (firstError.message === "rate_limit") throw firstError;
+      if (firstError.message.startsWith("google_forbidden")) throw firstError;
+    }
   }
 
   // 2) Fallback: Supadata → Gemini resume o texto

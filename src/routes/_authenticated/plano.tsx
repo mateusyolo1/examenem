@@ -219,6 +219,7 @@ function Plano() {
       subject: string | null;
       sort_order: number;
       parent_id: string | null;
+      video_duration_seconds?: number | null;
     }>;
     return rows
       .filter(
@@ -232,6 +233,7 @@ function Plano() {
         title: t.title,
         subject: t.subject,
         sort_order: t.sort_order,
+        video_duration_seconds: t.video_duration_seconds ?? undefined,
       }));
   }, [topicsData]);
 
