@@ -217,7 +217,7 @@ function DiagnosticoPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </tbody>
