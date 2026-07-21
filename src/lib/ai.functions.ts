@@ -206,6 +206,32 @@ export const askTutor = createServerFn({ method: "POST" })
       ? libraryStatusUiMessage(libraryResult.status)
       : "";
 
+    // Anexos multimodais da biblioteca: figuras das páginas dos matches,
+    // sempre que existirem — independente de intent. Respeita o teto de 6
+    // imagens total (imageUrls do enunciado têm prioridade).
+    const enunciadoImgsCount = data.imageUrls?.length ?? 0;
+    const figureBudget = Math.max(0, 6 - enunciadoImgsCount);
+    let libraryFigures: Awaited<ReturnType<typeof retrieveLibraryFigures>> = [];
+    if (
+      figureBudget > 0 &&
+      libraryResult &&
+      libraryResult.hasFigurePages.length > 0 &&
+      libraryMatches.length > 0
+    ) {
+      try {
+        libraryFigures = await retrieveLibraryFigures(
+          context.supabase,
+          context.userId,
+          libraryMatches,
+          figureBudget,
+        );
+      } catch (e) {
+        console.warn("[askTutor] retrieveLibraryFigures falhou", e);
+        libraryFigures = [];
+      }
+    }
+
+
     const toolPolicy = selectTutorToolPolicy(
       intent,
       data.mode,
