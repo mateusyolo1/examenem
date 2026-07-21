@@ -40,6 +40,7 @@ import { Route as AuthenticatedBibliotecaDiagnosticoRouteImport } from './routes
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedCronogramaLousaActivityIdRouteImport } from './routes/_authenticated/cronograma.lousa.$activityId'
 import { Route as AuthenticatedAulaTopicIdPraticaRouteImport } from './routes/_authenticated/aula.$topicId.pratica'
@@ -205,6 +206,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -293,6 +301,7 @@ export interface FileRoutesByTo {
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -330,6 +339,7 @@ export interface FileRoutesById {
   '/_authenticated/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/_authenticated/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -367,6 +377,7 @@ export interface FileRouteTypes {
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -402,6 +413,7 @@ export interface FileRouteTypes {
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/_authenticated'
@@ -438,6 +450,7 @@ export interface FileRouteTypes {
     | '/_authenticated/aula/$topicId/pratica'
     | '/_authenticated/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -454,6 +467,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -675,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -803,6 +824,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
