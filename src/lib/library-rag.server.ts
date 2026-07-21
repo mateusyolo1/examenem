@@ -284,46 +284,33 @@ export async function retrieveLibraryFigures(
   prefetchedPairs?: Array<{ bookId: string; page: number }>,
 ): Promise<LibraryFigure[]> {
   try {
+    if (matches.length === 0) return [];
+
     const seen = new Set<string>();
     const pairs: { bookId: string; page: number; bookTitle: string }[] = [];
 
-    // Mapa auxiliar bookId:page -> bookTitle a partir dos matches (para rótulo).
-    const titleByBook = new Map<string, string>();
-    for (const m of matches) {
-      const t = (m.metadata?.bookTitle as string | undefined) ?? "livro";
-      if (!titleByBook.has(m.book_id)) titleByBook.set(m.book_id, t);
-    }
+    // prefetchedPairs age APENAS como filtro opcional (bookId:page) — o
+    // bookTitle sempre vem do metadata do próprio match, nunca de fallback.
+    const filterSet =
+      prefetchedPairs && prefetchedPairs.length > 0
+        ? new Set(prefetchedPairs.map((p) => `${p.bookId}:${p.page}`))
+        : null;
 
-    if (prefetchedPairs && prefetchedPairs.length > 0) {
-      // Caminho otimizado: consumidor já descobriu quais pares existem em
-      // library_figures (via retrieveLibraryContextDetailed.hasFigurePages).
-      // Aqui só resolvemos storage_path e assinamos URL — sem query de descoberta.
-      for (const p of prefetchedPairs) {
-        const key = `${p.bookId}:${p.page}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        pairs.push({
-          bookId: p.bookId,
-          page: p.page,
-          bookTitle: titleByBook.get(p.bookId) ?? "livro",
-        });
-      }
-    } else {
-      if (matches.length === 0) return [];
-      for (const m of matches) {
-        const page = Number(m.metadata?.page ?? 0);
-        if (!page) continue;
-        const key = `${m.book_id}:${page}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        pairs.push({
-          bookId: m.book_id,
-          page,
-          bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
-        });
-      }
+    for (const m of matches) {
+      const page = Number(m.metadata?.page ?? 0);
+      if (!page) continue;
+      const key = `${m.book_id}:${page}`;
+      if (seen.has(key)) continue;
+      if (filterSet && !filterSet.has(key)) continue;
+      seen.add(key);
+      pairs.push({
+        bookId: m.book_id,
+        page,
+        bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
+      });
     }
     if (pairs.length === 0) return [];
+
 
     const bookIds = Array.from(new Set(pairs.map((p) => p.bookId)));
     const pages = Array.from(new Set(pairs.map((p) => p.page)));
