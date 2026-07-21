@@ -154,11 +154,13 @@ export async function retrieveLibraryContextDetailed(
   ): LibraryRetrievalResult => ({
     status,
     matches: [],
+    hasFigurePages: [],
     uncalibrated,
     timings: { embedMs, rpcMs, totalMs: Date.now() - t0 },
     traceId,
     detail,
   });
+
 
   try {
     const { data: settings } = await supabase
