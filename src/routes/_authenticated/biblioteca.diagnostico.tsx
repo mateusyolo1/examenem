@@ -166,7 +166,7 @@ function DiagnosticoPage() {
               const scores = r.matches.map((m) => m.similarity);
               const minTop = scores.length >= 1 ? Math.min(...scores) : null;
               const avgTop = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-              const hasFull = scores.length >= 5 ? true : false;
+              const n = scores.length;
               return (
                 <Fragment key={i}>
                   <tr className="border-t border-border align-top">
@@ -182,10 +182,10 @@ function DiagnosticoPage() {
                       {top ? truncate(top.content, 120) : "—"}
                     </td>
                     <td className="p-2 text-right font-mono">
-                      {hasFull ? fmt(minTop!) : "—"}
+                      {n > 0 ? `${fmt(minTop!)} (n=${n})` : "—"}
                     </td>
                     <td className="p-2 text-right font-mono">
-                      {hasFull ? fmt(avgTop!) : "—"}
+                      {n > 0 ? `${fmt(avgTop!)} (n=${n})` : "—"}
                     </td>
                     <td className="p-2 text-right">
                       {r.matches.length > 0 && (
