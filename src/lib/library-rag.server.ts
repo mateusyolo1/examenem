@@ -53,6 +53,10 @@ export interface LibraryRetrievalTimings {
 export interface LibraryRetrievalResult {
   status: LibraryRetrievalStatus;
   matches: LibraryMatch[];
+  /** Pares (bookId, page) dos matches cujas páginas têm figura gravada em
+   *  library_figures. Não contém URLs — usar `retrieveLibraryFigures` para
+   *  assinar. Sempre presente (pode ser array vazio). */
+  hasFigurePages: Array<{ bookId: string; page: number }>;
   /** true enquanto RAG_IS_CALIBRATED=false; consumidores não devem filtrar por score. */
   uncalibrated: boolean;
   timings: LibraryRetrievalTimings;
@@ -60,6 +64,7 @@ export interface LibraryRetrievalResult {
   /** Mensagem curta para logs internos (nunca exibir cru ao usuário). */
   detail?: string;
 }
+
 
 function newTraceId(): string {
   const rnd = Math.random().toString(36).slice(2, 8);
