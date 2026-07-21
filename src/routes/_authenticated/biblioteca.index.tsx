@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_authenticated/biblioteca")({
+export const Route = createFileRoute("/_authenticated/biblioteca/")({
   head: () => ({
     meta: [
       { title: "Biblioteca IA — Exame ENEM" },
