@@ -198,13 +198,49 @@ export async function retrieveLibraryContextDetailed(
       );
     }
 
+    // Descobre quais páginas dos matches têm figura gravada (sem assinar URL).
+    // Consumidores decidem se chamam `retrieveLibraryFigures` para materializar.
+    const hasFigurePages: Array<{ bookId: string; page: number }> = [];
+    try {
+      const seen = new Set<string>();
+      const bookIds: string[] = [];
+      const pages: number[] = [];
+      for (const m of raw) {
+        const p = Number(m.metadata?.page ?? 0);
+        if (!p) continue;
+        const key = `${m.book_id}:${p}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!bookIds.includes(m.book_id)) bookIds.push(m.book_id);
+        if (!pages.includes(p)) pages.push(p);
+      }
+      if (bookIds.length > 0 && pages.length > 0) {
+        const { data: figs } = await supabase
+          .from("library_figures")
+          .select("book_id, page")
+          .eq("user_id", userId)
+          .in("book_id", bookIds)
+          .in("page", pages);
+        const figSet = new Set((figs ?? []).map((f) => `${f.book_id}:${f.page}`));
+        for (const key of seen) {
+          if (!figSet.has(key)) continue;
+          const [bookId, pageStr] = key.split(":");
+          hasFigurePages.push({ bookId, page: Number(pageStr) });
+        }
+      }
+    } catch (e) {
+      console.warn(`[library-rag ${traceId}] hasFigurePages lookup falhou`, e);
+    }
+
     return {
       status: "ok",
       matches: raw,
+      hasFigurePages,
       uncalibrated,
       timings: { embedMs: embed.ms, rpcMs, totalMs: Date.now() - t0 },
       traceId,
     };
+
   } catch (e) {
     return empty(
       "unknown_error",
