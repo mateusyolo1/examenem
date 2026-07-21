@@ -45,7 +45,7 @@ const CALIBRATION_QUERIES: { text: string; subject: Subject }[] = [
 const SUBJECT_BOOK_PATTERNS: Record<Subject, RegExp> = {
   matematica: /matem[aá]t/i,
   biologia: /biolo?g/i,
-  historia: /hist[oó]r|geograf/i,
+  historia: /hist[oó]r/i,
 };
 
 type ScopeKey = "1" | "3" | "7";
