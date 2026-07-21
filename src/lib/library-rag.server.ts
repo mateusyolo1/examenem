@@ -188,13 +188,18 @@ export async function retrieveLibraryContextDetailed(
       console.warn(`[library-rag ${traceId}] rpc_error`, error.message);
       return empty("rpc_error", embed.ms, rpcMs, error.message);
     }
-    const raw = (data ?? []) as LibraryMatch[];
+    const rawAll = (data ?? []) as LibraryMatch[];
 
-    // BLOCO 1: sem filtro cliente. Devolve o top-K puro.
+    // Filtro retroativo: descarta chunks de páginas legais/copyright que já
+    // foram indexados em livros antigos. Não depende de re-ingestão.
+    const LEGAL_RE = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i;
+    const raw = rawAll.filter((m) => !LEGAL_RE.test(m.content ?? ""));
+
+    // BLOCO 1: sem filtro cliente por score. Devolve o top-K puro.
     if (uncalibrated && raw.length > 0) {
       const scores = raw.map((m) => Number(m.similarity ?? 0).toFixed(3)).join(",");
       console.info(
-        `[library-rag ${traceId}] uncalibrated top-K=${raw.length} scores=${scores} embedMs=${embed.ms} rpcMs=${rpcMs}`,
+        `[library-rag ${traceId}] uncalibrated top-K=${raw.length} scores=${scores} embedMs=${embed.ms} rpcMs=${rpcMs} legalFiltered=${rawAll.length - raw.length}`,
       );
     }
 
