@@ -165,8 +165,10 @@ export const askTutor = createServerFn({ method: "POST" })
       retrieveLibraryContextDetailed,
       retrieveLibraryFigures,
       libraryMatchesToPrompt,
+      libraryFiguresToPrompt,
       libraryStatusUiMessage,
     } = await import("./library-rag.server");
+
 
     const { detectTutorIntent } = await import("./rag-intent");
     const { selectTutorToolPolicy, buildDocumentalOverride } = await import(
