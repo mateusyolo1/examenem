@@ -148,7 +148,7 @@ function DiagnosticoPage() {
         supabase.from("user_study_settings").select("rag_book_ids").eq("user_id", userId).maybeSingle(),
       ]);
       setBooks((bs ?? []) as BookRow[]);
-      setActiveIds(((st?.rag_book_ids as string[] | null) ?? []) ?? []);
+      setActiveIds((st?.rag_book_ids as string[] | null) ?? []);
     })();
   }, [userId]);
 
