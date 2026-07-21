@@ -281,22 +281,47 @@ export async function retrieveLibraryFigures(
   userId: string,
   matches: LibraryMatch[],
   maxFigures = 3,
+  prefetchedPairs?: Array<{ bookId: string; page: number }>,
 ): Promise<LibraryFigure[]> {
   try {
-    if (matches.length === 0) return [];
     const seen = new Set<string>();
     const pairs: { bookId: string; page: number; bookTitle: string }[] = [];
+
+    // Mapa auxiliar bookId:page -> bookTitle a partir dos matches (para rótulo).
+    const titleByBook = new Map<string, string>();
     for (const m of matches) {
-      const page = Number(m.metadata?.page ?? 0);
-      if (!page) continue;
-      const key = `${m.book_id}:${page}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      pairs.push({
-        bookId: m.book_id,
-        page,
-        bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
-      });
+      const t = (m.metadata?.bookTitle as string | undefined) ?? "livro";
+      if (!titleByBook.has(m.book_id)) titleByBook.set(m.book_id, t);
+    }
+
+    if (prefetchedPairs && prefetchedPairs.length > 0) {
+      // Caminho otimizado: consumidor já descobriu quais pares existem em
+      // library_figures (via retrieveLibraryContextDetailed.hasFigurePages).
+      // Aqui só resolvemos storage_path e assinamos URL — sem query de descoberta.
+      for (const p of prefetchedPairs) {
+        const key = `${p.bookId}:${p.page}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push({
+          bookId: p.bookId,
+          page: p.page,
+          bookTitle: titleByBook.get(p.bookId) ?? "livro",
+        });
+      }
+    } else {
+      if (matches.length === 0) return [];
+      for (const m of matches) {
+        const page = Number(m.metadata?.page ?? 0);
+        if (!page) continue;
+        const key = `${m.book_id}:${page}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push({
+          bookId: m.book_id,
+          page,
+          bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
+        });
+      }
     }
     if (pairs.length === 0) return [];
 
@@ -338,6 +363,7 @@ export async function retrieveLibraryFigures(
     return [];
   }
 }
+
 
 /**
  * Converte matches em bloco de texto para injetar em prompts.

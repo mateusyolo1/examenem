@@ -165,8 +165,10 @@ export const askTutor = createServerFn({ method: "POST" })
       retrieveLibraryContextDetailed,
       retrieveLibraryFigures,
       libraryMatchesToPrompt,
+      libraryFiguresToPrompt,
       libraryStatusUiMessage,
     } = await import("./library-rag.server");
+
 
     const { detectTutorIntent } = await import("./rag-intent");
     const { selectTutorToolPolicy, buildDocumentalOverride } = await import(
@@ -201,7 +203,7 @@ export const askTutor = createServerFn({ method: "POST" })
       ? await retrieveLibraryContextDetailed(context.supabase, context.userId, ragQuery, 5)
       : null;
     const libraryMatches = libraryResult?.matches ?? [];
-    const libraryCtx = libraryMatchesToPrompt(libraryMatches);
+    let libraryCtx = libraryMatchesToPrompt(libraryMatches);
     const libraryUiMessage = libraryResult
       ? libraryStatusUiMessage(libraryResult.status)
       : "";
@@ -224,12 +226,18 @@ export const askTutor = createServerFn({ method: "POST" })
           context.userId,
           libraryMatches,
           figureBudget,
+          libraryResult.hasFigurePages,
         );
       } catch (e) {
         console.warn("[askTutor] retrieveLibraryFigures falhou", e);
         libraryFigures = [];
       }
     }
+
+    if (libraryFigures.length > 0) {
+      libraryCtx += libraryFiguresToPrompt(libraryFigures);
+    }
+
 
 
     const toolPolicy = selectTutorToolPolicy(
