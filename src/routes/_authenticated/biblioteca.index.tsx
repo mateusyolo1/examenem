@@ -135,6 +135,8 @@ async function extractPdfChunks(
     const text = content.items
       .map((it) => ("str" in it ? (it as { str: string }).str : ""))
       .join(" ");
+    const isLegalPage = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i.test(text);
+    if (isLegalPage) continue;
     for (const c of chunkText(text, p)) {
       chunks.push({
         index: idx++,
