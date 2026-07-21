@@ -471,7 +471,8 @@ export const askTutor = createServerFn({ method: "POST" })
         closingInstr,
       messages: (() => {
         const imgs = data.imageUrls ?? [];
-        if (imgs.length === 0) return data.messages;
+        const figImgs = libraryFigures.map((f) => f.url);
+        if (imgs.length === 0 && figImgs.length === 0) return data.messages;
         const msgs = data.messages.map((m) => ({ ...m }));
         for (let i = msgs.length - 1; i >= 0; i--) {
           if (msgs[i].role === "user") {
@@ -479,12 +480,14 @@ export const askTutor = createServerFn({ method: "POST" })
             (msgs[i] as unknown as { content: unknown }).content = [
               { type: "text", text },
               ...imgs.map((url) => ({ type: "image", image: url })),
+              ...figImgs.map((url) => ({ type: "image", image: url })),
             ];
             break;
           }
         }
         return msgs as typeof data.messages;
       })(),
+
     });
 
     // Retorno enxuto: sem threshold, traceId, timings, scores nem sourcesDiag.
