@@ -163,9 +163,11 @@ export const askTutor = createServerFn({ method: "POST" })
     const { loadStudentMemory, memoryToPromptContext } = await import("./tutor-memory.server");
     const {
       retrieveLibraryContextDetailed,
+      retrieveLibraryFigures,
       libraryMatchesToPrompt,
       libraryStatusUiMessage,
     } = await import("./library-rag.server");
+
     const { detectTutorIntent } = await import("./rag-intent");
     const { selectTutorToolPolicy, buildDocumentalOverride } = await import(
       "./tutor-rag-policy"
@@ -203,6 +205,32 @@ export const askTutor = createServerFn({ method: "POST" })
     const libraryUiMessage = libraryResult
       ? libraryStatusUiMessage(libraryResult.status)
       : "";
+
+    // Anexos multimodais da biblioteca: figuras das páginas dos matches,
+    // sempre que existirem — independente de intent. Respeita o teto de 6
+    // imagens total (imageUrls do enunciado têm prioridade).
+    const enunciadoImgsCount = data.imageUrls?.length ?? 0;
+    const figureBudget = Math.max(0, 6 - enunciadoImgsCount);
+    let libraryFigures: Awaited<ReturnType<typeof retrieveLibraryFigures>> = [];
+    if (
+      figureBudget > 0 &&
+      libraryResult &&
+      libraryResult.hasFigurePages.length > 0 &&
+      libraryMatches.length > 0
+    ) {
+      try {
+        libraryFigures = await retrieveLibraryFigures(
+          context.supabase,
+          context.userId,
+          libraryMatches,
+          figureBudget,
+        );
+      } catch (e) {
+        console.warn("[askTutor] retrieveLibraryFigures falhou", e);
+        libraryFigures = [];
+      }
+    }
+
 
     const toolPolicy = selectTutorToolPolicy(
       intent,
@@ -443,7 +471,8 @@ export const askTutor = createServerFn({ method: "POST" })
         closingInstr,
       messages: (() => {
         const imgs = data.imageUrls ?? [];
-        if (imgs.length === 0) return data.messages;
+        const figImgs = libraryFigures.map((f) => f.url);
+        if (imgs.length === 0 && figImgs.length === 0) return data.messages;
         const msgs = data.messages.map((m) => ({ ...m }));
         for (let i = msgs.length - 1; i >= 0; i--) {
           if (msgs[i].role === "user") {
@@ -451,12 +480,14 @@ export const askTutor = createServerFn({ method: "POST" })
             (msgs[i] as unknown as { content: unknown }).content = [
               { type: "text", text },
               ...imgs.map((url) => ({ type: "image", image: url })),
+              ...figImgs.map((url) => ({ type: "image", image: url })),
             ];
             break;
           }
         }
         return msgs as typeof data.messages;
       })(),
+
     });
 
     // Retorno enxuto: sem threshold, traceId, timings, scores nem sourcesDiag.
