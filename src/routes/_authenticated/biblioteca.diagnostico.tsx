@@ -168,7 +168,7 @@ function DiagnosticoPage() {
               const avgTop = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
               const hasFull = scores.length >= 5 ? true : false;
               return (
-                <React.Fragment key={i}>
+                <Fragment key={i}>
                   <tr className="border-t border-border align-top">
                     <td className="p-2">{truncate(r.query, 60)}</td>
                     <td className="p-2 text-right font-mono">
@@ -218,7 +218,7 @@ function DiagnosticoPage() {
                       </td>
                     </tr>
                   )}
-                </React.Fragment>
+                </Fragment>
               );
             })}
           </tbody>
