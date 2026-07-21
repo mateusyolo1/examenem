@@ -36,6 +36,7 @@ import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authen
 import { Route as AuthenticatedBibliotecaRouteImport } from './routes/_authenticated/biblioteca'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthenticatedBibliotecaDiagnosticoRouteImport } from './routes/_authenticated/biblioteca.diagnostico'
 import { Route as AuthenticatedAulaTopicIdRouteImport } from './routes/_authenticated/aula.$topicId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
@@ -181,6 +182,12 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedBibliotecaDiagnosticoRoute =
+  AuthenticatedBibliotecaDiagnosticoRouteImport.update({
+    id: '/diagnostico',
+    path: '/diagnostico',
+    getParentRoute: () => AuthenticatedBibliotecaRoute,
+  } as any)
 const AuthenticatedAulaTopicIdRoute =
   AuthenticatedAulaTopicIdRouteImport.update({
     id: '/aula/$topicId',
@@ -228,7 +235,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/biblioteca': typeof AuthenticatedBibliotecaRouteWithChildren
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
   '/cronograma': typeof AuthenticatedCronogramaRouteWithChildren
@@ -247,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/biblioteca/diagnostico': typeof AuthenticatedBibliotecaDiagnosticoRoute
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -261,7 +269,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/biblioteca': typeof AuthenticatedBibliotecaRouteWithChildren
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/conquistas': typeof AuthenticatedConquistasRoute
   '/cronograma': typeof AuthenticatedCronogramaRouteWithChildren
@@ -281,6 +289,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/biblioteca/diagnostico': typeof AuthenticatedBibliotecaDiagnosticoRoute
   '/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -297,7 +306,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRouteWithChildren
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/conquistas': typeof AuthenticatedConquistasRoute
   '/_authenticated/cronograma': typeof AuthenticatedCronogramaRouteWithChildren
@@ -317,6 +326,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/aula/$topicId': typeof AuthenticatedAulaTopicIdRouteWithChildren
+  '/_authenticated/biblioteca/diagnostico': typeof AuthenticatedBibliotecaDiagnosticoRoute
   '/_authenticated/aula/$topicId/pratica': typeof AuthenticatedAulaTopicIdPraticaRoute
   '/_authenticated/cronograma/lousa/$activityId': typeof AuthenticatedCronogramaLousaActivityIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/aula/$topicId'
+    | '/biblioteca/diagnostico'
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/aula/$topicId'
+    | '/biblioteca/diagnostico'
     | '/aula/$topicId/pratica'
     | '/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
@@ -422,6 +434,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/aula/$topicId'
+    | '/_authenticated/biblioteca/diagnostico'
     | '/_authenticated/aula/$topicId/pratica'
     | '/_authenticated/cronograma/lousa/$activityId'
     | '/api/public/payments/webhook'
@@ -634,6 +647,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/biblioteca/diagnostico': {
+      id: '/_authenticated/biblioteca/diagnostico'
+      path: '/diagnostico'
+      fullPath: '/biblioteca/diagnostico'
+      preLoaderRoute: typeof AuthenticatedBibliotecaDiagnosticoRouteImport
+      parentRoute: typeof AuthenticatedBibliotecaRoute
+    }
     '/_authenticated/aula/$topicId': {
       id: '/_authenticated/aula/$topicId'
       path: '/aula/$topicId'
@@ -679,6 +699,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedBibliotecaRouteChildren {
+  AuthenticatedBibliotecaDiagnosticoRoute: typeof AuthenticatedBibliotecaDiagnosticoRoute
+}
+
+const AuthenticatedBibliotecaRouteChildren: AuthenticatedBibliotecaRouteChildren =
+  {
+    AuthenticatedBibliotecaDiagnosticoRoute:
+      AuthenticatedBibliotecaDiagnosticoRoute,
+  }
+
+const AuthenticatedBibliotecaRouteWithChildren =
+  AuthenticatedBibliotecaRoute._addFileChildren(
+    AuthenticatedBibliotecaRouteChildren,
+  )
+
 interface AuthenticatedCronogramaRouteChildren {
   AuthenticatedCronogramaLousaActivityIdRoute: typeof AuthenticatedCronogramaLousaActivityIdRoute
 }
@@ -709,7 +744,7 @@ const AuthenticatedAulaTopicIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRoute
+  AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRouteWithChildren
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedConquistasRoute: typeof AuthenticatedConquistasRoute
   AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRouteWithChildren
@@ -730,7 +765,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRoute,
+  AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRouteWithChildren,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedConquistasRoute: AuthenticatedConquistasRoute,
   AuthenticatedCronogramaRoute: AuthenticatedCronogramaRouteWithChildren,
