@@ -182,10 +182,10 @@ function DiagnosticoPage() {
                       {top ? truncate(top.content, 120) : "—"}
                     </td>
                     <td className="p-2 text-right font-mono">
-                      {hasFull ? fmt(minTop!) : "—"}
+                      {n > 0 ? `${fmt(minTop!)} (n=${n})` : "—"}
                     </td>
                     <td className="p-2 text-right font-mono">
-                      {hasFull ? fmt(avgTop!) : "—"}
+                      {n > 0 ? `${fmt(avgTop!)} (n=${n})` : "—"}
                     </td>
                     <td className="p-2 text-right">
                       {r.matches.length > 0 && (
