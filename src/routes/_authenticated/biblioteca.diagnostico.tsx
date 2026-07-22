@@ -455,9 +455,10 @@ function DiagnosticoPage() {
       {/* =================== MODO 2: BATERIA DE CALIBRAÇÃO =================== */}
       <section className="space-y-4 pt-6 border-t border-border">
         <header>
-          <h2 className="text-xl font-semibold">Bateria de calibração (15 queries)</h2>
+          <h2 className="text-xl font-semibold">Bateria de calibração (26 queries)</h2>
           <p className="text-sm text-muted-foreground">
-            5 matemática · 5 biologia · 5 história. Marca on-topic pelo título do livro do top-1.
+            2 queries por matéria · cobre as 13 matérias / 17 livros do acervo.
+            Marca on-topic pelo título do livro do top-1.
           </p>
         </header>
 
