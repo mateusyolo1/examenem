@@ -620,14 +620,16 @@ export const getLousa = createServerFn({ method: "GET" })
     const generatedAt = act.generated_at ? new Date(act.generated_at).getTime() : null;
     const unlocksAt = !isReforco && generatedAt ? generatedAt + LOUSA_LOCK_MS : null;
 
+    const questions = await attachSignedFigureUrls(supabase, qs ?? []);
     return {
       activity: act,
-      questions: qs ?? [],
+      questions,
       threshold: settings?.lousa_pass_threshold ?? 60,
       unlocksAt,
       isReforco,
       nowMs: Date.now(),
     };
+
   });
 
 /* =========================================================
