@@ -71,6 +71,58 @@ function newTraceId(): string {
   return `rag_${Date.now().toString(36)}_${rnd}`;
 }
 
+// PATCH 3 — Rerank leve por matéria inferida da query.
+// SUBJECT_BOOK_PATTERNS: casa cada matéria contra o título do livro
+// (metadata.bookTitle). Copiado de biblioteca.diagnostico.tsx — 1 uso.
+type Subject =
+  | "edu_digital" | "espanhol" | "filosofia" | "fisica" | "geografia"
+  | "historia" | "ingles" | "matematica" | "portugues" | "quimica"
+  | "redacao" | "sociologia" | "edu_fisica";
+
+const SUBJECT_BOOK_PATTERNS: Record<Subject, RegExp> = {
+  edu_digital: /educacao-digital/i,
+  espanhol: /espanhol/i,
+  filosofia: /filosof/i,
+  fisica: /fisica-ciencia/i,
+  geografia: /geograf/i,
+  historia: /hist[oó]r/i,
+  ingles: /ingl[eê]s/i,
+  matematica: /matem[aá]t/i,
+  portugues: /portug/i,
+  quimica: /qu[ií]mica/i,
+  redacao: /reda[çc][aã]o/i,
+  sociologia: /sociolog/i,
+  edu_fisica: /educacao-fisica/i,
+};
+
+const SUBJECT_QUERY_PATTERNS: Record<Subject, RegExp> = {
+  edu_digital: /cidadania\s+digital|seguran[çc]a.*internet|senha/i,
+  espanhol: /espanhol|verbo\s+ser|ser\s+e\s+estar/i,
+  filosofia: /plat[ãa]o|arist[óo]teles|[eé]tica|mito.*caverna/i,
+  fisica: /leis?\s+de\s+newton|energia\s+cin[eé]tica|potencial/i,
+  geografia: /clima|urbaniza[çc][ãa]o|[êe]xodo\s+rural/i,
+  historia: /revolu[çc][ãa]o|francesa|vargas|era\s+vargas/i,
+  ingles: /to\s+be|past\s+simple|ingl[eê]s/i,
+  matematica: /fun[çc][ãa]o.*segundo\s+grau|pit[áa]goras|logaritmo/i,
+  portugues: /mas\s+e\s+mais|figuras?\s+de\s+linguagem|met[áa]fora/i,
+  quimica: /tabela\s+peri[óo]dica|liga[çc][ãa]o.*i[ôo]nica|covalente/i,
+  redacao: /disserta[çc][ãa]o|proposta\s+de\s+interven[çc][ãa]o/i,
+  sociologia: /durkheim|anomia|estratifica[çc][ãa]o/i,
+  edu_fisica: /esportes?\s+coletivos|atividade\s+f[íi]sica.*sa[úu]de/i,
+};
+
+/**
+ * Infere a matéria da query com base em palavras-chave. Retorna null quando
+ * nenhuma regra casa — sem inferência ambiciosa.
+ */
+export function inferSubjectFromQuery(query: string): Subject | null {
+  for (const [subject, re] of Object.entries(SUBJECT_QUERY_PATTERNS)) {
+    if (re.test(query)) return subject as Subject;
+  }
+  return null;
+}
+
+
 interface EmbedOk { ok: true; embedding: number[]; ms: number }
 interface EmbedErr { ok: false; status: LibraryRetrievalStatus; ms: number; detail: string }
 
