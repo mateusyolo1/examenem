@@ -240,7 +240,24 @@ export async function retrieveLibraryContextDetailed(
       console.warn(`[library-rag ${traceId}] rpc_error`, error.message);
       return empty("rpc_error", embed.ms, rpcMs, error.message);
     }
-    const rawAll = (data ?? []) as LibraryMatch[];
+    const rawFromRpc = (data ?? []) as LibraryMatch[];
+
+    // PATCH 3 — Rerank leve por matéria inferida da query.
+    // Match cujo livro NÃO casa com a matéria inferida perde 40% do score.
+    // Query sem matéria inferível: comportamento inalterado.
+    const inferredSubject = inferSubjectFromQuery(query);
+    const rawAll: LibraryMatch[] = inferredSubject
+      ? rawFromRpc
+          .map((m) => {
+            const bookTitle = String(m.metadata?.bookTitle ?? "");
+            const bookMatches = SUBJECT_BOOK_PATTERNS[inferredSubject].test(bookTitle);
+            return bookMatches
+              ? m
+              : { ...m, similarity: Number(m.similarity ?? 0) * 0.6 };
+          })
+          .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
+      : rawFromRpc;
+
 
     // Filtro retroativo: descarta chunks de páginas legais/copyright que já
     // foram indexados em livros antigos. Não depende de re-ingestão.
