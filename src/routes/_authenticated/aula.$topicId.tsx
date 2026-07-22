@@ -1218,7 +1218,9 @@ interface QuizPayload {
       videoTitle: string;
       timestamp?: string;
     };
+    figure?: { bookTitle: string; page: number; storagePath: string; url: string } | null;
   }[];
+
   skipped: { youtubeId: string; title: string; reason: string }[];
   essayTask: {
     title: string;
