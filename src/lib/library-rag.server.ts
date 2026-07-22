@@ -79,7 +79,7 @@ type Subject =
   | "historia" | "ingles" | "matematica" | "portugues" | "quimica"
   | "redacao" | "sociologia" | "edu_fisica";
 
-const SUBJECT_BOOK_PATTERNS: Record<Subject, RegExp> = {
+export const SUBJECT_BOOK_PATTERNS: Record<Subject, RegExp> = {
   edu_digital: /educacao-digital/i,
   espanhol: /espanhol/i,
   filosofia: /filosof/i,
