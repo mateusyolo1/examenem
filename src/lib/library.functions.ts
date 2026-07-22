@@ -368,7 +368,8 @@ export const searchLibrary = createServerFn({ method: "POST" })
           })
           .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
       : list;
-    return { matches: reranked };
+    const filtered = reranked.filter((m) => !LEGAL_RE.test((m.content as string) ?? ""));
+    return { matches: filtered };
   });
 
 /* ================= moveBook (mudar pasta) ================= */
