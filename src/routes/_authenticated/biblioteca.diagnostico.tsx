@@ -498,7 +498,7 @@ function DiagnosticoPage() {
           >
             {calibRunning
               ? `Rodando… ${calibDone}/${CALIBRATION_QUERIES.length}`
-              : "Rodar bateria de calibração (15 queries)"}
+              : "Rodar bateria de calibração (26 queries)"}
           </button>
           {activeIds.length === 0 && (
             <span className="ml-3 text-xs text-muted-foreground">
