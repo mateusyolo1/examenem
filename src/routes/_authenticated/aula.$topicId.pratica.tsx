@@ -141,6 +141,20 @@ function PraticaPage() {
                   </div>
                   <h1 className="text-xl font-extrabold tracking-tight mt-0.5">{task.title}</h1>
                   <p className="text-sm mt-2 leading-relaxed">{task.prompt}</p>
+                  {task.figure?.url && (
+                    <figure className="mt-3 border border-border rounded-lg overflow-hidden bg-background">
+                      <img
+                        src={task.figure.url}
+                        alt={`Figura de ${task.figure.bookTitle}`}
+                        loading="lazy"
+                        className="w-full max-h-80 object-contain bg-muted"
+                      />
+                      <figcaption className="px-3 py-1.5 text-[11px] font-mono text-muted-foreground border-t border-border">
+                        {task.figure.bookTitle} · p. {task.figure.page}
+                      </figcaption>
+                    </figure>
+                  )}
+
                   <div className="mt-4">
                     <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1.5">
                       Você será avaliado apenas por:

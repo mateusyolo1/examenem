@@ -2,6 +2,25 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+async function attachSignedFigureUrls<
+  T extends { figure_storage_path?: string | null },
+>(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  rows: T[],
+): Promise<Array<T & { figure_url?: string | null }>> {
+  const paths = rows
+    .map((r) => r.figure_storage_path)
+    .filter((p): p is string => Boolean(p));
+  if (paths.length === 0) return rows.map((r) => ({ ...r, figure_url: null }));
+  const { signFigureUrls } = await import("./lesson-figure-attach.server");
+  const map = await signFigureUrls(supabase, paths);
+  return rows.map((r) => ({
+    ...r,
+    figure_url: r.figure_storage_path ? map[r.figure_storage_path] ?? null : null,
+  }));
+}
+
+
 /* =========================================================
  * Ritmo semanal fixo (0=Dom … 6=Sáb)
  * ======================================================= */
@@ -458,7 +477,9 @@ export const generateLousa = createServerFn({ method: "POST" })
         .select("*")
         .eq("activity_id", act.id)
         .order("order_index");
-      return { activity: act, questions: qs ?? [] };
+      const questions = await attachSignedFigureUrls(supabase, qs ?? []);
+      return { activity: act, questions };
+
     }
 
     const numQ = data.reforco ? 3 : 5;
@@ -514,6 +535,38 @@ Regras: gabarito objetivo (1-3 frases), variar áreas (Matemática/Linguagens/Hu
     const { error: qerr } = await supabase.from("lousa_questions").insert(rows);
     if (qerr) throw new Error(qerr.message);
 
+    // Anexa 1 figura da biblioteca por questão (se houver correspondência).
+    try {
+      const { attachFigureForStatement } = await import(
+        "./lesson-figure-attach.server"
+      );
+      const { data: inserted } = await supabase
+        .from("lousa_questions")
+        .select("id, enunciado, order_index")
+        .eq("activity_id", act.id)
+        .order("order_index");
+      if (inserted?.length) {
+        const figs = await Promise.all(
+          inserted.map((q) => attachFigureForStatement(supabase, userId, q.enunciado)),
+        );
+        for (let i = 0; i < inserted.length; i++) {
+          const f = figs[i];
+          if (!f) continue;
+          await supabase
+            .from("lousa_questions")
+            .update({
+              figure_storage_path: f.storagePath,
+              figure_book_title: f.bookTitle,
+              figure_page: f.page,
+            })
+            .eq("id", inserted[i].id);
+        }
+      }
+    } catch (e) {
+      console.warn("[lousa] falha ao anexar figuras", e);
+    }
+
+
     const nowIso = new Date().toISOString();
     const { error: uerr } = await supabase
       .from("study_plan_activities")
@@ -531,10 +584,12 @@ Regras: gabarito objetivo (1-3 frases), variar áreas (Matemática/Linguagens/Hu
       .eq("activity_id", act.id)
       .order("order_index");
 
+    const questions = await attachSignedFigureUrls(supabase, qs ?? []);
     return {
       activity: { ...act, generated_at: nowIso, status: "in_progress" },
-      questions: qs ?? [],
+      questions,
     };
+
   });
 
 /* =========================================================
@@ -567,14 +622,16 @@ export const getLousa = createServerFn({ method: "GET" })
     const generatedAt = act.generated_at ? new Date(act.generated_at).getTime() : null;
     const unlocksAt = !isReforco && generatedAt ? generatedAt + LOUSA_LOCK_MS : null;
 
+    const questions = await attachSignedFigureUrls(supabase, qs ?? []);
     return {
       activity: act,
-      questions: qs ?? [],
+      questions,
       threshold: settings?.lousa_pass_threshold ?? 60,
       unlocksAt,
       isReforco,
       nowMs: Date.now(),
     };
+
   });
 
 /* =========================================================

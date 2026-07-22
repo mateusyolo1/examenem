@@ -168,6 +168,23 @@ function LousaHomework() {
                     {q.topico && ` · ${q.topico}`}
                   </div>
                   <div className="mt-2 text-base leading-relaxed whitespace-pre-wrap">{q.enunciado}</div>
+                  {q.figure_url && (
+                    <figure className="mt-3 border border-border rounded-lg overflow-hidden bg-background">
+                      <img
+                        src={q.figure_url}
+                        alt={q.figure_book_title ? `Figura de ${q.figure_book_title}` : "Figura do livro"}
+                        loading="lazy"
+                        className="w-full max-h-80 object-contain bg-muted"
+                      />
+                      {(q.figure_book_title || q.figure_page) && (
+                        <figcaption className="px-3 py-1.5 text-[11px] font-mono text-muted-foreground border-t border-border">
+                          {q.figure_book_title ?? "Biblioteca"}
+                          {q.figure_page ? ` · p. ${q.figure_page}` : ""}
+                        </figcaption>
+                      )}
+                    </figure>
+                  )}
+
 
                   {alreadyDone || alreadyFailed ? (
                     <>

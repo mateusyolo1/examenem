@@ -582,6 +582,9 @@ export type Database = {
           created_at: string
           enunciado: string
           feedback: string | null
+          figure_book_title: string | null
+          figure_page: number | null
+          figure_storage_path: string | null
           gabarito: string
           id: string
           order_index: number
@@ -596,6 +599,9 @@ export type Database = {
           created_at?: string
           enunciado: string
           feedback?: string | null
+          figure_book_title?: string | null
+          figure_page?: number | null
+          figure_storage_path?: string | null
           gabarito: string
           id?: string
           order_index: number
@@ -610,6 +616,9 @@ export type Database = {
           created_at?: string
           enunciado?: string
           feedback?: string | null
+          figure_book_title?: string | null
+          figure_page?: number | null
+          figure_storage_path?: string | null
           gabarito?: string
           id?: string
           order_index?: number

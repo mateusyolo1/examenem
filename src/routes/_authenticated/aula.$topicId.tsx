@@ -1218,7 +1218,9 @@ interface QuizPayload {
       videoTitle: string;
       timestamp?: string;
     };
+    figure?: { bookTitle: string; page: number; storagePath: string; url: string } | null;
   }[];
+
   skipped: { youtubeId: string; title: string; reason: string }[];
   essayTask: {
     title: string;
@@ -1299,6 +1301,20 @@ function QuizView({
               </header>
 
               <p className="text-base leading-relaxed text-foreground">{q.question}</p>
+              {q.figure?.url && (
+                <figure className="border border-border rounded-lg overflow-hidden bg-background">
+                  <img
+                    src={q.figure.url}
+                    alt={`Figura de ${q.figure.bookTitle}`}
+                    loading="lazy"
+                    className="w-full max-h-80 object-contain bg-muted"
+                  />
+                  <figcaption className="px-3 py-1.5 text-[11px] font-mono text-muted-foreground border-t border-border">
+                    {q.figure.bookTitle} · p. {q.figure.page}
+                  </figcaption>
+                </figure>
+              )}
+
 
               <div className="space-y-2.5 pt-1">
                 {q.options.map((opt, idx) => {

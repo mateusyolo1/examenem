@@ -32,6 +32,13 @@ interface LessonVideo {
   title: string | null;
 }
 
+export interface QuestionFigure {
+  bookTitle: string;
+  page: number;
+  storagePath: string;
+  url: string;
+}
+
 interface QuizQuestion {
   id: string;
   question: string;
@@ -44,6 +51,7 @@ interface QuizQuestion {
     videoTitle: string;
     timestamp?: string;
   };
+  figure?: QuestionFigure | null;
 }
 
 export interface EssayTask {
@@ -53,6 +61,7 @@ export interface EssayTask {
   rubric: string[];
   minWords: number;
   maxWords: number;
+  figure?: QuestionFigure | null;
 }
 
 export interface LessonQuizPayload {
@@ -60,6 +69,7 @@ export interface LessonQuizPayload {
   skipped: { youtubeId: string; title: string; reason: string }[];
   essayTask: EssayTask | null;
 }
+
 
 
 type SupabaseAdmin = Awaited<
@@ -682,14 +692,19 @@ export async function buildLessonQuizPayload({
   topicCtx,
   videos,
   supabaseAdmin,
+  supabaseUser,
+  userId,
   trace: providedTrace,
 }: {
   topicCtx: string;
   videos: LessonVideo[];
   supabaseAdmin: SupabaseAdmin;
+  supabaseUser?: import("@supabase/supabase-js").SupabaseClient;
+  userId?: string;
   trace?: TraceCounters;
 }): Promise<LessonQuizPayload> {
   const trace = providedTrace ?? newTrace();
+
   trace.videosRequested = videos.length;
   let outcome: "ok" | "error" = "ok";
   let errorType: string | undefined;
@@ -952,12 +967,42 @@ Momentos: ${summary.timestamps.map((t) => `${t.at} — ${t.note}`).join(" | ")}`
       };
     }
 
+    // ---- 7. Anexa figuras da biblioteca (1 por questão + 1 no essay) ----
+    if (supabaseUser && userId) {
+      try {
+        const { attachFigureForStatement } = await import(
+          "./lesson-figure-attach.server"
+        );
+        const attachments = await Promise.all(
+          questions.map((q) =>
+            attachFigureForStatement(supabaseUser, userId, q.question),
+          ),
+        );
+        for (let i = 0; i < questions.length; i++) {
+          const f = attachments[i];
+          if (f) questions[i].figure = f;
+        }
+        if (essayTask) {
+          const ef = await attachFigureForStatement(
+            supabaseUser,
+            userId,
+            `${essayTask.title}. ${essayTask.prompt}`,
+          );
+          if (ef) essayTask.figure = ef;
+        }
+      } catch (e) {
+        console.warn("[lesson-quiz] falha ao anexar figuras", e);
+      }
+    }
+
     return { questions, skipped, essayTask };
+
   } catch (err) {
     outcome = "error";
     errorType = classifyErrorType(err);
     throw err;
   } finally {
+
     logSummary({
       traceId: trace.traceId,
       totalMs: performance.now() - trace.startedAt,

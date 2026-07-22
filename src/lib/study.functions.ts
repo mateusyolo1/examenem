@@ -1117,6 +1117,13 @@ export const saveVideoPosition = createServerFn({ method: "POST" })
 // Caches por youtube_id e por topicId para economizar créditos.
 // ============================================================
 
+export interface LessonQuestionFigure {
+  bookTitle: string;
+  page: number;
+  storagePath: string;
+  url: string;
+}
+
 interface QuizQuestion {
   id: string;
   question: string;
@@ -1129,6 +1136,7 @@ interface QuizQuestion {
     videoTitle: string;
     timestamp?: string;
   };
+  figure?: LessonQuestionFigure | null;
 }
 
 export interface LessonEssayTask {
@@ -1138,6 +1146,7 @@ export interface LessonEssayTask {
   rubric: string[];
   minWords: number;
   maxWords: number;
+  figure?: LessonQuestionFigure | null;
 }
 
 interface LessonQuizPayload {
@@ -1145,6 +1154,32 @@ interface LessonQuizPayload {
   skipped: { youtubeId: string; title: string; reason: string }[];
   essayTask: LessonEssayTask | null;
 }
+
+async function resignPayloadFigures(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  payload: LessonQuizPayload,
+): Promise<LessonQuizPayload> {
+  const paths: string[] = [];
+  for (const q of payload.questions) {
+    if (q.figure?.storagePath) paths.push(q.figure.storagePath);
+  }
+  if (payload.essayTask?.figure?.storagePath) {
+    paths.push(payload.essayTask.figure.storagePath);
+  }
+  if (paths.length === 0) return payload;
+  const { signFigureUrls } = await import("./lesson-figure-attach.server");
+  const map = await signFigureUrls(supabase, paths);
+  for (const q of payload.questions) {
+    if (q.figure?.storagePath && map[q.figure.storagePath]) {
+      q.figure.url = map[q.figure.storagePath];
+    }
+  }
+  if (payload.essayTask?.figure?.storagePath && map[payload.essayTask.figure.storagePath]) {
+    payload.essayTask.figure.url = map[payload.essayTask.figure.storagePath];
+  }
+  return payload;
+}
+
 
 
 export const buildLessonQuiz = createServerFn({ method: "POST" })
@@ -1170,7 +1205,11 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       status: cached ? "hit" : "miss",
       durationMs: performance.now() - cacheLookupStart,
     });
-    if (cached) return cached.response as unknown as LessonQuizPayload;
+    if (cached) {
+      const p = cached.response as unknown as LessonQuizPayload;
+      return await resignPayloadFigures(supabase, p);
+    }
+
 
     const topicQueryStart = performance.now();
     const { data: topic } = await supabase
@@ -1210,7 +1249,14 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       : "ENEM";
 
     const { buildLessonQuizPayload } = await import("./lesson-quiz.server");
-    const payload = await buildLessonQuizPayload({ topicCtx, videos, supabaseAdmin, trace });
+    const payload = await buildLessonQuizPayload({
+      topicCtx,
+      videos,
+      supabaseAdmin,
+      supabaseUser: supabase,
+      userId: context.userId,
+      trace,
+    });
 
     const cacheInsertStart = performance.now();
     await supabaseAdmin.from("ai_response_cache").insert({
@@ -1218,6 +1264,8 @@ export const buildLessonQuiz = createServerFn({ method: "POST" })
       prompt_type: "lesson-quiz",
       response: JSON.parse(JSON.stringify(payload)),
     });
+
+
     logStep({
       traceId: trace.traceId,
       step: "cache-insert:lesson-quiz",
