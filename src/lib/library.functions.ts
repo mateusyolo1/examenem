@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAiAccess } from "./ai-access.middleware";
+import { inferSubjectFromQuery, SUBJECT_BOOK_PATTERNS } from "./library-rag.server";
 import { z } from "zod";
 
 const EMBED_MODEL = "google/gemini-embedding-2";
