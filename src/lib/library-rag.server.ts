@@ -122,6 +122,12 @@ export function inferSubjectFromQuery(query: string): Subject | null {
   return null;
 }
 
+// PATCH 2 — Filtro retroativo de páginas legais/copyright.
+// Exportado para reuso em library.functions.ts (PATCH 5).
+export const LEGAL_RE = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i;
+
+
+
 
 interface EmbedOk { ok: true; embedding: number[]; ms: number }
 interface EmbedErr { ok: false; status: LibraryRetrievalStatus; ms: number; detail: string }
@@ -261,7 +267,6 @@ export async function retrieveLibraryContextDetailed(
 
     // Filtro retroativo: descarta chunks de páginas legais/copyright que já
     // foram indexados em livros antigos. Não depende de re-ingestão.
-    const LEGAL_RE = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i;
     const raw = rawAll.filter((m) => !LEGAL_RE.test(m.content ?? ""));
 
     // BLOCO 1: sem filtro cliente por score. Devolve o top-K puro.

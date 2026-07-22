@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAiAccess } from "./ai-access.middleware";
-import { inferSubjectFromQuery, SUBJECT_BOOK_PATTERNS } from "./library-rag.server";
+import { inferSubjectFromQuery, SUBJECT_BOOK_PATTERNS, LEGAL_RE } from "./library-rag.server";
 import { z } from "zod";
 
 const EMBED_MODEL = "google/gemini-embedding-2";
@@ -368,7 +368,8 @@ export const searchLibrary = createServerFn({ method: "POST" })
           })
           .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
       : list;
-    return { matches: reranked };
+    const filtered = reranked.filter((m) => !LEGAL_RE.test((m.content as string) ?? ""));
+    return { matches: filtered };
   });
 
 /* ================= moveBook (mudar pasta) ================= */
