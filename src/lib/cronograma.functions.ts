@@ -477,7 +477,9 @@ export const generateLousa = createServerFn({ method: "POST" })
         .select("*")
         .eq("activity_id", act.id)
         .order("order_index");
-      return { activity: act, questions: qs ?? [] };
+      const questions = await attachSignedFigureUrls(supabase, qs ?? []);
+      return { activity: act, questions };
+
     }
 
     const numQ = data.reforco ? 3 : 5;
