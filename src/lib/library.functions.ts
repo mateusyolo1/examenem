@@ -357,7 +357,18 @@ export const searchLibrary = createServerFn({ method: "POST" })
       match_count: data.matchCount ?? 6,
     });
     if (error) throw new Error(error.message);
-    return { matches: matches ?? [] };
+    const list = matches ?? [];
+    const inferredSubject = inferSubjectFromQuery(data.query);
+    const reranked = inferredSubject
+      ? list
+          .map((m) => {
+            const title = String((m.metadata as Record<string, unknown> | null)?.bookTitle ?? "");
+            const bookMatches = SUBJECT_BOOK_PATTERNS[inferredSubject].test(title);
+            return bookMatches ? m : { ...m, similarity: Number(m.similarity ?? 0) * 0.6 };
+          })
+          .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
+      : list;
+    return { matches: reranked };
   });
 
 /* ================= moveBook (mudar pasta) ================= */
