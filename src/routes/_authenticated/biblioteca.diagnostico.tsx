@@ -19,33 +19,69 @@ const TEST_QUERIES = [
   "Como dizer 'obrigado' em inglês",
 ] as const;
 
-type Subject = "matematica" | "biologia" | "historia";
+type Subject =
+  | "edu_digital"
+  | "espanhol"
+  | "filosofia"
+  | "fisica"
+  | "geografia"
+  | "historia"
+  | "ingles"
+  | "matematica"
+  | "portugues"
+  | "quimica"
+  | "redacao"
+  | "sociologia"
+  | "edu_fisica";
 
+// Cobertura dos 17 livros / 13 matérias presentes no acervo do admin.
+// 2 queries por matéria = 26 queries.
 const CALIBRATION_QUERIES: { text: string; subject: Subject }[] = [
-  { text: "explique função do segundo grau", subject: "matematica" },
-  { text: "o que é logaritmo", subject: "matematica" },
-  { text: "como calcular área de triângulo", subject: "matematica" },
-  { text: "diferença entre média mediana e moda", subject: "matematica" },
-  { text: "teorema de pitágoras", subject: "matematica" },
-  { text: "mitose e meiose diferença", subject: "biologia" },
-  { text: "o que é fotossíntese", subject: "biologia" },
-  { text: "estrutura do DNA", subject: "biologia" },
-  { text: "sistema digestivo humano", subject: "biologia" },
-  { text: "célula animal e vegetal", subject: "biologia" },
-  { text: "Brasil Colônia e Brasil Império", subject: "historia" },
+  { text: "o que é cidadania digital", subject: "edu_digital" },
+  { text: "segurança na internet e senhas", subject: "edu_digital" },
+  { text: "conjugação do verbo ser em espanhol", subject: "espanhol" },
+  { text: "diferença entre ser e estar em espanhol", subject: "espanhol" },
+  { text: "o mito da caverna de Platão", subject: "filosofia" },
+  { text: "ética em Aristóteles", subject: "filosofia" },
+  { text: "leis de Newton do movimento", subject: "fisica" },
+  { text: "energia cinética e potencial", subject: "fisica" },
+  { text: "climas do Brasil regiões", subject: "geografia" },
+  { text: "urbanização e êxodo rural", subject: "geografia" },
   { text: "Revolução Francesa causas", subject: "historia" },
-  { text: "Primeira Guerra Mundial", subject: "historia" },
   { text: "Era Vargas resumo", subject: "historia" },
-  { text: "ditadura militar no Brasil", subject: "historia" },
+  { text: "verbo to be no presente em inglês", subject: "ingles" },
+  { text: "past simple regular verbs inglês", subject: "ingles" },
+  { text: "explique função do segundo grau", subject: "matematica" },
+  { text: "teorema de pitágoras", subject: "matematica" },
+  { text: "diferença entre mas e mais", subject: "portugues" },
+  { text: "figuras de linguagem metáfora", subject: "portugues" },
+  { text: "tabela periódica dos elementos", subject: "quimica" },
+  { text: "ligações iônicas e covalentes", subject: "quimica" },
+  { text: "estrutura da dissertação argumentativa", subject: "redacao" },
+  { text: "como fazer proposta de intervenção na redação do ENEM", subject: "redacao" },
+  { text: "conceito de anomia em Durkheim", subject: "sociologia" },
+  { text: "estratificação social classes", subject: "sociologia" },
+  { text: "esportes coletivos regras", subject: "edu_fisica" },
+  { text: "benefícios da atividade física para saúde", subject: "edu_fisica" },
 ];
 
 // Regra de classificação on-topic pelo título do livro do top-1 match.
-// Historia inclui "geograf" porque Brasil Colônia costuma cair em Geografia
-// no acervo atual do admin.
+// Padrões usam substrings específicas dos títulos para evitar sobreposição
+// (ex.: "Fisica-Ciencia" vs "Educacao-Fisica"; "historia" vs "geografia").
 const SUBJECT_BOOK_PATTERNS: Record<Subject, RegExp> = {
-  matematica: /matem[aá]t/i,
-  biologia: /biolo?g/i,
+  edu_digital: /educacao-digital/i,
+  espanhol: /espanhol/i,
+  filosofia: /filosof/i,
+  fisica: /fisica-ciencia/i,
+  geografia: /geograf/i,
   historia: /hist[oó]r/i,
+  ingles: /ingl[eê]s/i,
+  matematica: /matem[aá]t/i,
+  portugues: /portug/i,
+  quimica: /qu[ií]mica/i,
+  redacao: /reda[çc][aã]o/i,
+  sociologia: /sociolog/i,
+  edu_fisica: /educacao-fisica/i,
 };
 
 type ScopeKey = "1" | "3" | "7";
