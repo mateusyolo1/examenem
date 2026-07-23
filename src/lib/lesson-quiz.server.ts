@@ -539,7 +539,7 @@ Regras:
         { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
         { text: geminiPrompt },
       ],
-      { retries: 0, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
+      { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
     );
     const parsed = parseJsonLoose<VideoSummary>(text);
     const summary: VideoSummary = {
