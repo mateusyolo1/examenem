@@ -1537,7 +1537,10 @@ function LousaIntroCard({
     <div className="mb-4 rounded-xl border border-primary/30 bg-primary/[0.04] overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          userClosedRef.current = true;
+          setOpen((v) => !v);
+        }}
         className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-primary/[0.06] transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0">
