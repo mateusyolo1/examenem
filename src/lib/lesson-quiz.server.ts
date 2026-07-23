@@ -740,7 +740,7 @@ export async function buildLessonQuizPayload({
         const v = videos[i];
         try {
           const { summary, source } = await summarizeVideo(
-            googleKey,
+            googleKey!,
             v.youtube_id,
             v.title ?? "Vídeo",
             topicCtx,
