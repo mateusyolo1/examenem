@@ -19,7 +19,9 @@ const persistTaskSchema = z.object({
   aiEnriched: z.boolean().optional(),
   topicSlug: z.string().optional(),
   topicArea: z.string().optional(),
+  reason: z.string().max(240).optional(),
 });
+
 
 const persistPlanSchema = z.object({
   id: z.string(),

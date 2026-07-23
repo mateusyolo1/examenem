@@ -59,7 +59,9 @@ export interface StudyTask {
   aiEnriched?: boolean; // flag: título/note vieram da IA
   topicSlug?: string;
   topicArea?: Area;
+  reason?: string; // motivo pedagógico do slot (ex: "Reforço de aplicação em Matemática")
 }
+
 
 export interface TopicCatalogEntry {
   slug: string;
@@ -78,9 +80,10 @@ export function videoMinutesFromDuration(
   fallback = 30,
 ): number {
   if (!durationSec || durationSec <= 0) return fallback;
-  const m = Math.ceil(durationSec / 60) + 5;
-  return Math.max(8, Math.min(60, m));
+  const m = Math.ceil(durationSec / 60) + 3;
+  return Math.max(8, Math.min(35, m));
 }
+
 
 export interface TopicMastery {
   topic_slug: string;
@@ -221,7 +224,9 @@ interface Slot {
   title: string;
   topicArea?: Area;
   topicSlug?: string;
+  reason?: string;
 }
+
 
 type Pick = {
   area: StudyTask["area"];
@@ -348,6 +353,7 @@ function slotFrom(
   type: TaskType,
   minutes: number,
   title: string,
+  reason?: string,
 ): Slot {
   const carryTopic = type === "teoria" || type === "videoaula" ||
     type === "mapa_mental" || type === "resumo" || type === "revisao" ||
@@ -363,68 +369,88 @@ function slotFrom(
     title,
     topicArea: carryTopic ? p.topicArea : undefined,
     topicSlug: carryTopic ? p.topicSlug : undefined,
+    reason,
   };
 }
 
-type WeekdayTemplate = (pick: () => Pick, rng: () => number) => Slot[];
+
+export interface ReinforcementSignal {
+  intent: "aplicacao" | "compreensao" | "revisao";
+  area: Area;
+  reason: string; // ex: "Reforço de aplicação em Matemática"
+}
+
+type WeekdayTemplate = (
+  pick: () => Pick,
+  rng: () => number,
+  budget?: Partial<Record<TaskType, number>>,
+  reinforcement?: ReinforcementSignal | null,
+) => Slot[];
 
 // Dias úteis: bateria de variantes
 const WEEKDAY_TEMPLATES: WeekdayTemplate[] = [
   // 1) Teoria + Questões + Revisão espaçada
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      slotFrom(p1, "teoria", 50, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`),
-      slotFrom(p2, "questoes", 50, `10 questões de ${p2.label}`),
-      { type: "revisao", area: "geral", minutes: 30, title: "Revisão espaçada (flashcards/erros)" },
+      slotFrom(p1, "teoria", budget?.teoria ?? 50, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`, r),
+      slotFrom(p2, "questoes", budget?.questoes ?? 50, `10 questões de ${p2.label}`, r),
+      { type: "revisao", area: "geral", minutes: budget?.revisao ?? 30, title: "Revisão espaçada (flashcards/erros)", reason: r },
     ];
   },
   // 2) Videoaula + Resumo + Questões comentadas
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      slotFrom(p1, "videoaula", 40, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`),
-      slotFrom(p1, "resumo", 30, p1.topicTitle ? `Resumo em tópicos: ${p1.topicTitle}` : `Resumo de ${p1.label}`),
-      slotFrom(p2, "questoes", 50, `Questões comentadas de ${p2.label}`),
+      slotFrom(p1, "videoaula", budget?.videoaula ?? 40, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`, r),
+      slotFrom(p1, "resumo", budget?.resumo ?? 30, p1.topicTitle ? `Resumo em tópicos: ${p1.topicTitle}` : `Resumo de ${p1.label}`, r),
+      slotFrom(p2, "questoes", budget?.questoes ?? 50, `Questões comentadas de ${p2.label}`, r),
     ];
   },
   // 3) Mapa mental + Flashcards + Questões
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      slotFrom(p1, "mapa_mental", 40, p1.topicTitle ? `Mapa mental: ${p1.topicTitle}` : `Mapa mental de ${p1.label}`),
-      slotFrom(p1, "flashcards", 30, p1.topicTitle ? `Flashcards: ${p1.topicTitle}` : `Flashcards de ${p1.label}`),
-      slotFrom(p2, "questoes", 50, `8 questões de ${p2.label}`),
+      slotFrom(p1, "mapa_mental", budget?.mapa_mental ?? 40, p1.topicTitle ? `Mapa mental: ${p1.topicTitle}` : `Mapa mental de ${p1.label}`, r),
+      slotFrom(p1, "flashcards", budget?.flashcards ?? 30, p1.topicTitle ? `Flashcards: ${p1.topicTitle}` : `Flashcards de ${p1.label}`, r),
+      slotFrom(p2, "questoes", budget?.questoes ?? 50, `8 questões de ${p2.label}`, r),
     ];
   },
   // 4) Prova antiga curta + Análise de erros
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      { type: "prova_antiga", area: p1.area, minutes: 50, title: `Prova antiga: 5 questões de ${p1.label}` },
-      { type: "revisao", area: p1.area, minutes: 30, title: `Analisar erros de ${p1.label}` },
-      slotFrom(p2, "teoria", 40, p2.topicTitle ? `Teoria: ${p2.topicTitle}` : `Teoria de ${p2.label}`),
+      { type: "prova_antiga", area: p1.area, minutes: budget?.prova_antiga ?? 50, title: `Prova antiga: 5 questões de ${p1.label}`, reason: r },
+      { type: "revisao", area: p1.area, minutes: budget?.revisao ?? 30, title: `Analisar erros de ${p1.label}`, reason: r },
+      slotFrom(p2, "teoria", budget?.teoria ?? 40, p2.topicTitle ? `Teoria: ${p2.topicTitle}` : `Teoria de ${p2.label}`, r),
     ];
   },
   // 5) Teoria profunda + Projeto/aplicação
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      slotFrom(p1, "teoria", 60, p1.topicTitle ? `Teoria aprofundada: ${p1.topicTitle}` : `Teoria aprofundada de ${p1.label}`),
-      slotFrom(p1, "projeto", 40, p1.topicTitle ? `Aplicação prática: ${p1.topicTitle}` : `Aplicação prática de ${p1.label}`),
-      slotFrom(p2, "questoes", 20, `5 questões rápidas de ${p2.label}`),
+      slotFrom(p1, "teoria", budget?.teoria ?? 60, p1.topicTitle ? `Teoria aprofundada: ${p1.topicTitle}` : `Teoria aprofundada de ${p1.label}`, r),
+      slotFrom(p1, "projeto", budget?.projeto ?? 40, p1.topicTitle ? `Aplicação prática: ${p1.topicTitle}` : `Aplicação prática de ${p1.label}`, r),
+      slotFrom(p2, "questoes", budget?.questoes ?? 20, `5 questões rápidas de ${p2.label}`, r),
     ];
   },
   // 6) Videoaula + Flashcards + Mini-simulado por área
-  (pick) => {
+  (pick, _rng, budget, reinforcement) => {
     const p1 = pick(), p2 = pick();
+    const r = reinforcement?.reason;
     return [
-      slotFrom(p1, "videoaula", 30, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`),
-      slotFrom(p1, "flashcards", 20, `Flashcards de ${p1.label}`),
-      { type: "simulado", area: p2.area, minutes: 70, title: `Mini-simulado (10 q) de ${p2.label}` },
+      slotFrom(p1, "videoaula", budget?.videoaula ?? 30, p1.topicTitle ? `Videoaula: ${p1.topicTitle}` : `Videoaula de ${p1.label}`, r),
+      slotFrom(p1, "flashcards", budget?.flashcards ?? 20, `Flashcards de ${p1.label}`, r),
+      { type: "simulado", area: p2.area, minutes: budget?.simulado ?? 70, title: `Mini-simulado (10 q) de ${p2.label}`, reason: r },
     ];
   },
 ];
+
 
 // Sábado: rotaciona simulado x maratona x mini-simulado
 const SATURDAY_TEMPLATES: WeekdayTemplate[] = [
@@ -494,17 +520,65 @@ function pickDayTemplate(
   }
   // Dias úteis: se foco é redação e é dia par, injeta template com redação
   if (focus === "redacao" && weekday % 2 === 0) {
-    return (pick) => {
+    return (pick, _rng, budget, reinforcement) => {
       const p1 = pick(), p2 = pick();
+      const r = reinforcement?.reason;
       return [
-        slotFrom(p1, "teoria", 40, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`),
-        slotFrom(p2, "questoes", 40, `Questões de ${p2.label}`),
-        { type: "redacao", area: "redacao", minutes: 40, title: "Treino de parágrafo dissertativo" },
+        slotFrom(p1, "teoria", budget?.teoria ?? 40, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`, r),
+        slotFrom(p2, "questoes", budget?.questoes ?? 40, `Questões de ${p2.label}`, r),
+        { type: "redacao", area: "redacao", minutes: budget?.redacao ?? 40, title: "Treino de parágrafo dissertativo", reason: r },
       ];
     };
   }
   return pickOne(WEEKDAY_TEMPLATES, rng);
 }
+
+// -------- Reforço pedagógico --------
+// Analisa mastery por área e decide se o dia precisa de reforço de
+// compreensão (avg < 0.7), aplicação (avg < 0.5) ou revisão (tópicos
+// muito atrasados no SRS). Retorna null se não houver sinal.
+const AREA_LABEL_SHORT: Record<Area, string> = {
+  linguagens: "Linguagens",
+  humanas: "Humanas",
+  natureza: "Natureza",
+  matematica: "Matemática",
+};
+
+export function detectReinforcementNeed(
+  mastery: TopicMastery[] | undefined,
+  cfg: StudyPlanConfig,
+): ReinforcementSignal | null {
+  if (!mastery || mastery.length === 0) return null;
+  const byArea: Record<Area, number[]> = {
+    linguagens: [], humanas: [], natureza: [], matematica: [],
+  };
+  for (const m of mastery) {
+    if (m.area in byArea) byArea[m.area].push(m.last_score);
+  }
+  let worstArea: Area | null = null;
+  let worstAvg = 1;
+  (Object.keys(byArea) as Area[]).forEach((a) => {
+    const arr = byArea[a];
+    if (!arr.length) return;
+    const avg = arr.reduce((s, x) => s + x, 0) / arr.length;
+    // dá pequena preferência a áreas marcadas como difíceis
+    const adj = cfg.hardAreas.includes(a) ? avg - 0.05 : avg;
+    if (adj < worstAvg) {
+      worstAvg = adj;
+      worstArea = a;
+    }
+  });
+  if (!worstArea) return null;
+  const label = AREA_LABEL_SHORT[worstArea];
+  if (worstAvg < 0.5) {
+    return { intent: "aplicacao", area: worstArea, reason: `Reforço de aplicação em ${label}` };
+  }
+  if (worstAvg < 0.7) {
+    return { intent: "compreensao", area: worstArea, reason: `Reforço de compreensão em ${label}` };
+  }
+  return null;
+}
+
 
 // -------- Geração --------
 
@@ -527,6 +601,26 @@ export function generatePlan(
   const themes = shuffle(ESSAY_THEMES.slice(), rng);
   let themeIdx = 0;
   const targetMinPerDay = Math.max(30, Math.round(cfg.hoursPerDay * 60));
+
+  // Orçamentos proporcionais por tipo de tarefa (base ~ targetMinPerDay).
+  // Templates usam `budget?.xxx ?? fallback` — o scaling final continua ativo
+  // como rede de segurança para casos onde budget e template divergem.
+  const b = (frac: number) => Math.max(10, Math.round(targetMinPerDay * frac));
+  const budgets: Partial<Record<TaskType, number>> = {
+    teoria: b(0.35),
+    questoes: b(0.35),
+    revisao: b(0.2),
+    simulado: b(0.55),
+    redacao: b(0.3),
+    mapa_mental: b(0.3),
+    flashcards: b(0.2),
+    resumo: b(0.25),
+    prova_antiga: b(0.35),
+    videoaula: b(0.25),
+    projeto: b(0.3),
+  };
+  const reinforcement = detectReinforcementNeed(mastery, cfg);
+
 
   // Revisões devidas (SRS): agenda mini-ciclo para score < 0.4
   const catalogBySlug = new Map((catalog ?? []).map((t) => [t.slug, t]));
@@ -552,7 +646,7 @@ export function generatePlan(
     const template = pickDayTemplate(wd, cfg.focus, rng, weekdayCursor);
     weekdayCursor += 1;
 
-    const slots = template(pick, rng);
+    const slots = template(pick, rng, budgets, reinforcement);
     const base = slots.reduce((s, x) => s + x.minutes, 0);
     const scale = targetMinPerDay / base;
     const dateStr = isoDate(d);
@@ -563,6 +657,7 @@ export function generatePlan(
       let topicArea = s.topicArea;
       let area: StudyTask["area"] = s.area;
       let type = s.type;
+      let reason: string | undefined = s.reason;
 
       // Injetar revisão SRS onde couber
       if (s.type === "revisao" && reviewIdx < dueReviews.length) {
@@ -576,6 +671,7 @@ export function generatePlan(
           topicSlug = t.slug;
           topicArea = t.area;
           area = t.area;
+          reason = "Revisão espaçada";
         }
       } else if (s.type === "redacao" && s.area === "redacao") {
         const t = themes[themeIdx % themes.length];
@@ -602,8 +698,10 @@ export function generatePlan(
         status: "pendente",
         topicSlug,
         topicArea,
+        reason,
       });
     }
+
   }
 
   return {
