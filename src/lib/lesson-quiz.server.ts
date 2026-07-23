@@ -1,9 +1,9 @@
 // Gera atividade de aula em duas etapas:
 // 1) Resumo por vídeo — Gemini via URL do YouTube. Se falhar, fallback:
-//    transcrição via Supadata → Gemini resume o texto.
+//    transcrição via Supadata/Youtube scraper → DeepSeek resume o texto.
 // 2) Geração das questões e da tarefa de escrita — DeepSeek chat completions.
 
-import { fetchSupadataTranscript } from "./youtube-transcripts.server";
+import { fetchTranscriptWithFallback } from "./youtube-transcripts.server";
 import {
   classifyErrorType,
   logStep,
@@ -25,6 +25,8 @@ interface VideoSummary {
   examples: string[];
   timestamps: { at: string; note: string }[];
 }
+
+type SummarySource = "gemini-yt" | "transcript";
 
 interface LessonVideo {
   id: string;
@@ -416,21 +418,15 @@ async function callDeepSeek(
 }
 
 async function summarizeVideoFromTranscript(
-  apiKey: string,
+  deepseekKey: string,
   transcript: string,
   topicCtx: string,
   videoTitle: string,
   opts?: { trace?: TraceCounters; youtubeId?: string },
 ): Promise<VideoSummary> {
-  const prompt = `Você é um assistente que analisa vídeos-aula para gerar atividades de estudo.
+  const systemPrompt = `Você é um assistente que analisa transcrições de vídeos-aula para gerar atividades de estudo.
 
-Abaixo está a TRANSCRIÇÃO de um vídeo-aula (com timestamps MM:SS quando disponíveis).
-Resuma o que foi ensinado.
-
-Aula: "${topicCtx}"
-Vídeo: "${videoTitle}"
-
-Devolva JSON puro nesta estrutura:
+Responda APENAS com JSON válido nesta estrutura:
 {
   "keyConcepts": ["conceito ensinado no vídeo", "..."],
   "definitions": ["definição ou distinção conceitual explicada", "..."],
@@ -441,16 +437,21 @@ Devolva JSON puro nesta estrutura:
 Regras:
 - Inclua 3 a 8 conceitos-chave realmente presentes na transcrição.
 - Timestamps devem refletir momentos reais da transcrição (formato "MM:SS" ou "H:MM:SS").
-- Se a transcrição não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
-- Responda em português.
+- Se a transcrição não ensinar conteúdo útil sobre a aula, devolva arrays vazios.
+- Responda em português.`;
+
+  const userPrompt = `Aula: "${topicCtx}"
+Vídeo: "${videoTitle}"
+
+Abaixo está a TRANSCRIÇÃO de um vídeo-aula (com timestamps MM:SS quando disponíveis).
+Resuma o que foi ensinado.
 
 TRANSCRIÇÃO:
 ${transcript}`;
 
-  const text = await callGemini(apiKey, [{ text: prompt }], {
+  const text = await callDeepSeek(deepseekKey, systemPrompt, userPrompt, {
     trace: opts?.trace,
-    step: "gemini-text",
-    youtubeId: opts?.youtubeId,
+    step: "deepseek-summary",
   });
   const parsed = parseJsonLoose<VideoSummary>(text);
   return {
@@ -462,13 +463,16 @@ ${transcript}`;
 }
 
 async function summarizeVideo(
-  apiKey: string,
+  googleKey: string,
+  deepseekKey: string,
   youtubeId: string,
   videoTitle: string,
   topicCtx: string,
   supabaseAdmin: SupabaseAdmin,
   trace?: TraceCounters,
-): Promise<{ summary: VideoSummary; source: "gemini-yt" | "supadata" }> {
+  skipGeminiYt = false,
+  onGeminiRateLimit?: () => void,
+): Promise<{ summary: VideoSummary; source: SummarySource }> {
   const maskedYt = maskYoutubeId(youtubeId);
   // 1) Try Gemini with direct YouTube URL (cheapest, best quality when it works)
   const cacheKeyYt = `video-summary:gemini-yt:v1:${youtubeId}`;
@@ -490,7 +494,7 @@ async function summarizeVideo(
   }
   if (cachedYt) return { summary: cachedYt.response as unknown as VideoSummary, source: "gemini-yt" };
 
-  const cacheKeySd = `video-summary:supadata:v1:${youtubeId}`;
+  const cacheKeySd = `video-summary:transcript:v2:${youtubeId}`;
   const cacheSdStart = performance.now();
   const { data: cachedSd } = await supabaseAdmin
     .from("ai_response_cache")
@@ -501,16 +505,30 @@ async function summarizeVideo(
   if (trace) {
     logStep({
       traceId: trace.traceId,
-      step: "cache-lookup:video-summary:supadata",
+      step: "cache-lookup:video-summary:transcript",
       status: cachedSd ? "hit" : "miss",
       durationMs: performance.now() - cacheSdStart,
       youtubeId: maskedYt,
     });
   }
-  if (cachedSd) return { summary: cachedSd.response as unknown as VideoSummary, source: "supadata" };
+  if (cachedSd) return { summary: cachedSd.response as unknown as VideoSummary, source: "transcript" };
 
-  const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-  const geminiPrompt = `Você é um assistente que analisa vídeos-aula do YouTube para gerar atividades de estudo.
+  let firstError: Error | null = null;
+
+  if (skipGeminiYt) {
+    if (trace) {
+      logStep({
+        traceId: trace.traceId,
+        step: "gemini-yt",
+        status: "skip",
+        durationMs: 0,
+        model: GOOGLE_MODEL,
+        youtubeId: maskedYt,
+      });
+    }
+  } else {
+    const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
+    const geminiPrompt = `Você é um assistente que analisa vídeos-aula do YouTube para gerar atividades de estudo.
 
 Assista ao vídeo (áudio e imagem) e resuma o que foi ensinado.
 
@@ -531,67 +549,70 @@ Regras:
 - Se o vídeo não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
 - Responda em português.`;
 
-  let firstError: Error | null = null;
-  try {
-    const text = await callGemini(
-      apiKey,
-      [
-        { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
-        { text: geminiPrompt },
-      ],
-      { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
-    );
-    const parsed = parseJsonLoose<VideoSummary>(text);
-    const summary: VideoSummary = {
-      keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
-      definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
-      examples: Array.isArray(parsed.examples) ? parsed.examples : [],
-      timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
-    };
-    if (summary.keyConcepts.length > 0) {
-      const insStart = performance.now();
-      await supabaseAdmin.from("ai_response_cache").insert({
-        cache_key: cacheKeyYt,
-        prompt_type: "video-summary",
-        response: JSON.parse(JSON.stringify(summary)),
-      });
-      if (trace) {
-        logStep({
-          traceId: trace.traceId,
-          step: "cache-insert:video-summary:gemini-yt",
-          status: "ok",
-          durationMs: performance.now() - insStart,
-          youtubeId: maskedYt,
-        });
-      }
-      return { summary, source: "gemini-yt" };
-    }
-    firstError = new Error("gemini_no_content");
-  } catch (error) {
-    firstError = error instanceof Error ? error : new Error("gemini_failed");
-    if (firstError.message.startsWith("google_timeout_")) {
-      console.warn(
-        `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback Supadata`,
+    try {
+      const text = await callGemini(
+        googleKey,
+        [
+          { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
+          { text: geminiPrompt },
+        ],
+        { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
       );
-      // segue pra Supadata
-    } else {
-      // forbidden = bloqueio de conta, aborta.
-      // rate_limit AGORA cai pra Supadata (transcript + resumo por texto) —
-      // é bem menos custoso em quota e resolve o "Nenhum vídeo pôde ser analisado".
-      if (firstError.message.startsWith("google_forbidden")) throw firstError;
+      const parsed = parseJsonLoose<VideoSummary>(text);
+      const summary: VideoSummary = {
+        keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
+        definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
+        examples: Array.isArray(parsed.examples) ? parsed.examples : [],
+        timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
+      };
+      if (summary.keyConcepts.length > 0) {
+        const insStart = performance.now();
+        await supabaseAdmin.from("ai_response_cache").insert({
+          cache_key: cacheKeyYt,
+          prompt_type: "video-summary",
+          response: JSON.parse(JSON.stringify(summary)),
+        });
+        if (trace) {
+          logStep({
+            traceId: trace.traceId,
+            step: "cache-insert:video-summary:gemini-yt",
+            status: "ok",
+            durationMs: performance.now() - insStart,
+            youtubeId: maskedYt,
+          });
+        }
+        return { summary, source: "gemini-yt" };
+      }
+      firstError = new Error("gemini_no_content");
+    } catch (error) {
+      firstError = error instanceof Error ? error : new Error("gemini_failed");
+      if (firstError.message === "rate_limit") {
+        onGeminiRateLimit?.();
+      }
+      if (firstError.message.startsWith("google_timeout_")) {
+        console.warn(
+          `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback transcrição`,
+        );
+        // segue pra transcrição
+      } else {
+        // forbidden = bloqueio de conta, aborta.
+        // rate_limit cai pra transcrição + DeepSeek e ativa circuito da aula.
+        if (firstError.message.startsWith("google_forbidden")) throw firstError;
+      }
     }
   }
 
-  // 2) Fallback: Supadata → Gemini resume o texto
+  // 2) Fallback: transcrição → DeepSeek resume o texto.
+  // Evita usar Gemini novamente após uma falha de quota no modo YouTube.
   if (trace) trace.fallbacks += 1;
   const supadataStart = performance.now();
   let transcript;
   try {
-    transcript = await fetchSupadataTranscript(youtubeId);
+    transcript = await fetchTranscriptWithFallback(youtubeId);
     if (trace) {
       logStep({
         traceId: trace.traceId,
-        step: "supadata",
+        step: transcript.source,
         status: "ok",
         durationMs: performance.now() - supadataStart,
         youtubeId: maskedYt,
@@ -601,7 +622,7 @@ Regras:
     if (trace) {
       logStep({
         traceId: trace.traceId,
-        step: "supadata",
+        step: "transcript",
         status: "error",
         durationMs: performance.now() - supadataStart,
         errorType: classifyErrorType(err),
@@ -611,7 +632,7 @@ Regras:
     throw err;
   }
   const summary = await summarizeVideoFromTranscript(
-    apiKey,
+    deepseekKey,
     transcript.text,
     topicCtx,
     videoTitle,
@@ -631,14 +652,14 @@ Regras:
   if (trace) {
     logStep({
       traceId: trace.traceId,
-      step: "cache-insert:video-summary:supadata",
+      step: "cache-insert:video-summary:transcript",
       status: "ok",
       durationMs: performance.now() - insSdStart,
       youtubeId: maskedYt,
     });
   }
 
-  return { summary, source: "supadata" };
+  return { summary, source: "transcript" };
 }
 
 function buildQuizSystemPrompt(topicCtx: string, targetCount: number): string {
@@ -730,10 +751,11 @@ export async function buildLessonQuizPayload({
     const summaryResults: PromiseSettledResult<{
       video: LessonVideo;
       summary: VideoSummary;
-      source: "gemini-yt" | "supadata";
+      source: SummarySource;
     }>[] = new Array(videos.length);
     const CONCURRENCY = 2;
     let cursor = 0;
+    let skipGeminiForRest = false;
     async function worker() {
       while (true) {
         const i = cursor++;
@@ -742,11 +764,16 @@ export async function buildLessonQuizPayload({
         try {
           const { summary, source } = await summarizeVideo(
             googleKey!,
+            deepseekKey!,
             v.youtube_id,
             v.title ?? "Vídeo",
             topicCtx,
             supabaseAdmin,
             trace,
+            skipGeminiForRest,
+            () => {
+              skipGeminiForRest = true;
+            },
           );
           summaryResults[i] = { status: "fulfilled", value: { video: v, summary, source } };
         } catch (reason) {
