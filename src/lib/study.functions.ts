@@ -1568,3 +1568,27 @@ export const listLessonEssayAttempts = createServerFn({ method: "POST" })
     return { attempts: rows ?? [] };
   });
 
+// ============================================================
+// Runtime fallback: player reportou vídeo não embedável (erros 101/150/100/5).
+// Remove o vídeo do tópico para que ele nunca mais apareça nas playlists.
+// ============================================================
+export const reportUnplayableVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+        topicId: z.string().optional(),
+        errorCode: z.number().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const q = supabaseAdmin.from("study_videos").delete().eq("youtube_id", data.youtubeId);
+    const { error } = data.topicId ? await q.eq("topic_id", data.topicId) : await q;
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
