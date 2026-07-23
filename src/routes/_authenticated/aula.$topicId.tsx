@@ -1516,6 +1516,14 @@ function LousaIntroCard({
   topicTitle: string;
 }) {
   const [open, setOpen] = useState(true);
+  const userClosedRef = useRef(false);
+  useEffect(() => {
+    if (loading || !lesson?.resumo?.length) return;
+    const t = setTimeout(() => {
+      if (!userClosedRef.current) setOpen(false);
+    }, 30_000);
+    return () => clearTimeout(t);
+  }, [loading, lesson]);
   if (loading) {
     return (
       <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4 text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -1529,7 +1537,10 @@ function LousaIntroCard({
     <div className="mb-4 rounded-xl border border-primary/30 bg-primary/[0.04] overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          userClosedRef.current = true;
+          setOpen((v) => !v);
+        }}
         className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-primary/[0.06] transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0">
