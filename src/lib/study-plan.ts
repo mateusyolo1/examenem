@@ -520,17 +520,65 @@ function pickDayTemplate(
   }
   // Dias úteis: se foco é redação e é dia par, injeta template com redação
   if (focus === "redacao" && weekday % 2 === 0) {
-    return (pick) => {
+    return (pick, _rng, budget, reinforcement) => {
       const p1 = pick(), p2 = pick();
+      const r = reinforcement?.reason;
       return [
-        slotFrom(p1, "teoria", 40, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`),
-        slotFrom(p2, "questoes", 40, `Questões de ${p2.label}`),
-        { type: "redacao", area: "redacao", minutes: 40, title: "Treino de parágrafo dissertativo" },
+        slotFrom(p1, "teoria", budget?.teoria ?? 40, p1.topicTitle ? `Teoria: ${p1.topicTitle}` : `Teoria de ${p1.label}`, r),
+        slotFrom(p2, "questoes", budget?.questoes ?? 40, `Questões de ${p2.label}`, r),
+        { type: "redacao", area: "redacao", minutes: budget?.redacao ?? 40, title: "Treino de parágrafo dissertativo", reason: r },
       ];
     };
   }
   return pickOne(WEEKDAY_TEMPLATES, rng);
 }
+
+// -------- Reforço pedagógico --------
+// Analisa mastery por área e decide se o dia precisa de reforço de
+// compreensão (avg < 0.7), aplicação (avg < 0.5) ou revisão (tópicos
+// muito atrasados no SRS). Retorna null se não houver sinal.
+const AREA_LABEL_SHORT: Record<Area, string> = {
+  linguagens: "Linguagens",
+  humanas: "Humanas",
+  natureza: "Natureza",
+  matematica: "Matemática",
+};
+
+export function detectReinforcementNeed(
+  mastery: TopicMastery[] | undefined,
+  cfg: StudyPlanConfig,
+): ReinforcementSignal | null {
+  if (!mastery || mastery.length === 0) return null;
+  const byArea: Record<Area, number[]> = {
+    linguagens: [], humanas: [], natureza: [], matematica: [],
+  };
+  for (const m of mastery) {
+    if (m.area in byArea) byArea[m.area].push(m.last_score);
+  }
+  let worstArea: Area | null = null;
+  let worstAvg = 1;
+  (Object.keys(byArea) as Area[]).forEach((a) => {
+    const arr = byArea[a];
+    if (!arr.length) return;
+    const avg = arr.reduce((s, x) => s + x, 0) / arr.length;
+    // dá pequena preferência a áreas marcadas como difíceis
+    const adj = cfg.hardAreas.includes(a) ? avg - 0.05 : avg;
+    if (adj < worstAvg) {
+      worstAvg = adj;
+      worstArea = a;
+    }
+  });
+  if (!worstArea) return null;
+  const label = AREA_LABEL_SHORT[worstArea];
+  if (worstAvg < 0.5) {
+    return { intent: "aplicacao", area: worstArea, reason: `Reforço de aplicação em ${label}` };
+  }
+  if (worstAvg < 0.7) {
+    return { intent: "compreensao", area: worstArea, reason: `Reforço de compreensão em ${label}` };
+  }
+  return null;
+}
+
 
 // -------- Geração --------
 
