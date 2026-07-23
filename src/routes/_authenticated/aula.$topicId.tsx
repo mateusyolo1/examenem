@@ -1516,6 +1516,14 @@ function LousaIntroCard({
   topicTitle: string;
 }) {
   const [open, setOpen] = useState(true);
+  const userClosedRef = useRef(false);
+  useEffect(() => {
+    if (loading || !lesson?.resumo?.length) return;
+    const t = setTimeout(() => {
+      if (!userClosedRef.current) setOpen(false);
+    }, 30_000);
+    return () => clearTimeout(t);
+  }, [loading, lesson]);
   if (loading) {
     return (
       <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4 text-xs font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-2">
