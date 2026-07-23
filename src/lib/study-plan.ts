@@ -80,9 +80,10 @@ export function videoMinutesFromDuration(
   fallback = 30,
 ): number {
   if (!durationSec || durationSec <= 0) return fallback;
-  const m = Math.ceil(durationSec / 60) + 5;
-  return Math.max(8, Math.min(60, m));
+  const m = Math.ceil(durationSec / 60) + 3;
+  return Math.max(8, Math.min(35, m));
 }
+
 
 export interface TopicMastery {
   topic_slug: string;
