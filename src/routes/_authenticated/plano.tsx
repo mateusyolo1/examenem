@@ -1176,11 +1176,18 @@ function TaskCard({
         {areaLabel(task.area)}
       </p>
 
+      {task.reason && (
+        <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 rounded-full px-2 py-0.5">
+          {task.reason}
+        </p>
+      )}
+
       {task.note && (
         <p className="mt-2 text-[11px] leading-snug text-foreground/70 border-l-2 border-primary/40 pl-2">
           {task.note}
         </p>
       )}
+
 
       {task.aiEnriched && (
         <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-primary">
