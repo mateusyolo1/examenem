@@ -351,12 +351,14 @@ function LessonPlayer({
   const video = videos[current];
   const allWatched = watched.size === total;
 
-  // Dispara o prefetch quando o aluno concluir o 1º vídeo (ou se já
-  // entrou na aula com algum vídeo assistido de sessão anterior).
+  // Dispara o prefetch da atividade IMEDIATAMENTE ao abrir a Sala de Aula.
+  // Assim, enquanto o aluno assiste os vídeos, o Gemini já está transcrevendo
+  // e o DeepSeek já está gerando perguntas em background. Quando ele clicar
+  // em "Fazer atividade" no fim, o resultado já está cacheado.
   useEffect(() => {
-    if (watched.size >= 1) startPrefetch();
+    if (videos.length > 0) startPrefetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched.size >= 1]);
+  }, [topicId, videos.length > 0]);
 
 
   const markCurrentWatched = () => {
