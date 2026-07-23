@@ -224,7 +224,9 @@ interface Slot {
   title: string;
   topicArea?: Area;
   topicSlug?: string;
+  reason?: string;
 }
+
 
 type Pick = {
   area: StudyTask["area"];
