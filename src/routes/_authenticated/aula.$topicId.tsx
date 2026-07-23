@@ -623,6 +623,28 @@ function WatchingView({
             }
             if (e.data === 2) flush();
           },
+          onError: (e: any) => {
+            // Códigos YT IFrame API:
+            // 2 = id inválido, 5 = erro HTML5, 100 = removido/privado,
+            // 101/150 = dono desabilitou embed em outros sites.
+            const code = Number(e?.data ?? 0);
+            const unplayable = code === 101 || code === 150 || code === 100 || code === 5;
+            if (!unplayable) return;
+            const badId = video.youtube_id;
+            toast.error(
+              code === 101 || code === 150
+                ? "Vídeo bloqueado para embed pelo autor — pulando e removendo da playlist."
+                : "Vídeo indisponível — pulando e removendo da playlist.",
+            );
+            reportUnplayable({
+              data: { youtubeId: badId, topicId, errorCode: code },
+            })
+              .catch(() => {})
+              .finally(() => {
+                router.invalidate();
+                if (!isLastRef.current) onNextRef.current();
+              });
+          },
         },
       });
       playerRef.current = player;
