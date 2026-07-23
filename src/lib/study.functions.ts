@@ -797,6 +797,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
 
       // Camada 6 — jornada pedagógica (substitui a seleção anterior)
       const TARGET = 6;
+      // FILTRO CRÍTICO — remove vídeos com embed desabilitado ANTES de escolher.
+      // Sem isso, o aluno abriria a Sala de Aula e veria "Vídeo indisponível —
+      // reprodução em outros sites foi desativada pelo proprietário".
+      const embeddable = await filterEmbeddable(verified);
+      if (embeddable.length >= 3) verified = embeddable;
       const picked = pickPedagogicalJourney(verified, TARGET, maxSeconds);
 
       // Registra hits em background para os aprovados (só os que a IA verificou)
