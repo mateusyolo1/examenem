@@ -51,6 +51,7 @@ import {
   recordTopicMastery,
   suggestVideosForTopic,
   reportIrrelevantVideo,
+  reportUnplayableVideo,
 } from "@/lib/study.functions";
 import { generateLousaLesson } from "@/lib/lousa.functions";
 import { scheduleLousaReview } from "@/lib/cronograma.functions";
