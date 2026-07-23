@@ -190,7 +190,9 @@ async function callGemini(
           });
         }
         if (attempt < retries) {
-          const wait = 1500 * (attempt + 1) + Math.random() * 500;
+          // Backoff exponencial: 3s, 6s, 12s. Gemini free tier tem quota
+          // por minuto — esperas curtas (1.5s) não dão tempo do bucket resetar.
+          const wait = 3000 * Math.pow(2, attempt) + Math.random() * 1000;
           await new Promise((r) => setTimeout(r, wait));
           continue;
         }
