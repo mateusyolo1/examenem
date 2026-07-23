@@ -59,7 +59,9 @@ export interface StudyTask {
   aiEnriched?: boolean; // flag: título/note vieram da IA
   topicSlug?: string;
   topicArea?: Area;
+  reason?: string; // motivo pedagógico do slot (ex: "Reforço de aplicação em Matemática")
 }
+
 
 export interface TopicCatalogEntry {
   slug: string;
