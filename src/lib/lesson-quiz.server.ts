@@ -575,8 +575,9 @@ Regras:
       );
       // segue pra Supadata
     } else {
-      // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
-      if (firstError.message === "rate_limit") throw firstError;
+      // forbidden = bloqueio de conta, aborta.
+      // rate_limit AGORA cai pra Supadata (transcript + resumo por texto) —
+      // é bem menos custoso em quota e resolve o "Nenhum vídeo pôde ser analisado".
       if (firstError.message.startsWith("google_forbidden")) throw firstError;
     }
   }
