@@ -510,6 +510,43 @@ async function fetchYoutubeSearch(query: string): Promise<AiVideoSuggestion[]> {
   return out;
 }
 
+// Verifica se o vídeo pode ser reproduzido em iframe embutido. YouTube devolve
+// `playabilityStatus.status === "OK"` quando o dono permite embed; qualquer
+// outro valor ("UNPLAYABLE", "ERROR", "LOGIN_REQUIRED") significa que o iframe
+// vai renderizar a tela "Vídeo indisponível — A reprodução em outros sites foi
+// desativada pelo proprietário do vídeo". Filtramos ANTES de persistir para
+// que o aluno nunca veja essa tela na Sala de Aula.
+async function checkYoutubeEmbeddable(youtubeId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://www.youtube.com/embed/${youtubeId}?hl=pt-BR`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+    if (!res.ok) return false;
+    const html = await res.text();
+    if (/Playback on other websites has been disabled/i.test(html)) return false;
+    if (/reprodução em outros sites foi desativada/i.test(html)) return false;
+    const m = html.match(/"playabilityStatus":\s*\{[^}]*"status":\s*"([^"]+)"/);
+    if (m) return m[1] === "OK";
+    return true;
+  } catch {
+    // Falha de rede → não descarta (evita zerar playlist por flake).
+    return true;
+  }
+}
+
+async function filterEmbeddable<T extends { youtube_id: string }>(
+  candidates: T[],
+): Promise<T[]> {
+  const results = await Promise.all(
+    candidates.map(async (c) => ({ c, ok: await checkYoutubeEmbeddable(c.youtube_id) })),
+  );
+  return results.filter((r) => r.ok).map((r) => r.c);
+}
+
 
 export const suggestVideosForTopic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -760,6 +797,11 @@ export const suggestVideosForTopic = createServerFn({ method: "POST" })
 
       // Camada 6 — jornada pedagógica (substitui a seleção anterior)
       const TARGET = 6;
+      // FILTRO CRÍTICO — remove vídeos com embed desabilitado ANTES de escolher.
+      // Sem isso, o aluno abriria a Sala de Aula e veria "Vídeo indisponível —
+      // reprodução em outros sites foi desativada pelo proprietário".
+      const embeddable = await filterEmbeddable(verified);
+      if (embeddable.length >= 3) verified = embeddable;
       const picked = pickPedagogicalJourney(verified, TARGET, maxSeconds);
 
       // Registra hits em background para os aprovados (só os que a IA verificou)
@@ -1525,4 +1567,28 @@ export const listLessonEssayAttempts = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { attempts: rows ?? [] };
   });
+
+// ============================================================
+// Runtime fallback: player reportou vídeo não embedável (erros 101/150/100/5).
+// Remove o vídeo do tópico para que ele nunca mais apareça nas playlists.
+// ============================================================
+export const reportUnplayableVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+        topicId: z.string().optional(),
+        errorCode: z.number().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const q = supabaseAdmin.from("study_videos").delete().eq("youtube_id", data.youtubeId);
+    const { error } = data.topicId ? await q.eq("topic_id", data.topicId) : await q;
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 

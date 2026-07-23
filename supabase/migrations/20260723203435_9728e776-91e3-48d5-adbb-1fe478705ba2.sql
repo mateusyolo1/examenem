@@ -1,0 +1,1 @@
+DELETE FROM public.study_videos WHERE youtube_id = 'eOrqdInSgCk';
