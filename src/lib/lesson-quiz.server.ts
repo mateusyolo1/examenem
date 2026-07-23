@@ -470,6 +470,8 @@ async function summarizeVideo(
   topicCtx: string,
   supabaseAdmin: SupabaseAdmin,
   trace?: TraceCounters,
+  skipGeminiYt = false,
+  onGeminiRateLimit?: () => void,
 ): Promise<{ summary: VideoSummary; source: SummarySource }> {
   const maskedYt = maskYoutubeId(youtubeId);
   // 1) Try Gemini with direct YouTube URL (cheapest, best quality when it works)
@@ -511,8 +513,22 @@ async function summarizeVideo(
   }
   if (cachedSd) return { summary: cachedSd.response as unknown as VideoSummary, source: "transcript" };
 
-  const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-  const geminiPrompt = `Você é um assistente que analisa vídeos-aula do YouTube para gerar atividades de estudo.
+  let firstError: Error | null = null;
+
+  if (skipGeminiYt) {
+    if (trace) {
+      logStep({
+        traceId: trace.traceId,
+        step: "gemini-yt",
+        status: "skip",
+        durationMs: 0,
+        model: GOOGLE_MODEL,
+        youtubeId: maskedYt,
+      });
+    }
+  } else {
+    const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
+    const geminiPrompt = `Você é um assistente que analisa vídeos-aula do YouTube para gerar atividades de estudo.
 
 Assista ao vídeo (áudio e imagem) e resuma o que foi ensinado.
 
@@ -533,54 +549,56 @@ Regras:
 - Se o vídeo não ensinar conteúdo útil sobre "${topicCtx}", devolva arrays vazios.
 - Responda em português.`;
 
-  let firstError: Error | null = null;
-  try {
-    const text = await callGemini(
-      googleKey,
-      [
-        { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
-        { text: geminiPrompt },
-      ],
-      { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
-    );
-    const parsed = parseJsonLoose<VideoSummary>(text);
-    const summary: VideoSummary = {
-      keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
-      definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
-      examples: Array.isArray(parsed.examples) ? parsed.examples : [],
-      timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
-    };
-    if (summary.keyConcepts.length > 0) {
-      const insStart = performance.now();
-      await supabaseAdmin.from("ai_response_cache").insert({
-        cache_key: cacheKeyYt,
-        prompt_type: "video-summary",
-        response: JSON.parse(JSON.stringify(summary)),
-      });
-      if (trace) {
-        logStep({
-          traceId: trace.traceId,
-          step: "cache-insert:video-summary:gemini-yt",
-          status: "ok",
-          durationMs: performance.now() - insStart,
-          youtubeId: maskedYt,
-        });
-      }
-      return { summary, source: "gemini-yt" };
-    }
-    firstError = new Error("gemini_no_content");
-  } catch (error) {
-    firstError = error instanceof Error ? error : new Error("gemini_failed");
-    if (firstError.message.startsWith("google_timeout_")) {
-      console.warn(
-        `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback Supadata`,
+    try {
+      const text = await callGemini(
+        googleKey,
+        [
+          { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
+          { text: geminiPrompt },
+        ],
+        { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
       );
-      // segue pra Supadata
-    } else {
-      // forbidden = bloqueio de conta, aborta.
-      // rate_limit AGORA cai pra Supadata (transcript + resumo por texto) —
-      // é bem menos custoso em quota e resolve o "Nenhum vídeo pôde ser analisado".
-      if (firstError.message.startsWith("google_forbidden")) throw firstError;
+      const parsed = parseJsonLoose<VideoSummary>(text);
+      const summary: VideoSummary = {
+        keyConcepts: Array.isArray(parsed.keyConcepts) ? parsed.keyConcepts : [],
+        definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
+        examples: Array.isArray(parsed.examples) ? parsed.examples : [],
+        timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : [],
+      };
+      if (summary.keyConcepts.length > 0) {
+        const insStart = performance.now();
+        await supabaseAdmin.from("ai_response_cache").insert({
+          cache_key: cacheKeyYt,
+          prompt_type: "video-summary",
+          response: JSON.parse(JSON.stringify(summary)),
+        });
+        if (trace) {
+          logStep({
+            traceId: trace.traceId,
+            step: "cache-insert:video-summary:gemini-yt",
+            status: "ok",
+            durationMs: performance.now() - insStart,
+            youtubeId: maskedYt,
+          });
+        }
+        return { summary, source: "gemini-yt" };
+      }
+      firstError = new Error("gemini_no_content");
+    } catch (error) {
+      firstError = error instanceof Error ? error : new Error("gemini_failed");
+      if (firstError.message === "rate_limit") {
+        onGeminiRateLimit?.();
+      }
+      if (firstError.message.startsWith("google_timeout_")) {
+        console.warn(
+          `[lesson-quiz] Gemini multimodal timeout em ${youtubeId}, fallback transcrição`,
+        );
+        // segue pra transcrição
+      } else {
+        // forbidden = bloqueio de conta, aborta.
+        // rate_limit cai pra transcrição + DeepSeek e ativa circuito da aula.
+        if (firstError.message.startsWith("google_forbidden")) throw firstError;
+      }
     }
   }
 
@@ -737,6 +755,7 @@ export async function buildLessonQuizPayload({
     }>[] = new Array(videos.length);
     const CONCURRENCY = 2;
     let cursor = 0;
+    let skipGeminiForRest = false;
     async function worker() {
       while (true) {
         const i = cursor++;
@@ -751,6 +770,10 @@ export async function buildLessonQuizPayload({
             topicCtx,
             supabaseAdmin,
             trace,
+            skipGeminiForRest,
+            () => {
+              skipGeminiForRest = true;
+            },
           );
           summaryResults[i] = { status: "fulfilled", value: { video: v, summary, source } };
         } catch (reason) {
