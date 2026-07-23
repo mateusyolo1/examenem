@@ -657,6 +657,7 @@ export function generatePlan(
       let topicArea = s.topicArea;
       let area: StudyTask["area"] = s.area;
       let type = s.type;
+      let reason: string | undefined = s.reason;
 
       // Injetar revisão SRS onde couber
       if (s.type === "revisao" && reviewIdx < dueReviews.length) {
@@ -670,6 +671,7 @@ export function generatePlan(
           topicSlug = t.slug;
           topicArea = t.area;
           area = t.area;
+          reason = "Revisão espaçada";
         }
       } else if (s.type === "redacao" && s.area === "redacao") {
         const t = themes[themeIdx % themes.length];
@@ -696,8 +698,10 @@ export function generatePlan(
         status: "pendente",
         topicSlug,
         topicArea,
+        reason,
       });
     }
+
   }
 
   return {
