@@ -155,6 +155,7 @@ export const getTodayAgendaTasks = createServerFn({ method: "GET" })
             topicSlug?: string;
             topicArea?: string;
             note?: string;
+            reason?: string;
           }>;
         }
       | null
