@@ -353,6 +353,7 @@ function slotFrom(
   type: TaskType,
   minutes: number,
   title: string,
+  reason?: string,
 ): Slot {
   const carryTopic = type === "teoria" || type === "videoaula" ||
     type === "mapa_mental" || type === "resumo" || type === "revisao" ||
@@ -368,8 +369,10 @@ function slotFrom(
     title,
     topicArea: carryTopic ? p.topicArea : undefined,
     topicSlug: carryTopic ? p.topicSlug : undefined,
+    reason,
   };
 }
+
 
 type WeekdayTemplate = (pick: () => Pick, rng: () => number) => Slot[];
 
