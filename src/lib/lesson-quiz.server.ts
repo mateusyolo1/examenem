@@ -539,7 +539,7 @@ Regras:
         { file_data: { file_uri: youtubeUrl, mime_type: "video/*" } },
         { text: geminiPrompt },
       ],
-      { retries: 0, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
+      { retries: 1, timeoutMs: 8_000, trace, step: "gemini-yt", youtubeId },
     );
     const parsed = parseJsonLoose<VideoSummary>(text);
     const summary: VideoSummary = {
@@ -575,8 +575,9 @@ Regras:
       );
       // segue pra Supadata
     } else {
-      // rate_limit e forbidden não devem cair pra fallback — são bloqueios da conta
-      if (firstError.message === "rate_limit") throw firstError;
+      // forbidden = bloqueio de conta, aborta.
+      // rate_limit AGORA cai pra Supadata (transcript + resumo por texto) —
+      // é bem menos custoso em quota e resolve o "Nenhum vídeo pôde ser analisado".
       if (firstError.message.startsWith("google_forbidden")) throw firstError;
     }
   }
