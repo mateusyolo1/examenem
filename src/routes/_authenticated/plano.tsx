@@ -1176,16 +1176,16 @@ function TaskCard({
         {areaLabel(task.area)}
       </p>
 
-      {task.reason && (
-        <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-primary bg-primary/10 rounded-full px-2 py-0.5">
-          {task.reason}
-        </p>
-      )}
-
       {task.note && (
         <p className="mt-2 text-[11px] leading-snug text-foreground/70 border-l-2 border-primary/40 pl-2">
           {task.note}
         </p>
+      )}
+
+      {task.reason && (
+        <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+          <Sparkles size={9} aria-hidden /> {task.reason}
+        </span>
       )}
 
 
