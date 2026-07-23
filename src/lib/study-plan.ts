@@ -646,7 +646,7 @@ export function generatePlan(
     const template = pickDayTemplate(wd, cfg.focus, rng, weekdayCursor);
     weekdayCursor += 1;
 
-    const slots = template(pick, rng);
+    const slots = template(pick, rng, budgets, reinforcement);
     const base = slots.reduce((s, x) => s + x.minutes, 0);
     const scale = targetMinPerDay / base;
     const dateStr = isoDate(d);
