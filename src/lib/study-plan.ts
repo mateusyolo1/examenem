@@ -73,8 +73,8 @@ export interface TopicCatalogEntry {
 }
 
 // Estimativa calibrada de minutos para uma tarefa de videoaula, a partir da
-// duração real do vídeo mais curto do tópico. Formula: ceil(dur/60) + 5 min
-// de processamento/anotação, com clamp [8, 60]. Sem duração, retorna fallback.
+// duração real do vídeo. Formula: ceil(dur/60) + 3 min de anotação, com
+// clamp [8, 35]. Vídeos longos entram como fatia estudável, não inteiros.
 export function videoMinutesFromDuration(
   durationSec?: number,
   fallback = 30,
