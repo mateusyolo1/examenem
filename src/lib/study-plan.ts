@@ -602,6 +602,26 @@ export function generatePlan(
   let themeIdx = 0;
   const targetMinPerDay = Math.max(30, Math.round(cfg.hoursPerDay * 60));
 
+  // Orçamentos proporcionais por tipo de tarefa (base ~ targetMinPerDay).
+  // Templates usam `budget?.xxx ?? fallback` — o scaling final continua ativo
+  // como rede de segurança para casos onde budget e template divergem.
+  const b = (frac: number) => Math.max(10, Math.round(targetMinPerDay * frac));
+  const budgets: Partial<Record<TaskType, number>> = {
+    teoria: b(0.35),
+    questoes: b(0.35),
+    revisao: b(0.2),
+    simulado: b(0.55),
+    redacao: b(0.3),
+    mapa_mental: b(0.3),
+    flashcards: b(0.2),
+    resumo: b(0.25),
+    prova_antiga: b(0.35),
+    videoaula: b(0.25),
+    projeto: b(0.3),
+  };
+  const reinforcement = detectReinforcementNeed(mastery, cfg);
+
+
   // Revisões devidas (SRS): agenda mini-ciclo para score < 0.4
   const catalogBySlug = new Map((catalog ?? []).map((t) => [t.slug, t]));
   const dueReviews: Array<{ mastery: TopicMastery; kind: "srs" | "ciclo" }> = [];
