@@ -190,7 +190,9 @@ async function callGemini(
           });
         }
         if (attempt < retries) {
-          const wait = 1500 * (attempt + 1) + Math.random() * 500;
+          // Backoff exponencial: 3s, 6s, 12s. Gemini free tier tem quota
+          // por minuto — esperas curtas (1.5s) não dão tempo do bucket resetar.
+          const wait = 3000 * Math.pow(2, attempt) + Math.random() * 1000;
           await new Promise((r) => setTimeout(r, wait));
           continue;
         }
@@ -721,17 +723,38 @@ export async function buildLessonQuizPayload({
       throw new Error("DEEPSEEK_API_KEY não configurado.");
     }
 
-    const summaryResults = await Promise.allSettled(
-      videos.map((v) =>
-        summarizeVideo(
-          googleKey,
-          v.youtube_id,
-          v.title ?? "Vídeo",
-          topicCtx,
-          supabaseAdmin,
-          trace,
-        ).then(({ summary, source }) => ({ video: v, summary, source })),
-      ),
+    // Limita concorrência para 2 vídeos simultâneos. Rodar 6 em paralelo
+    // estoura a quota por minuto do Gemini free tier — todos batem 429 e a
+    // atividade nunca é gerada.
+    const summaryResults: PromiseSettledResult<{
+      video: LessonVideo;
+      summary: VideoSummary;
+      source: "gemini-yt" | "supadata";
+    }>[] = new Array(videos.length);
+    const CONCURRENCY = 2;
+    let cursor = 0;
+    async function worker() {
+      while (true) {
+        const i = cursor++;
+        if (i >= videos.length) return;
+        const v = videos[i];
+        try {
+          const { summary, source } = await summarizeVideo(
+            googleKey!,
+            v.youtube_id,
+            v.title ?? "Vídeo",
+            topicCtx,
+            supabaseAdmin,
+            trace,
+          );
+          summaryResults[i] = { status: "fulfilled", value: { video: v, summary, source } };
+        } catch (reason) {
+          summaryResults[i] = { status: "rejected", reason };
+        }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, videos.length) }, () => worker()),
     );
 
     const successfulSummaries: { video: LessonVideo; summary: VideoSummary }[] = [];
