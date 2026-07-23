@@ -540,6 +540,8 @@ function WatchingView({
   isLastRef.current = isLast;
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
+  const reportUnplayable = useServerFn(reportUnplayableVideo);
+  const router = useRouter();
 
   // Reset countdown whenever we switch videos.
   useEffect(() => {
