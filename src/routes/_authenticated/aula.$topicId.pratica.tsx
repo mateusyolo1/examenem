@@ -18,6 +18,7 @@ import {
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId/pratica")({
   validateSearch: (search: Record<string, unknown>) =>

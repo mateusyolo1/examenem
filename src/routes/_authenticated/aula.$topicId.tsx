@@ -61,6 +61,7 @@ import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
 import { VideoNotesLayer } from "@/components/VideoNotesLayer";
 import { EnsinarComVideoButton } from "@/components/aula/EnsinarComVideoButton";
 import { AulaSidePanel } from "@/components/aula/AulaSidePanel";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
