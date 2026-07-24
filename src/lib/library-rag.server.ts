@@ -395,10 +395,12 @@ export async function retrieveLibraryFigures(
     const pages = Array.from(new Set(pairs.map((p) => p.page)));
     const { data: figures, error } = await supabase
       .from("library_figures")
-      .select("book_id, page, storage_path, width, height, caption")
+      .select("book_id, page, storage_path, width, height, caption, kind")
       .eq("user_id", userId)
       .in("book_id", bookIds)
-      .in("page", pages);
+      .in("page", pages)
+      // kind='figure' explícito OU legado (kind IS NULL). Nunca páginas inteiras.
+      .or("kind.eq.figure,kind.is.null");
     if (error || !figures?.length) return [];
 
     const out: LibraryFigure[] = [];

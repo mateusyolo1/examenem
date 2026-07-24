@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
 import { TutorToolCard } from "@/components/TutorToolCard";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 import { askTutor, type TutorToolResult } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
@@ -18,11 +19,25 @@ import {
   LEARNING_STAGES,
 } from "@/lib/learning-progress";
 
+type LibraryCitation = {
+  n: number;
+  bookId: string;
+  bookTitle: string;
+  page: number | null;
+  bbox: {
+    page: number;
+    pageW: number;
+    pageH: number;
+    rects: { x: number; y: number; w: number; h: number }[];
+  } | null;
+};
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
   images?: string[];
   toolResults?: TutorToolResult[];
+  libraryCitations?: LibraryCitation[];
 };
 type Mode =
   | "livre"
@@ -308,6 +323,10 @@ function Tutor() {
           role: "assistant",
           content: res.text,
           toolResults: res.toolResults?.length ? res.toolResults : undefined,
+          libraryCitations:
+            res.libraryCitations && res.libraryCitations.length > 0
+              ? (res.libraryCitations as LibraryCitation[])
+              : undefined,
         },
       ]);
     } catch (e) {
@@ -498,6 +517,32 @@ function Tutor() {
                         {m.content && (
                           <div className="p-4 rounded-lg bg-background border border-border">
                             <Markdown>{m.content}</Markdown>
+                          </div>
+                        )}
+                        {m.libraryCitations && m.libraryCitations.length > 0 && (
+                          <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-2">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                              Fontes citadas
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {m.libraryCitations
+                                .filter((c) => c.page != null)
+                                .map((c) => (
+                                  <SourcePageViewer
+                                    key={c.n}
+                                    bookId={c.bookId}
+                                    bookTitle={c.bookTitle}
+                                    page={c.page as number}
+                                    bbox={c.bbox}
+                                  >
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-background text-[11px] font-mono hover:border-primary hover:text-primary transition-colors cursor-pointer">
+                                      <span className="font-bold">[{c.n}]</span>
+                                      <span className="truncate max-w-[180px]">{c.bookTitle}</span>
+                                      <span className="text-muted-foreground">p.{c.page}</span>
+                                    </span>
+                                  </SourcePageViewer>
+                                ))}
+                            </div>
                           </div>
                         )}
                       </>

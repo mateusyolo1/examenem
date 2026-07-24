@@ -538,6 +538,7 @@ export type Database = {
           created_at: string
           height: number | null
           id: string
+          kind: string | null
           page: number
           storage_path: string
           user_id: string
@@ -549,6 +550,7 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
+          kind?: string | null
           page: number
           storage_path: string
           user_id: string
@@ -560,6 +562,7 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
+          kind?: string | null
           page?: number
           storage_path?: string
           user_id?: string

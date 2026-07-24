@@ -179,6 +179,8 @@ export const saveFigures = createServerFn({ method: "POST" })
     z
       .object({
         bookId: z.string().uuid(),
+        /** Se true, substitui apenas as figuras do mesmo kind. Default: true. */
+        replace: z.boolean().optional(),
         figures: z
           .array(
             z.object({
@@ -186,10 +188,12 @@ export const saveFigures = createServerFn({ method: "POST" })
               storagePath: z.string().min(3).max(500),
               width: z.number().int().positive().optional(),
               height: z.number().int().positive().optional(),
+              /** 'figure' = recorte da figura; 'page' = página inteira renderizada. */
+              kind: z.enum(["figure", "page"]).optional(),
             }),
           )
           .min(1)
-          .max(200),
+          .max(2000),
       })
       .parse(d),
   )
@@ -205,12 +209,26 @@ export const saveFigures = createServerFn({ method: "POST" })
     if (bookErr) throw new Error(bookErr.message);
     if (!book) throw new Error("Livro não encontrado");
 
-    // Substitui figuras existentes deste livro (idempotente para reprocessamento)
-    await supabase
-      .from("library_figures")
-      .delete()
-      .eq("book_id", data.bookId)
-      .eq("user_id", userId);
+    // Determina kinds envolvidos neste lote.
+    const kindsInBatch = Array.from(
+      new Set(data.figures.map((f) => f.kind ?? "figure")),
+    );
+    const shouldReplace = data.replace ?? true;
+
+    if (shouldReplace) {
+      // Substitui apenas figuras dos mesmos kinds deste lote (idempotente por kind).
+      const del = supabase
+        .from("library_figures")
+        .delete()
+        .eq("book_id", data.bookId)
+        .eq("user_id", userId);
+      // legado (kind IS NULL) é tratado como 'figure'
+      const kindFilter = kindsInBatch.includes("figure")
+        ? `kind.in.(${kindsInBatch.join(",")}),kind.is.null`
+        : `kind.in.(${kindsInBatch.join(",")})`;
+      const { error: delErr } = await del.or(kindFilter);
+      if (delErr) throw new Error(delErr.message);
+    }
 
     const rows = data.figures.map((f) => ({
       user_id: userId,
@@ -219,11 +237,60 @@ export const saveFigures = createServerFn({ method: "POST" })
       storage_path: f.storagePath,
       width: f.width ?? null,
       height: f.height ?? null,
+      kind: f.kind ?? "figure",
     }));
     const { error } = await supabase.from("library_figures").insert(rows);
     if (error) throw new Error(error.message);
     return { inserted: rows.length };
   });
+
+/* ================= signLibraryPageUrl =================
+ * Retorna signed URL fresca (10min) da página renderizada de um livro do
+ * próprio usuário. Usado no clique de "Ver na página" para evitar cache de
+ * URLs expiradas nos payloads do LLM.
+ */
+export const signLibraryPageUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        bookId: z.string().uuid(),
+        page: z.number().int().positive(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    // RLS (FOR ALL policy "Users manage own figures") garante ownership.
+    // Prefere kind='page' (página inteira); fallback para kind='figure'/legado
+    // para não quebrar livros antigos sem páginas renderizadas.
+    const { data: rows, error } = await supabase
+      .from("library_figures")
+      .select("storage_path, kind, width, height")
+      .eq("user_id", userId)
+      .eq("book_id", data.bookId)
+      .eq("page", data.page);
+    if (error) throw new Error(error.message);
+    const list = rows ?? [];
+    const pick =
+      list.find((r) => r.kind === "page") ??
+      list.find((r) => r.kind === "figure" || r.kind === null) ??
+      list[0];
+    if (!pick) throw new Error("Página não disponível.");
+    const { data: signed, error: signErr } = await supabase.storage
+      .from("books")
+      .createSignedUrl(pick.storage_path, 60 * 10);
+    if (signErr || !signed?.signedUrl) {
+      throw new Error(signErr?.message ?? "Falha ao assinar URL");
+    }
+    return {
+      url: signed.signedUrl,
+      width: pick.width ?? null,
+      height: pick.height ?? null,
+      kind: (pick.kind ?? "figure") as "page" | "figure",
+    };
+  });
+
 
 /* ================= finalizeBook ================= */
 export const finalizeBook = createServerFn({ method: "POST" })
