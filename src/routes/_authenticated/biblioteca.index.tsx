@@ -525,15 +525,17 @@ function BibliotecaPage() {
           toast.info("Nenhuma página com figura detectada neste PDF.", { id: toastId });
           return;
         }
-        toast.loading(`Enviando ${figures.length} figuras...`, { id: toastId });
+        toast.loading(`Enviando ${figures.length} imagens...`, { id: toastId });
         const uploaded: {
           page: number;
           storagePath: string;
           width: number;
           height: number;
+          kind: "page" | "figure";
         }[] = [];
         for (const fig of figures) {
-          const path = `${uid}/${target.id}/p${fig.page}.jpg`;
+          const suffix = fig.kind === "figure" ? "-fig" : "";
+          const path = `${uid}/${target.id}/p${fig.page}${suffix}.jpg`;
           const { error: upErr } = await supabase.storage
             .from("books")
             .upload(path, fig.blob, { contentType: "image/jpeg", upsert: true });
@@ -543,15 +545,17 @@ function BibliotecaPage() {
               storagePath: path,
               width: fig.width,
               height: fig.height,
+              kind: fig.kind,
             });
           }
         }
         if (uploaded.length > 0) {
           await saveFigures({ data: { bookId: target.id, figures: uploaded } });
         }
-        toast.success(`${uploaded.length} figuras salvas em "${target.title}".`, {
+        toast.success(`${uploaded.length} imagens salvas em "${target.title}".`, {
           id: toastId,
         });
+
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         toast.error(msg, { id: toastId });
