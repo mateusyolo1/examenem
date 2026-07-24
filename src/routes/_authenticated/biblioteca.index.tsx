@@ -437,9 +437,13 @@ function BibliotecaPage() {
             patchUpload(tempId, { doneChunks: Math.min(i + batch.length, chunks.length) });
           }
 
-          // Upload de figuras (páginas com imagens) para storage + registro
+          // Upload de figuras/páginas para storage + registro (kind='page' e 'figure').
           if (figures.length > 0) {
-            patchUpload(tempId, { message: `Enviando ${figures.length} figuras...` });
+            const pagesCount = figures.filter((f) => f.kind === "page").length;
+            const figsCount = figures.filter((f) => f.kind === "figure").length;
+            patchUpload(tempId, {
+              message: `Enviando ${pagesCount} páginas + ${figsCount} figuras...`,
+            });
             try {
               const { data: userData } = await supabase.auth.getUser();
               const uid = userData.user?.id;
@@ -449,9 +453,12 @@ function BibliotecaPage() {
                   storagePath: string;
                   width: number;
                   height: number;
+                  kind: "page" | "figure";
                 }[] = [];
                 for (const fig of figures) {
-                  const path = `${uid}/${book.id}/p${fig.page}.jpg`;
+                  // Path distinto por kind para páginas e figuras não colidirem.
+                  const suffix = fig.kind === "figure" ? "-fig" : "";
+                  const path = `${uid}/${book.id}/p${fig.page}${suffix}.jpg`;
                   const { error: upErr } = await supabase.storage
                     .from("books")
                     .upload(path, fig.blob, {
@@ -464,6 +471,7 @@ function BibliotecaPage() {
                       storagePath: path,
                       width: fig.width,
                       height: fig.height,
+                      kind: fig.kind,
                     });
                   }
                 }
@@ -472,9 +480,10 @@ function BibliotecaPage() {
                 }
               }
             } catch (e) {
-              console.warn("[biblioteca] falha ao salvar figuras", e);
+              console.warn("[biblioteca] falha ao salvar figuras/páginas", e);
             }
           }
+
 
           await finalizeFn({ data: { bookId: book.id, status: "ready" } });
           patchUpload(tempId, {
