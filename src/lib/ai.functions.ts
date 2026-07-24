@@ -506,8 +506,18 @@ export const askTutor = createServerFn({ method: "POST" })
       memorySummary: memory.topicSummary,
       libraryCitations: libraryMatches.map((m, i) => ({
         n: i + 1,
+        bookId: m.book_id,
         bookTitle: (m.metadata?.bookTitle as string | undefined) ?? "livro",
         page: (m.metadata?.page as number | undefined) ?? null,
+        // bbox opcional em viewport@1 top-left. Ausência = sem highlight (fallback gracioso).
+        bbox: (m.metadata?.bbox as
+          | {
+              page: number;
+              pageW: number;
+              pageH: number;
+              rects: { x: number; y: number; w: number; h: number }[];
+            }
+          | undefined) ?? null,
       })),
       library: libraryResult
         ? {

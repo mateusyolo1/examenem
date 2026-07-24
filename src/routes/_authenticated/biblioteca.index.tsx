@@ -80,15 +80,61 @@ const CHUNK_SIZE = 1100;
 const CHUNK_OVERLAP = 150;
 const EMBED_BATCH = 10;
 const UNFILED = "__unfiled__";
+const MAX_FIGURES_PER_BOOK = 40; // recortes de figuras (kind='figure')
+const PAGE_RENDER_SCALE_TARGET_W = 900; // largura alvo dos JPEGs de página
 
-function chunkText(text: string, page: number): { content: string; page: number }[] {
-  const clean = text.replace(/\s+/g, " ").trim();
+type PageRect = { x: number; y: number; w: number; h: number };
+type ChunkBBox = {
+  page: number;
+  pageW: number; // viewport@1
+  pageH: number;
+  rects: PageRect[];
+};
+
+type ChunkWithBBox = {
+  content: string;
+  page: number;
+  bbox: ChunkBBox | null;
+};
+
+type TextItemMap = {
+  start: number;
+  end: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+/** Chunker que preserva o mapeamento offset→rect para reconstruir bbox por chunk. */
+function chunkPageWithBBox(
+  pageText: string,
+  itemMap: TextItemMap[],
+  page: number,
+  pageW: number,
+  pageH: number,
+): ChunkWithBBox[] {
+  const clean = pageText.trim();
   if (!clean) return [];
-  const out: { content: string; page: number }[] = [];
+  const out: ChunkWithBBox[] = [];
   let i = 0;
   while (i < clean.length) {
     const end = Math.min(i + CHUNK_SIZE, clean.length);
-    out.push({ content: clean.slice(i, end), page });
+    const content = clean.slice(i, end);
+    // Rects dos items cujo range se sobrepõe ao chunk.
+    const chunkStart = i;
+    const chunkEnd = end;
+    const rects = itemMap
+      .filter((it) => it.start < chunkEnd && it.end > chunkStart)
+      .map((it) => ({ x: it.x, y: it.y, w: it.w, h: it.h }));
+    out.push({
+      content,
+      page,
+      bbox:
+        rects.length > 0 && pageW > 0 && pageH > 0
+          ? { page, pageW, pageH, rects }
+          : null,
+    });
     if (end === clean.length) break;
     i = end - CHUNK_OVERLAP;
   }
@@ -100,7 +146,41 @@ type ExtractedFigure = {
   blob: Blob;
   width: number;
   height: number;
+  kind: "figure" | "page";
 };
+
+type PdfJsPageItem = {
+  str?: string;
+  transform?: number[];
+  width?: number;
+  height?: number;
+};
+
+async function renderPageToJpeg(
+  // biome-ignore lint: pdfjs types are internal
+  page: any,
+  targetW: number,
+  quality: number,
+): Promise<{ blob: Blob; width: number; height: number } | null> {
+  const viewport = page.getViewport({ scale: 1.0 });
+  const scale = Math.min(1, targetW / viewport.width);
+  const vp = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(vp.width);
+  canvas.height = Math.ceil(vp.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  await page.render({
+    canvasContext: ctx,
+    viewport: vp,
+    canvas,
+  } as unknown as Parameters<typeof page.render>[0]).promise;
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/jpeg", quality),
+  );
+  if (!blob) return null;
+  return { blob, width: canvas.width, height: canvas.height };
+}
 
 async function extractPdfChunks(
   file: File,
@@ -127,50 +207,78 @@ async function extractPdfChunks(
   const figures: ExtractedFigure[] = [];
   let idx = 0;
   const total = doc.numPages;
-  const MAX_FIGURES = 40; // limite prático por livro
+  const bookTitle = file.name.replace(/\.pdf$/i, "");
   for (let p = 1; p <= total; p++) {
     onPage(p, total);
     const page = await doc.getPage(p);
+    const vp1 = page.getViewport({ scale: 1.0 });
+    const pageW = vp1.width;
+    const pageH = vp1.height;
     const content = await page.getTextContent();
-    const text = content.items
-      .map((it) => ("str" in it ? (it as { str: string }).str : ""))
-      .join(" ");
-    const isLegalPage = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i.test(text);
-    if (isLegalPage) continue;
-    for (const c of chunkText(text, p)) {
-      chunks.push({
-        index: idx++,
-        content: c.content,
-        metadata: { page: c.page, bookTitle: file.name.replace(/\.pdf$/i, "") },
-      });
+    // Constrói texto normalizado + mapa de offsets→rects em viewport@1 top-left.
+    let pageText = "";
+    const itemMap: TextItemMap[] = [];
+    for (const raw of content.items as PdfJsPageItem[]) {
+      const s = typeof raw.str === "string" ? raw.str.replace(/\s+/g, " ") : "";
+      if (!s) continue;
+      const start = pageText.length;
+      pageText += s;
+      const end = pageText.length;
+      pageText += " ";
+      const t = raw.transform;
+      if (Array.isArray(t) && t.length >= 6 && typeof raw.width === "number" && typeof raw.height === "number") {
+        const x = t[4];
+        const yBottom = t[5];
+        const w = raw.width;
+        const h = raw.height;
+        // PDF: origem bottom-left. Canvas: top-left. Converte.
+        const y = pageH - yBottom - h;
+        itemMap.push({ start, end, x, y, w, h });
+      }
     }
 
-    // Página tem figura? Renderiza para JPEG e guarda.
-    if (figures.length < MAX_FIGURES && IMAGE_OPS.size > 0) {
+    const joined = pageText.trim();
+    const isLegalPage = /reprodu[çc][ãa]o\s+proibid|art\.\s*\d+\s+do\s+c[óo]digo\s+penal|lei\s+n?[ºo°]?\s*[\d.]+|direitos?\s+autorais|copyright|all\s+rights\s+reserved|todos\s+os\s+direitos\s+reservados/i.test(joined);
+    if (!isLegalPage) {
+      for (const c of chunkPageWithBBox(joined, itemMap, p, pageW, pageH)) {
+        const meta: Record<string, unknown> = { page: c.page, bookTitle };
+        if (c.bbox) meta.bbox = c.bbox;
+        chunks.push({ index: idx++, content: c.content, metadata: meta });
+      }
+    }
+
+    // Renderiza a página inteira (kind='page') — sem limite.
+    try {
+      const rendered = await renderPageToJpeg(page, PAGE_RENDER_SCALE_TARGET_W, 0.72);
+      if (rendered) {
+        figures.push({
+          page: p,
+          blob: rendered.blob,
+          width: rendered.width,
+          height: rendered.height,
+          kind: "page",
+        });
+      }
+    } catch (e) {
+      console.warn(`[biblioteca] render página p.${p} falhou`, e);
+    }
+
+    // Figura recortada (kind='figure') — limite MAX_FIGURES_PER_BOOK.
+    const figuresCount = figures.filter((f) => f.kind === "figure").length;
+    if (figuresCount < MAX_FIGURES_PER_BOOK && IMAGE_OPS.size > 0) {
       try {
         const opList = await page.getOperatorList();
         const hasImage = (opList.fnArray as number[]).some((fn) => IMAGE_OPS.has(fn));
         if (hasImage) {
-          const viewport = page.getViewport({ scale: 1.0 });
-          const targetW = Math.min(900, viewport.width);
-          const scale = targetW / viewport.width;
-          const vp = page.getViewport({ scale });
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.ceil(vp.width);
-          canvas.height = Math.ceil(vp.height);
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            await page.render({
-              canvasContext: ctx,
-              viewport: vp,
-              canvas,
-            } as unknown as Parameters<typeof page.render>[0]).promise;
-            const blob = await new Promise<Blob | null>((resolve) =>
-              canvas.toBlob((b) => resolve(b), "image/jpeg", 0.78),
-            );
-            if (blob) {
-              figures.push({ page: p, blob, width: canvas.width, height: canvas.height });
-            }
+          const rendered = await renderPageToJpeg(page, PAGE_RENDER_SCALE_TARGET_W, 0.78);
+          if (rendered) {
+            figures.push({
+              page: p,
+              blob: rendered.blob,
+              width: rendered.width,
+              height: rendered.height,
+              kind: "figure",
+            });
           }
         }
       } catch (e) {
@@ -181,7 +289,8 @@ async function extractPdfChunks(
   return { chunks, pageCount: total, figures };
 }
 
-/** Só extrai figuras de um PDF (para reprocessar livros antigos sem re-embeddar). */
+/** Reprocessa um PDF existente para gerar páginas renderizadas (kind='page') e
+ *  figuras recortadas (kind='figure'). Não re-embedda texto. */
 async function extractPdfFiguresOnly(
   file: File,
   onPage: (page: number, total: number) => void,
@@ -197,41 +306,44 @@ async function extractPdfFiguresOnly(
   );
   const buf = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buf }).promise;
-  const figures: ExtractedFigure[] = [];
+  const out: ExtractedFigure[] = [];
   const total = doc.numPages;
-  const MAX_FIGURES = 40;
   for (let p = 1; p <= total; p++) {
     onPage(p, total);
-    if (figures.length >= MAX_FIGURES || IMAGE_OPS.size === 0) continue;
     try {
       const page = await doc.getPage(p);
+      const rendered = await renderPageToJpeg(page, PAGE_RENDER_SCALE_TARGET_W, 0.72);
+      if (rendered) {
+        out.push({
+          page: p,
+          blob: rendered.blob,
+          width: rendered.width,
+          height: rendered.height,
+          kind: "page",
+        });
+      }
+      const figuresCount = out.filter((f) => f.kind === "figure").length;
+      if (figuresCount >= MAX_FIGURES_PER_BOOK || IMAGE_OPS.size === 0) continue;
       const opList = await page.getOperatorList();
       const hasImage = (opList.fnArray as number[]).some((fn) => IMAGE_OPS.has(fn));
       if (!hasImage) continue;
-      const viewport = page.getViewport({ scale: 1.0 });
-      const targetW = Math.min(900, viewport.width);
-      const scale = targetW / viewport.width;
-      const vp = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(vp.width);
-      canvas.height = Math.ceil(vp.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) continue;
-      await page.render({
-        canvasContext: ctx,
-        viewport: vp,
-        canvas,
-      } as unknown as Parameters<typeof page.render>[0]).promise;
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.78),
-      );
-      if (blob) figures.push({ page: p, blob, width: canvas.width, height: canvas.height });
+      const figRender = await renderPageToJpeg(page, PAGE_RENDER_SCALE_TARGET_W, 0.78);
+      if (figRender) {
+        out.push({
+          page: p,
+          blob: figRender.blob,
+          width: figRender.width,
+          height: figRender.height,
+          kind: "figure",
+        });
+      }
     } catch (e) {
       console.warn(`[biblioteca] figura p.${p} falhou`, e);
     }
   }
-  return figures;
+  return out;
 }
+
 
 /** Deriva o "folder" a partir do webkitRelativePath (se veio de upload de pasta). */
 function folderFromFile(file: File, fallback: string | null): string | null {
