@@ -18,11 +18,25 @@ import {
   LEARNING_STAGES,
 } from "@/lib/learning-progress";
 
+type LibraryCitation = {
+  n: number;
+  bookId: string;
+  bookTitle: string;
+  page: number | null;
+  bbox: {
+    page: number;
+    pageW: number;
+    pageH: number;
+    rects: { x: number; y: number; w: number; h: number }[];
+  } | null;
+};
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
   images?: string[];
   toolResults?: TutorToolResult[];
+  libraryCitations?: LibraryCitation[];
 };
 type Mode =
   | "livre"
