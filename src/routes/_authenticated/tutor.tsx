@@ -519,6 +519,32 @@ function Tutor() {
                             <Markdown>{m.content}</Markdown>
                           </div>
                         )}
+                        {m.libraryCitations && m.libraryCitations.length > 0 && (
+                          <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-2">
+                            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                              Fontes citadas
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {m.libraryCitations
+                                .filter((c) => c.page != null)
+                                .map((c) => (
+                                  <SourcePageViewer
+                                    key={c.n}
+                                    bookId={c.bookId}
+                                    bookTitle={c.bookTitle}
+                                    page={c.page as number}
+                                    bbox={c.bbox}
+                                  >
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-background text-[11px] font-mono hover:border-primary hover:text-primary transition-colors cursor-pointer">
+                                      <span className="font-bold">[{c.n}]</span>
+                                      <span className="truncate max-w-[180px]">{c.bookTitle}</span>
+                                      <span className="text-muted-foreground">p.{c.page}</span>
+                                    </span>
+                                  </SourcePageViewer>
+                                ))}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
