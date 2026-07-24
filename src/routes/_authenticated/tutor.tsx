@@ -322,6 +322,10 @@ function Tutor() {
           role: "assistant",
           content: res.text,
           toolResults: res.toolResults?.length ? res.toolResults : undefined,
+          libraryCitations:
+            res.libraryCitations && res.libraryCitations.length > 0
+              ? (res.libraryCitations as LibraryCitation[])
+              : undefined,
         },
       ]);
     } catch (e) {
