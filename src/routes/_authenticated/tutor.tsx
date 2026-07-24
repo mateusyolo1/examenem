@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Markdown } from "@/components/Markdown";
 import { CurrentStageCard } from "@/components/CurrentStageCard";
 import { TutorToolCard } from "@/components/TutorToolCard";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 import { askTutor, type TutorToolResult } from "@/lib/ai.functions";
 import { useProgress, AREAS, areaStats, daysUntilExam, answersToday, type Area } from "@/lib/storage";
 import { QUESTION_AREA_MAP } from "@/lib/questions-data";
