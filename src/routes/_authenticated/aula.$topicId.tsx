@@ -61,6 +61,7 @@ import { saveLastEssayTask } from "@/lib/lesson-essay-cache";
 import { VideoNotesLayer } from "@/components/VideoNotesLayer";
 import { EnsinarComVideoButton } from "@/components/aula/EnsinarComVideoButton";
 import { AulaSidePanel } from "@/components/aula/AulaSidePanel";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId")({
@@ -1329,17 +1330,11 @@ function QuizView({
 
               <p className="text-base leading-relaxed text-foreground">{q.question}</p>
               {q.figure?.url && (
-                <figure className="border border-border rounded-lg overflow-hidden bg-background">
-                  <img
-                    src={q.figure.url}
-                    alt={`Figura de ${q.figure.bookTitle}`}
-                    loading="lazy"
-                    className="w-full max-h-80 object-contain bg-muted"
-                  />
-                  <figcaption className="px-3 py-1.5 text-[11px] font-mono text-muted-foreground border-t border-border">
-                    {q.figure.bookTitle} · p. {q.figure.page}
-                  </figcaption>
-                </figure>
+                <SourcePageViewer
+                  url={q.figure.url}
+                  bookTitle={q.figure.bookTitle}
+                  page={q.figure.page}
+                />
               )}
 
 

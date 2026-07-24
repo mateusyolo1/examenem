@@ -18,6 +18,7 @@ import {
 } from "@/lib/study.functions";
 import { z } from "zod";
 import { markPlanTaskDone } from "@/lib/study-plan";
+import { SourcePageViewer } from "@/components/library/SourcePageViewer";
 
 export const Route = createFileRoute("/_authenticated/aula/$topicId/pratica")({
   validateSearch: (search: Record<string, unknown>) =>
@@ -142,17 +143,13 @@ function PraticaPage() {
                   <h1 className="text-xl font-extrabold tracking-tight mt-0.5">{task.title}</h1>
                   <p className="text-sm mt-2 leading-relaxed">{task.prompt}</p>
                   {task.figure?.url && (
-                    <figure className="mt-3 border border-border rounded-lg overflow-hidden bg-background">
-                      <img
-                        src={task.figure.url}
-                        alt={`Figura de ${task.figure.bookTitle}`}
-                        loading="lazy"
-                        className="w-full max-h-80 object-contain bg-muted"
+                    <div className="mt-3">
+                      <SourcePageViewer
+                        url={task.figure.url}
+                        bookTitle={task.figure.bookTitle}
+                        page={task.figure.page}
                       />
-                      <figcaption className="px-3 py-1.5 text-[11px] font-mono text-muted-foreground border-t border-border">
-                        {task.figure.bookTitle} · p. {task.figure.page}
-                      </figcaption>
-                    </figure>
+                    </div>
                   )}
 
                   <div className="mt-4">
